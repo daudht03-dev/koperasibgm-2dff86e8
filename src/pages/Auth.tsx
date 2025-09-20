@@ -1,0 +1,196 @@
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Leaf, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { useNavigate, Link } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+
+const Auth = () => {
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const { signIn, signUp } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      if (isLogin) {
+        const { error } = await signIn(email, password);
+        if (error) {
+          toast({
+            title: "Error Login",
+            description: error.message === "Invalid login credentials" 
+              ? "Email atau password salah" 
+              : error.message,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Login Berhasil",
+            description: "Selamat datang di dashboard admin!",
+          });
+          navigate("/admin");
+        }
+      } else {
+        const { error } = await signUp(email, password, fullName);
+        if (error) {
+          toast({
+            title: "Error Registrasi",
+            description: error.message === "User already registered"
+              ? "Email sudah terdaftar"
+              : error.message,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Registrasi Berhasil",
+            description: "Silakan cek email untuk verifikasi akun Anda.",
+          });
+          setIsLogin(true);
+        }
+      }
+    } catch (error) {
+      toast({
+        title: "Terjadi Kesalahan",
+        description: "Silakan coba lagi.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-natural flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* Back Button */}
+        <div className="mb-6">
+          <Button variant="ghost" asChild className="text-muted-foreground hover:text-foreground">
+            <Link to="/">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Kembali ke Beranda
+            </Link>
+          </Button>
+        </div>
+
+        <Card className="shadow-gentle border-border/50">
+          <CardHeader className="text-center space-y-4">
+            <div className="bg-gradient-organic w-16 h-16 rounded-full flex items-center justify-center mx-auto shadow-organic">
+              <Leaf className="h-8 w-8 text-primary-foreground" />
+            </div>
+            <div>
+              <CardTitle className="text-2xl font-bold text-foreground">
+                {isLogin ? "Login Admin" : "Daftar Admin"}
+              </CardTitle>
+              <CardDescription className="text-muted-foreground">
+                {isLogin 
+                  ? "Masuk ke dashboard admin Berkah Gendis Official" 
+                  : "Buat akun admin baru"
+                }
+              </CardDescription>
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {!isLogin && (
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Nama Lengkap</Label>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="Masukkan nama lengkap"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required={!isLogin}
+                    className="border-border/50 focus:border-organic-green"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="admin@berkahgendis.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="border-border/50 focus:border-organic-green"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Masukkan password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    className="border-border/50 focus:border-organic-green pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full bg-gradient-organic shadow-organic hover:shadow-warm transition-all duration-300" 
+                disabled={loading}
+              >
+                {loading ? "Memproses..." : isLogin ? "Login" : "Daftar"}
+              </Button>
+            </form>
+
+            <div className="mt-6 text-center">
+              <Button
+                variant="link"
+                onClick={() => setIsLogin(!isLogin)}
+                className="text-organic-green hover:text-organic-green-dark"
+              >
+                {isLogin 
+                  ? "Belum punya akun? Daftar di sini" 
+                  : "Sudah punya akun? Login di sini"
+                }
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="mt-6 text-center text-sm text-muted-foreground">
+          <p>© 2024 Berkah Gendis Official</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Auth;

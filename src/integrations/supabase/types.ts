@@ -14,7 +14,137 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      konten_website: {
+        Row: {
+          created_at: string
+          gambar_url: string | null
+          id: string
+          isi: string | null
+          judul: string | null
+          section: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          gambar_url?: string | null
+          id?: string
+          isi?: string | null
+          judul?: string | null
+          section: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          gambar_url?: string | null
+          id?: string
+          isi?: string | null
+          judul?: string | null
+          section?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lahan: {
+        Row: {
+          alamat: string
+          created_at: string
+          id: string
+          jumlah_tanaman: number | null
+          koordinat: string | null
+          luas: number
+          petani_id: string
+          updated_at: string
+        }
+        Insert: {
+          alamat: string
+          created_at?: string
+          id?: string
+          jumlah_tanaman?: number | null
+          koordinat?: string | null
+          luas: number
+          petani_id: string
+          updated_at?: string
+        }
+        Update: {
+          alamat?: string
+          created_at?: string
+          id?: string
+          jumlah_tanaman?: number | null
+          koordinat?: string | null
+          luas?: number
+          petani_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lahan_petani_id_fkey"
+            columns: ["petani_id"]
+            isOneToOne: false
+            referencedRelation: "petani"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      petani: {
+        Row: {
+          alamat: string
+          created_at: string
+          id: string
+          kode_petani: string
+          nama: string
+          no_telepon: string | null
+          rata_rata_panen: number | null
+          updated_at: string
+        }
+        Insert: {
+          alamat: string
+          created_at?: string
+          id?: string
+          kode_petani: string
+          nama: string
+          no_telepon?: string | null
+          rata_rata_panen?: number | null
+          updated_at?: string
+        }
+        Update: {
+          alamat?: string
+          created_at?: string
+          id?: string
+          kode_petani?: string
+          nama?: string
+          no_telepon?: string | null
+          rata_rata_panen?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          role: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          role?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          role?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

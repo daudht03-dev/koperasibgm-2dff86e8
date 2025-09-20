@@ -57,6 +57,29 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Custom organic colors
+        organic: {
+          green: "hsl(var(--organic-green))",
+          "green-light": "hsl(var(--organic-green-light))",
+          "green-dark": "hsl(var(--organic-green-dark))",
+          brown: "hsl(var(--organic-brown))",
+          "brown-light": "hsl(var(--organic-brown-light))",
+          amber: "hsl(var(--organic-amber))",
+          cream: "hsl(var(--organic-cream))",
+        },
+      },
+      backgroundImage: {
+        "gradient-organic": "var(--gradient-organic)",
+        "gradient-earth": "var(--gradient-earth)",
+        "gradient-natural": "var(--gradient-natural)",
+      },
+      boxShadow: {
+        "organic": "var(--shadow-organic)",
+        "warm": "var(--shadow-warm)", 
+        "gentle": "var(--shadow-gentle)",
+      },
+      transitionTimingFunction: {
+        "organic": "var(--transition-organic)",
       },
       borderRadius: {
         lg: "var(--radius)",
