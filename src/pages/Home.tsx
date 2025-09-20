@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import FarmerCard from "@/components/farmer-card";
 import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
+import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-coconut-sugar.jpg";
 
 interface Petani {
@@ -105,6 +106,9 @@ const Home = () => {
               </Button>
               <Button size="lg" variant="outline" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
                 Tentang Kami
+              </Button>
+              <Button size="lg" variant="outline" asChild className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
+                <Link to="/login">Login Admin</Link>
               </Button>
             </div>
           </div>

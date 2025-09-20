@@ -6,9 +6,11 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/use-auth";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
+import AdminDashboard from "./pages/AdminDashboard";
 import FarmerDetail from "./pages/FarmerDetail";
 import QRCodePage from "./pages/QRCode";
 import NotFound from "./pages/NotFound";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -21,7 +23,15 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/admin" element={<Auth />} />
+            <Route path="/login" element={<Auth />} />
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
             <Route path="/petani/:id" element={<FarmerDetail />} />
             <Route path="/petani/:id/qr" element={<QRCodePage />} />
             <Route path="*" element={<NotFound />} />
