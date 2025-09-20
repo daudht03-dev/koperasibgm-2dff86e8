@@ -118,6 +118,69 @@ export type Database = {
         }
         Relationships: []
       }
+      produk: {
+        Row: {
+          created_at: string
+          deskripsi: string | null
+          gambar_url: string | null
+          harga: number
+          id: string
+          nama: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deskripsi?: string | null
+          gambar_url?: string | null
+          harga: number
+          id?: string
+          nama: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deskripsi?: string | null
+          gambar_url?: string | null
+          harga?: number
+          id?: string
+          nama?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profil_perusahaan: {
+        Row: {
+          alamat: string | null
+          created_at: string
+          deskripsi: string | null
+          id: string
+          kontak: string | null
+          logo_url: string | null
+          nama_perusahaan: string
+          updated_at: string
+        }
+        Insert: {
+          alamat?: string | null
+          created_at?: string
+          deskripsi?: string | null
+          id?: string
+          kontak?: string | null
+          logo_url?: string | null
+          nama_perusahaan: string
+          updated_at?: string
+        }
+        Update: {
+          alamat?: string | null
+          created_at?: string
+          deskripsi?: string | null
+          id?: string
+          kontak?: string | null
+          logo_url?: string | null
+          nama_perusahaan?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
