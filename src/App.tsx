@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import AdminDashboard from "./pages/AdminDashboard";
 import FarmerDetail from "./pages/FarmerDetail";
 import QRCodePage from "./pages/QRCode";
+import Products from "./pages/Products";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -24,6 +25,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Auth />} />
+            <Route path="/produk" element={<Products />} />
             <Route 
               path="/admin" 
               element={

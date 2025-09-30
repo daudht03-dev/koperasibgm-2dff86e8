@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Leaf, Award, Users, TreePine, ArrowRight } from "lucide-react";
@@ -9,6 +9,9 @@ import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
 import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-coconut-sugar.jpg";
+import { useProducts } from "@/hooks/use-products";
+import { useCompanyProfile } from "@/hooks/use-company-profile";
+import { formatRupiah } from "@/lib/utils";
 
 interface Petani {
   id: string;
@@ -36,6 +39,9 @@ const Home = () => {
   const [petaniList, setPetaniList] = useState<Petani[]>([]);
   const [konten, setKonten] = useState<Record<string, KontenWebsite>>({});
   const [loading, setLoading] = useState(true);
+  
+  const { products } = useProducts();
+  const { profile: companyProfile } = useCompanyProfile();
 
   useEffect(() => {
     fetchData();
@@ -100,12 +106,14 @@ const Home = () => {
               {konten.hero?.isi || "Dari kebun petani lokal langsung ke meja Anda. Diproduksi dengan standar organik terbaik untuk kesehatan keluarga."}
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button size="lg" className="bg-gradient-organic shadow-organic hover:shadow-warm transition-all duration-300">
-                <Leaf className="mr-2 h-5 w-5" />
-                Lihat Produk
+              <Button size="lg" asChild className="bg-gradient-organic shadow-organic hover:shadow-warm transition-all duration-300">
+                <Link to="/produk">
+                  <Leaf className="mr-2 h-5 w-5" />
+                  Lihat Produk
+                </Link>
               </Button>
-              <Button size="lg" variant="outline" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
-                Tentang Kami
+              <Button size="lg" variant="outline" asChild className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
+                <a href="#about">Tentang Kami</a>
               </Button>
               <Button size="lg" variant="outline" asChild className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
                 <Link to="/login">Login Admin</Link>
@@ -154,10 +162,10 @@ const Home = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-6">
-                {konten.about?.judul || "Tentang Berkah Gendis Official"}
+                {konten.about?.judul || `Tentang ${companyProfile?.nama_perusahaan || "Berkah Gendis Official"}`}
               </h2>
               <p className="text-lg text-muted-foreground mb-8">
-                {konten.about?.isi || "Berkah Gendis Official adalah perusahaan yang berkomitmen menghasilkan gula kelapa organik berkualitas tinggi."}
+                {konten.about?.isi || companyProfile?.deskripsi || "Berkah Gendis Official adalah perusahaan yang berkomitmen menghasilkan gula kelapa organik berkualitas tinggi."}
               </p>
               <div className="space-y-4">
                 <div className="flex items-center space-x-3">
@@ -210,24 +218,49 @@ const Home = () => {
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { name: "Gula Kelapa Kristal", desc: "Kristal halus, larut sempurna" },
-              { name: "Gula Kelapa Cetak", desc: "Bentuk tradisional, rasa autentik" },
-              { name: "Gula Kelapa Bubuk", desc: "Praktis untuk segala keperluan" },
-              { name: "Sirup Kelapa", desc: "Cair alami, mudah digunakan" }
-            ].map((product, index) => (
-              <Card key={index} className="hover:shadow-gentle transition-all duration-300">
-                <CardContent className="p-6 text-center">
-                  <div className="bg-gradient-organic w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 shadow-organic">
-                    <Leaf className="h-8 w-8 text-primary-foreground" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-foreground mb-2">{product.name}</h3>
-                  <p className="text-muted-foreground text-sm">{product.desc}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          {products.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {products.slice(0, 3).map((product) => (
+                  <Card key={product.id} className="hover:shadow-gentle transition-all duration-300 overflow-hidden">
+                    {product.gambar_url && (
+                      <div className="aspect-square overflow-hidden">
+                        <img 
+                          src={product.gambar_url} 
+                          alt={product.nama}
+                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                    )}
+                    <CardContent className="p-6">
+                      <h3 className="text-xl font-semibold text-foreground mb-2">{product.nama}</h3>
+                      {product.deskripsi && (
+                        <p className="text-muted-foreground text-sm mb-4 line-clamp-2">{product.deskripsi}</p>
+                      )}
+                      <Badge variant="secondary" className="text-lg font-bold">
+                        {formatRupiah(Number(product.harga))}
+                      </Badge>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              
+              {products.length > 3 && (
+                <div className="text-center mt-8">
+                  <Button size="lg" asChild>
+                    <Link to="/produk">
+                      Lihat Semua Produk
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-12">
+              <div className="text-muted-foreground">Belum ada produk tersedia.</div>
+            </div>
+          )}
         </div>
       </section>
 
