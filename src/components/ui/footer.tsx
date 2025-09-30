@@ -1,6 +1,9 @@
 import { Leaf, Mail, Phone, MapPin } from "lucide-react";
+import { useCompanyProfile } from "@/hooks/use-company-profile";
 
 const Footer = () => {
+  const { profile, loading } = useCompanyProfile();
+
   return (
     <footer className="bg-organic-brown text-primary-foreground">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -8,28 +11,37 @@ const Footer = () => {
           {/* Company Info */}
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
-              <div className="bg-organic-amber p-2 rounded-lg">
-                <Leaf className="h-6 w-6 text-organic-brown" />
-              </div>
-              <span className="text-xl font-bold">Berkah Gendis Official</span>
+              {profile?.logo_url ? (
+                <img 
+                  src={profile.logo_url} 
+                  alt={profile.nama_perusahaan}
+                  className="h-12 w-12 object-contain"
+                />
+              ) : (
+                <div className="bg-organic-amber p-2 rounded-lg">
+                  <Leaf className="h-6 w-6 text-organic-brown" />
+                </div>
+              )}
+              <span className="text-xl font-bold">
+                {loading ? "Loading..." : (profile?.nama_perusahaan || "Berkah Gendis Official")}
+              </span>
             </div>
             <p className="text-primary-foreground/80 mb-4">
-              Produsen gula kelapa organik berkualitas tinggi yang bekerja sama langsung dengan petani lokal. 
-              Menghadirkan produk alami dan sehat untuk keluarga Indonesia.
+              {loading ? "Memuat..." : (profile?.deskripsi || "Produsen gula kelapa organik berkualitas tinggi yang bekerja sama langsung dengan petani lokal. Menghadirkan produk alami dan sehat untuk keluarga Indonesia.")}
             </p>
             <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Phone className="h-4 w-4" />
-                <span className="text-sm">+62 812-3456-7890</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Mail className="h-4 w-4" />
-                <span className="text-sm">info@berkahgendis.com</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <MapPin className="h-4 w-4" />
-                <span className="text-sm">Yogyakarta, Indonesia</span>
-              </div>
+              {profile?.kontak && (
+                <div className="flex items-center space-x-2">
+                  <Phone className="h-4 w-4" />
+                  <span className="text-sm">{profile.kontak}</span>
+                </div>
+              )}
+              {profile?.alamat && (
+                <div className="flex items-center space-x-2">
+                  <MapPin className="h-4 w-4" />
+                  <span className="text-sm">{profile.alamat}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -58,7 +70,7 @@ const Footer = () => {
 
         <div className="border-t border-primary-foreground/20 mt-8 pt-8 text-center">
           <p className="text-primary-foreground/60">
-            © 2024 Berkah Gendis Official. Semua hak dilindungi.
+            © {new Date().getFullYear()} {profile?.nama_perusahaan || "Berkah Gendis Official"}. Semua hak dilindungi.
           </p>
         </div>
       </div>
