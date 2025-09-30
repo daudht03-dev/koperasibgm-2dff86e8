@@ -1,8 +1,12 @@
-import { Leaf, Mail, Phone, MapPin } from "lucide-react";
+import { Leaf, Phone, MapPin } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
+import { useProducts } from "@/hooks/use-products";
+import { formatRupiah } from "@/lib/utils";
 
 const Footer = () => {
   const { profile, loading } = useCompanyProfile();
+  const { products } = useProducts();
 
   return (
     <footer className="bg-organic-brown text-primary-foreground">
@@ -58,12 +62,21 @@ const Footer = () => {
 
           {/* Products */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Produk</h3>
+            <h3 className="text-lg font-semibold mb-4">Produk Terbaru</h3>
             <ul className="space-y-2">
-              <li className="text-primary-foreground/80">Gula Kelapa Kristal</li>
-              <li className="text-primary-foreground/80">Gula Kelapa Cetak</li>
-              <li className="text-primary-foreground/80">Gula Kelapa Bubuk</li>
-              <li className="text-primary-foreground/80">Sirup Kelapa</li>
+              {products.slice(0, 4).map((product) => (
+                <li key={product.id}>
+                  <Link 
+                    to={`/produk/${product.id}`}
+                    className="text-primary-foreground/80 hover:text-primary-foreground transition-colors flex justify-between items-center group"
+                  >
+                    <span className="line-clamp-1">{product.nama}</span>
+                    <span className="text-xs ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {formatRupiah(Number(product.harga))}
+                    </span>
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
         </div>

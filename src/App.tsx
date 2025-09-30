@@ -10,6 +10,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import FarmerDetail from "./pages/FarmerDetail";
 import QRCodePage from "./pages/QRCode";
 import Products from "./pages/Products";
+import ProductDetail from "./pages/ProductDetail";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Auth />} />
             <Route path="/produk" element={<Products />} />
+            <Route path="/produk/:id" element={<ProductDetail />} />
             <Route 
               path="/admin" 
               element={
