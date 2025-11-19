@@ -10,26 +10,29 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
+import { StatisticsChart } from "@/components/StatisticsChart";
 import { useAuth } from "@/hooks/use-auth";
 import { useFarmers } from "@/hooks/use-farmers";
 import { useLands } from "@/hooks/use-lands";
 import { useProducts } from "@/hooks/use-products";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
+import { useHarvests } from "@/hooks/use-harvests";
 import { useNavigate } from "react-router-dom";
-import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building } from "lucide-react";
+import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"farmers" | "lands" | "products" | "profile">("farmers");
+  const [activeTab, setActiveTab] = useState<"farmers" | "lands" | "products" | "statistics" | "profile">("farmers");
 
   // Hooks for data management
   const { farmers, addFarmer, updateFarmer, deleteFarmer } = useFarmers();
   const { lands, addLand, updateLand, deleteLand } = useLands();
   const { products, createProduct, updateProduct, deleteProduct, uploadImage } = useProducts();
   const { profile, updateProfile, uploadLogo } = useCompanyProfile();
+  const { harvests, addHarvest, deleteHarvest } = useHarvests();
 
   // Form states for farmers
   const [farmerForm, setFarmerForm] = useState({
@@ -50,6 +53,15 @@ const AdminDashboard = () => {
   });
   const [editingLand, setEditingLand] = useState<string | null>(null);
   const [landDialogOpen, setLandDialogOpen] = useState(false);
+
+  // Form states for harvest
+  const [harvestForm, setHarvestForm] = useState({
+    lahan_id: "",
+    tanggal_panen: "",
+    jumlah_kg: "",
+    keterangan: "",
+  });
+  const [harvestDialogOpen, setHarvestDialogOpen] = useState(false);
 
   // Form states for products
   const [productForm, setProductForm] = useState({
@@ -175,6 +187,30 @@ const AdminDashboard = () => {
       setLandForm({ kode_lahan: "", keterangan: "", petani_id: "" });
       setEditingLand(null);
       setLandDialogOpen(false);
+    }
+  };
+
+  // Handler functions for harvest
+  const handleAddHarvest = async () => {
+    if (!harvestForm.lahan_id || !harvestForm.tanggal_panen || !harvestForm.jumlah_kg) {
+      toast({
+        title: "Error",
+        description: "Lahan, tanggal panen, dan jumlah hasil panen harus diisi",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const success = await addHarvest({
+      lahan_id: harvestForm.lahan_id,
+      tanggal_panen: harvestForm.tanggal_panen,
+      jumlah_kg: parseFloat(harvestForm.jumlah_kg),
+      keterangan: harvestForm.keterangan || null,
+    });
+
+    if (success) {
+      setHarvestForm({ lahan_id: "", tanggal_panen: "", jumlah_kg: "", keterangan: "" });
+      setHarvestDialogOpen(false);
     }
   };
 
@@ -318,6 +354,7 @@ const AdminDashboard = () => {
               { key: "farmers", label: "Petani", icon: Users },
               { key: "lands", label: "Lahan", icon: MapPin },
               { key: "products", label: "Produk", icon: Package },
+              { key: "statistics", label: "Statistik", icon: BarChart3 },
               { key: "profile", label: "Profil", icon: Building },
             ].map(({ key, label, icon: Icon }) => (
               <button
@@ -803,6 +840,173 @@ const AdminDashboard = () => {
               </Table>
             </CardContent>
           </Card>
+        )}
+
+        {/* Statistics Tab */}
+        {activeTab === "statistics" && (
+          <div className="space-y-6">
+            <Card className="shadow-gentle border-border/50">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-foreground">Data Panen</CardTitle>
+                  <CardDescription>Tambah dan kelola data hasil panen</CardDescription>
+                </div>
+                <Dialog open={harvestDialogOpen} onOpenChange={setHarvestDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      onClick={() => {
+                        setHarvestForm({ lahan_id: "", tanggal_panen: "", jumlah_kg: "", keterangan: "" });
+                      }}
+                      className="bg-gradient-organic shadow-organic hover:shadow-warm"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Tambah Data Panen
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Tambah Data Panen</DialogTitle>
+                      <DialogDescription>
+                        Tambahkan data hasil panen untuk lahan
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="lahan">Lahan</Label>
+                        <Select
+                          value={harvestForm.lahan_id}
+                          onValueChange={(value) => setHarvestForm(prev => ({ ...prev, lahan_id: value }))}
+                        >
+                          <SelectTrigger id="lahan" className="bg-background">
+                            <SelectValue placeholder="Pilih lahan" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background">
+                            {lands.map((land) => {
+                              const farmer = land.petani_id ? farmers.find(f => f.id === land.petani_id) : null;
+                              return (
+                                <SelectItem key={land.id} value={land.id}>
+                                  {land.kode_lahan} {farmer ? `- ${farmer.nama}` : ""}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="tanggal">Tanggal Panen</Label>
+                        <Input
+                          id="tanggal"
+                          type="date"
+                          value={harvestForm.tanggal_panen}
+                          onChange={(e) => setHarvestForm(prev => ({ ...prev, tanggal_panen: e.target.value }))}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="jumlah">Jumlah (kg)</Label>
+                        <Input
+                          id="jumlah"
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          value={harvestForm.jumlah_kg}
+                          onChange={(e) => setHarvestForm(prev => ({ ...prev, jumlah_kg: e.target.value }))}
+                          placeholder="0"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="keterangan-panen">Keterangan</Label>
+                        <Textarea
+                          id="keterangan-panen"
+                          value={harvestForm.keterangan}
+                          onChange={(e) => setHarvestForm(prev => ({ ...prev, keterangan: e.target.value }))}
+                          placeholder="Catatan tambahan (opsional)"
+                          rows={3}
+                        />
+                      </div>
+                      <div className="flex justify-end space-x-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setHarvestDialogOpen(false);
+                          }}
+                        >
+                          Batal
+                        </Button>
+                        <Button onClick={handleAddHarvest}>
+                          Simpan
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tanggal</TableHead>
+                      <TableHead>Lahan</TableHead>
+                      <TableHead>Petani</TableHead>
+                      <TableHead>Jumlah (kg)</TableHead>
+                      <TableHead>Keterangan</TableHead>
+                      <TableHead>Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {harvests.map((harvest) => {
+                      const land = lands.find(l => l.id === harvest.lahan_id);
+                      const farmer = land?.petani_id ? farmers.find(f => f.id === land.petani_id) : null;
+                      return (
+                        <TableRow key={harvest.id}>
+                          <TableCell>
+                            {new Date(harvest.tanggal_panen).toLocaleDateString('id-ID', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </TableCell>
+                          <TableCell className="font-medium">{land?.kode_lahan || "-"}</TableCell>
+                          <TableCell>{farmer?.nama || "-"}</TableCell>
+                          <TableCell>{harvest.jumlah_kg} kg</TableCell>
+                          <TableCell className="max-w-xs truncate">{harvest.keterangan || "-"}</TableCell>
+                          <TableCell>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Hapus Data Panen</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Apakah Anda yakin ingin menghapus data panen ini? Aksi ini tidak dapat dibatalkan.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => deleteHarvest(harvest.id)}
+                                    className="bg-destructive hover:bg-destructive/90"
+                                  >
+                                    Hapus
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            <StatisticsChart lands={lands} farmers={farmers} harvests={harvests} />
+          </div>
         )}
 
         {/* Company Profile Tab */}
