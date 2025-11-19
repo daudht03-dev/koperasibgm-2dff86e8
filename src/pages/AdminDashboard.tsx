@@ -18,6 +18,7 @@ import { useProducts } from "@/hooks/use-products";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { useNavigate } from "react-router-dom";
 import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
@@ -45,11 +46,8 @@ const AdminDashboard = () => {
 
   // Form states for lands
   const [landForm, setLandForm] = useState({
-    petani_id: "",
-    luas: "",
-    alamat: "",
-    koordinat: "",
-    jumlah_tanaman: "",
+    kode_lahan: "",
+    keterangan: "",
   });
   const [editingLand, setEditingLand] = useState<string | null>(null);
   const [landDialogOpen, setLandDialogOpen] = useState(false);
@@ -138,26 +136,29 @@ const AdminDashboard = () => {
 
   // Handler functions for lands
   const handleAddLand = async () => {
+    if (!landForm.kode_lahan.trim()) {
+      toast({
+        title: "Error",
+        description: "Kode lahan harus diisi",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const success = await addLand({
-      petani_id: landForm.petani_id,
-      luas: parseFloat(landForm.luas),
-      alamat: landForm.alamat,
-      koordinat: landForm.koordinat || null,
-      jumlah_tanaman: landForm.jumlah_tanaman ? parseInt(landForm.jumlah_tanaman) : null,
+      kode_lahan: landForm.kode_lahan.trim(),
+      keterangan: landForm.keterangan.trim() || null,
     });
     if (success) {
-      setLandForm({ petani_id: "", luas: "", alamat: "", koordinat: "", jumlah_tanaman: "" });
+      setLandForm({ kode_lahan: "", keterangan: "" });
       setLandDialogOpen(false);
     }
   };
 
   const handleEditLand = (land: any) => {
     setLandForm({
-      petani_id: land.petani_id,
-      luas: land.luas.toString(),
-      alamat: land.alamat,
-      koordinat: land.koordinat || "",
-      jumlah_tanaman: land.jumlah_tanaman?.toString() || "",
+      kode_lahan: land.kode_lahan,
+      keterangan: land.keterangan || "",
     });
     setEditingLand(land.id);
     setLandDialogOpen(true);
@@ -165,15 +166,21 @@ const AdminDashboard = () => {
 
   const handleUpdateLand = async () => {
     if (!editingLand) return;
+    if (!landForm.kode_lahan.trim()) {
+      toast({
+        title: "Error",
+        description: "Kode lahan harus diisi",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const success = await updateLand(editingLand, {
-      petani_id: landForm.petani_id,
-      luas: parseFloat(landForm.luas),
-      alamat: landForm.alamat,
-      koordinat: landForm.koordinat || null,
-      jumlah_tanaman: landForm.jumlah_tanaman ? parseInt(landForm.jumlah_tanaman) : null,
+      kode_lahan: landForm.kode_lahan.trim(),
+      keterangan: landForm.keterangan.trim() || null,
     });
     if (success) {
-      setLandForm({ petani_id: "", luas: "", alamat: "", koordinat: "", jumlah_tanaman: "" });
+      setLandForm({ kode_lahan: "", keterangan: "" });
       setEditingLand(null);
       setLandDialogOpen(false);
     }
@@ -543,7 +550,7 @@ const AdminDashboard = () => {
                   <Button 
                     onClick={() => {
                       setEditingLand(null);
-                      setLandForm({ petani_id: "", luas: "", alamat: "", koordinat: "", jumlah_tanaman: "" });
+                      setLandForm({ kode_lahan: "", keterangan: "" });
                     }}
                     className="bg-gradient-organic shadow-organic hover:shadow-warm"
                   >
@@ -560,71 +567,37 @@ const AdminDashboard = () => {
                   </DialogHeader>
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="petani">Petani</Label>
-                      <Select 
-                        value={landForm.petani_id} 
-                        onValueChange={(value) => setLandForm(prev => ({ ...prev, petani_id: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih petani" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {farmers.map((farmer) => (
-                            <SelectItem key={farmer.id} value={farmer.id}>
-                              {farmer.nama} ({farmer.kode_petani})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="luas">Luas (hektar)</Label>
+                      <Label htmlFor="kode-lahan">Kode Lahan</Label>
                       <Input
-                        id="luas"
-                        type="number"
-                        step="0.01"
-                        value={landForm.luas}
-                        onChange={(e) => setLandForm(prev => ({ ...prev, luas: e.target.value }))}
+                        id="kode-lahan"
+                        value={landForm.kode_lahan}
+                        onChange={(e) => setLandForm(prev => ({ ...prev, kode_lahan: e.target.value }))}
+                        placeholder="Contoh: LHN-001"
+                        required
                       />
                     </div>
                     <div>
-                      <Label htmlFor="alamat-lahan">Alamat</Label>
+                      <Label htmlFor="keterangan">Keterangan Lahan</Label>
                       <Textarea
-                        id="alamat-lahan"
-                        value={landForm.alamat}
-                        onChange={(e) => setLandForm(prev => ({ ...prev, alamat: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="koordinat">Koordinat</Label>
-                      <Input
-                        id="koordinat"
-                        value={landForm.koordinat}
-                        onChange={(e) => setLandForm(prev => ({ ...prev, koordinat: e.target.value }))}
-                        placeholder="Contoh: -6.2088, 106.8456"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="tanaman">Jumlah Tanaman</Label>
-                      <Input
-                        id="tanaman"
-                        type="number"
-                        value={landForm.jumlah_tanaman}
-                        onChange={(e) => setLandForm(prev => ({ ...prev, jumlah_tanaman: e.target.value }))}
+                        id="keterangan"
+                        value={landForm.keterangan}
+                        onChange={(e) => setLandForm(prev => ({ ...prev, keterangan: e.target.value }))}
+                        placeholder="Deskripsi atau catatan tentang lahan ini"
+                        rows={4}
                       />
                     </div>
                     <div className="flex justify-end space-x-2">
                       <Button
                         variant="outline"
-                        onClick={() => setLandDialogOpen(false)}
+                        onClick={() => {
+                          setLandDialogOpen(false);
+                          setEditingLand(null);
+                        }}
                       >
                         Batal
                       </Button>
-                      <Button
-                        onClick={editingLand ? handleUpdateLand : handleAddLand}
-                        className="bg-gradient-organic"
-                      >
-                        {editingLand ? "Update" : "Tambah"}
+                      <Button onClick={editingLand ? handleUpdateLand : handleAddLand}>
+                        {editingLand ? "Update" : "Simpan"}
                       </Button>
                     </div>
                   </div>
@@ -635,62 +608,53 @@ const AdminDashboard = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Petani</TableHead>
-                    <TableHead>Luas</TableHead>
-                    <TableHead>Alamat</TableHead>
-                    <TableHead>Koordinat</TableHead>
-                    <TableHead>Jumlah Tanaman</TableHead>
+                    <TableHead>Kode Lahan</TableHead>
+                    <TableHead>Keterangan</TableHead>
                     <TableHead>Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {lands.map((land) => {
-                    const farmer = farmers.find(f => f.id === land.petani_id);
-                    return (
-                      <TableRow key={land.id}>
-                        <TableCell>{farmer?.nama || "Unknown"}</TableCell>
-                        <TableCell>{land.luas} ha</TableCell>
-                        <TableCell className="max-w-xs truncate">{land.alamat}</TableCell>
-                        <TableCell>{land.koordinat || "-"}</TableCell>
-                        <TableCell>{land.jumlah_tanaman || "-"}</TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEditLand(land)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="outline" size="sm">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Hapus Lahan</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Apakah Anda yakin ingin menghapus lahan ini? Aksi ini tidak dapat dibatalkan.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Batal</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => deleteLand(land.id)}
-                                    className="bg-destructive hover:bg-destructive/90"
-                                  >
-                                    Hapus
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {lands.map((land) => (
+                    <TableRow key={land.id}>
+                      <TableCell className="font-medium">{land.kode_lahan}</TableCell>
+                      <TableCell className="max-w-md">{land.keterangan || "-"}</TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditLand(land)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Hapus Lahan</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Apakah Anda yakin ingin menghapus lahan {land.kode_lahan}? Aksi ini tidak dapat dibatalkan.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Batal</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteLand(land.id)}
+                                  className="bg-destructive hover:bg-destructive/90"
+                                >
+                                  Hapus
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </CardContent>
