@@ -17,8 +17,8 @@ import { useLands } from "@/hooks/use-lands";
 import { useProducts } from "@/hooks/use-products";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { useHarvests } from "@/hooks/use-harvests";
-import { useNavigate } from "react-router-dom";
-import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const AdminDashboard = () => {
@@ -484,6 +484,25 @@ const AdminDashboard = () => {
                       <TableCell>{farmer.rata_rata_panen ? `${farmer.rata_rata_panen} kg` : "-"}</TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                          >
+                            <Link to={`/petani/${farmer.id}`}>
+                              <Eye className="h-4 w-4 mr-1" />
+                              Detail
+                            </Link>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                          >
+                            <Link to={`/petani/${farmer.id}/qr`}>
+                              <QrCode className="h-4 w-4" />
+                            </Link>
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
