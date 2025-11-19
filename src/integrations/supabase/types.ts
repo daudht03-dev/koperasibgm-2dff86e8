@@ -46,44 +46,27 @@ export type Database = {
       }
       lahan: {
         Row: {
-          alamat: string
           created_at: string
           id: string
-          jumlah_tanaman: number | null
-          koordinat: string | null
-          luas: number
-          petani_id: string
+          keterangan: string | null
+          kode_lahan: string
           updated_at: string
         }
         Insert: {
-          alamat: string
           created_at?: string
           id?: string
-          jumlah_tanaman?: number | null
-          koordinat?: string | null
-          luas: number
-          petani_id: string
+          keterangan?: string | null
+          kode_lahan: string
           updated_at?: string
         }
         Update: {
-          alamat?: string
           created_at?: string
           id?: string
-          jumlah_tanaman?: number | null
-          koordinat?: string | null
-          luas?: number
-          petani_id?: string
+          keterangan?: string | null
+          kode_lahan?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "lahan_petani_id_fkey"
-            columns: ["petani_id"]
-            isOneToOne: false
-            referencedRelation: "petani"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       petani: {
         Row: {

@@ -60,11 +60,13 @@ export const useLands = () => {
         return false;
       }
 
-      setLands(prev => [data, ...prev]);
-      toast({
-        title: "Berhasil",
-        description: "Lahan berhasil ditambahkan",
-      });
+      if (data) {
+        setLands(prev => [data, ...prev]);
+        toast({
+          title: "Berhasil",
+          description: "Lahan berhasil ditambahkan",
+        });
+      }
       return true;
     } catch (error) {
       console.error("Error adding land:", error);
