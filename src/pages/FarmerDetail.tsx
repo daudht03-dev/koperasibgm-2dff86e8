@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, MapPin, TreePine, Phone, Calendar, QrCode } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/ui/navbar";
@@ -19,9 +20,17 @@ interface Petani {
   created_at: string;
 }
 
+interface Lahan {
+  id: string;
+  kode_lahan: string;
+  keterangan: string | null;
+  created_at: string;
+}
+
 const FarmerDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [petani, setPetani] = useState<Petani | null>(null);
+  const [lands, setLands] = useState<Lahan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,6 +51,19 @@ const FarmerDetail = () => {
       if (error) throw error;
 
       setPetani(data);
+      
+      // Fetch lands associated with this farmer
+      const { data: landsData, error: landsError } = await supabase
+        .from("lahan")
+        .select("*")
+        .eq("petani_id", petaniId)
+        .order("created_at", { ascending: false });
+
+      if (landsError) {
+        console.error("Error fetching lands:", landsError);
+      } else {
+        setLands(landsData || []);
+      }
     } catch (error: any) {
       console.error("Error fetching petani detail:", error);
       setError("Gagal memuat data petani");
@@ -211,6 +233,51 @@ const FarmerDetail = () => {
               </CardContent>
             </Card>
           </div>
+        </div>
+
+        {/* Daftar Lahan */}
+        <div className="mt-8">
+          <Card className="shadow-gentle border-border/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-organic-green" />
+                Daftar Lahan ({lands.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {lands.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Kode Lahan</TableHead>
+                      <TableHead>Keterangan</TableHead>
+                      <TableHead>Terdaftar Sejak</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {lands.map((land) => (
+                      <TableRow key={land.id}>
+                        <TableCell className="font-medium">{land.kode_lahan}</TableCell>
+                        <TableCell className="max-w-md">{land.keterangan || "-"}</TableCell>
+                        <TableCell>
+                          {new Date(land.created_at).toLocaleDateString('id-ID', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <MapPin className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>Belum ada lahan terdaftar untuk petani ini</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
       
