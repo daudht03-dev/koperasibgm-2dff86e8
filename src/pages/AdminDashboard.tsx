@@ -13,7 +13,6 @@ import Footer from "@/components/ui/footer";
 import { useAuth } from "@/hooks/use-auth";
 import { useFarmers } from "@/hooks/use-farmers";
 import { useLands } from "@/hooks/use-lands";
-import { useContent } from "@/hooks/use-content";
 import { useProducts } from "@/hooks/use-products";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { useNavigate } from "react-router-dom";
@@ -24,12 +23,11 @@ const AdminDashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"farmers" | "lands" | "content" | "products" | "profile">("farmers");
+  const [activeTab, setActiveTab] = useState<"farmers" | "lands" | "products" | "profile">("farmers");
 
   // Hooks for data management
   const { farmers, addFarmer, updateFarmer, deleteFarmer } = useFarmers();
   const { lands, addLand, updateLand, deleteLand } = useLands();
-  const { contents, addContent, updateContent, deleteContent } = useContent();
   const { products, createProduct, updateProduct, deleteProduct, uploadImage } = useProducts();
   const { profile, updateProfile, uploadLogo } = useCompanyProfile();
 
@@ -52,16 +50,6 @@ const AdminDashboard = () => {
   });
   const [editingLand, setEditingLand] = useState<string | null>(null);
   const [landDialogOpen, setLandDialogOpen] = useState(false);
-
-  // Form states for content
-  const [contentForm, setContentForm] = useState({
-    section: "",
-    judul: "",
-    isi: "",
-    gambar_url: "",
-  });
-  const [editingContent, setEditingContent] = useState<string | null>(null);
-  const [contentDialogOpen, setContentDialogOpen] = useState(false);
 
   // Form states for products
   const [productForm, setProductForm] = useState({
@@ -187,46 +175,6 @@ const AdminDashboard = () => {
       setLandForm({ kode_lahan: "", keterangan: "", petani_id: "" });
       setEditingLand(null);
       setLandDialogOpen(false);
-    }
-  };
-
-  // Handler functions for content
-  const handleAddContent = async () => {
-    const success = await addContent({
-      section: contentForm.section,
-      judul: contentForm.judul || null,
-      isi: contentForm.isi || null,
-      gambar_url: contentForm.gambar_url || null,
-    });
-    if (success) {
-      setContentForm({ section: "", judul: "", isi: "", gambar_url: "" });
-      setContentDialogOpen(false);
-    }
-  };
-
-  const handleEditContent = (content: any) => {
-    setContentForm({
-      section: content.section,
-      judul: content.judul || "",
-      isi: content.isi || "",
-      gambar_url: content.gambar_url || "",
-    });
-    setEditingContent(content.id);
-    setContentDialogOpen(true);
-  };
-
-  const handleUpdateContent = async () => {
-    if (!editingContent) return;
-    const success = await updateContent(editingContent, {
-      section: contentForm.section,
-      judul: contentForm.judul || null,
-      isi: contentForm.isi || null,
-      gambar_url: contentForm.gambar_url || null,
-    });
-    if (success) {
-      setContentForm({ section: "", judul: "", isi: "", gambar_url: "" });
-      setEditingContent(null);
-      setContentDialogOpen(false);
     }
   };
 
@@ -369,7 +317,6 @@ const AdminDashboard = () => {
             {[
               { key: "farmers", label: "Petani", icon: Users },
               { key: "lands", label: "Lahan", icon: MapPin },
-              { key: "content", label: "Konten", icon: Settings },
               { key: "products", label: "Produk", icon: Package },
               { key: "profile", label: "Profil", icon: Building },
             ].map(({ key, label, icon: Icon }) => (
@@ -674,156 +621,6 @@ const AdminDashboard = () => {
                                 <AlertDialogCancel>Batal</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => deleteLand(land.id)}
-                                  className="bg-destructive hover:bg-destructive/90"
-                                >
-                                  Hapus
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Content Tab */}
-        {activeTab === "content" && (
-          <Card className="shadow-gentle border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-foreground">Konten Website</CardTitle>
-                <CardDescription>Kelola konten halaman utama</CardDescription>
-              </div>
-              <Dialog open={contentDialogOpen} onOpenChange={setContentDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button 
-                    onClick={() => {
-                      setEditingContent(null);
-                      setContentForm({ section: "", judul: "", isi: "", gambar_url: "" });
-                    }}
-                    className="bg-gradient-organic shadow-organic hover:shadow-warm"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Tambah Konten
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>{editingContent ? "Edit Konten" : "Tambah Konten"}</DialogTitle>
-                    <DialogDescription>
-                      {editingContent ? "Edit konten website" : "Tambahkan konten website baru"}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="section">Section</Label>
-                      <Select 
-                        value={contentForm.section} 
-                        onValueChange={(value) => setContentForm(prev => ({ ...prev, section: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih section" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="hero">Hero</SelectItem>
-                          <SelectItem value="about">Tentang Kami</SelectItem>
-                          <SelectItem value="product">Produk</SelectItem>
-                          <SelectItem value="contact">Kontak</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="judul">Judul</Label>
-                      <Input
-                        id="judul"
-                        value={contentForm.judul}
-                        onChange={(e) => setContentForm(prev => ({ ...prev, judul: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="isi">Isi</Label>
-                      <Textarea
-                        id="isi"
-                        rows={5}
-                        value={contentForm.isi}
-                        onChange={(e) => setContentForm(prev => ({ ...prev, isi: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="gambar">URL Gambar</Label>
-                      <Input
-                        id="gambar"
-                        value={contentForm.gambar_url}
-                        onChange={(e) => setContentForm(prev => ({ ...prev, gambar_url: e.target.value }))}
-                      />
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => setContentDialogOpen(false)}
-                      >
-                        Batal
-                      </Button>
-                      <Button
-                        onClick={editingContent ? handleUpdateContent : handleAddContent}
-                        className="bg-gradient-organic"
-                      >
-                        {editingContent ? "Update" : "Tambah"}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Section</TableHead>
-                    <TableHead>Judul</TableHead>
-                    <TableHead>Isi</TableHead>
-                    <TableHead>Gambar</TableHead>
-                    <TableHead>Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {contents.map((content) => (
-                    <TableRow key={content.id}>
-                      <TableCell className="font-medium">{content.section}</TableCell>
-                      <TableCell>{content.judul || "-"}</TableCell>
-                      <TableCell className="max-w-xs truncate">{content.isi || "-"}</TableCell>
-                      <TableCell>{content.gambar_url ? "Ada" : "-"}</TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditContent(content)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="outline" size="sm">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Hapus Konten</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Apakah Anda yakin ingin menghapus konten {content.section}? Aksi ini tidak dapat dibatalkan.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Batal</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => deleteContent(content.id)}
                                   className="bg-destructive hover:bg-destructive/90"
                                 >
                                   Hapus
@@ -1175,10 +972,6 @@ const AdminDashboard = () => {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Lahan:</span>
                   <span className="font-semibold text-foreground">{lands.length}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total Konten:</span>
-                  <span className="font-semibold text-foreground">{contents.length}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Produk:</span>

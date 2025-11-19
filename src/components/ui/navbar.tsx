@@ -1,25 +1,17 @@
 import { useState } from "react";
 import { Button } from "./button";
 import { Menu, X, Leaf } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const location = useLocation();
-
-  const navigation = [
-    { name: "Beranda", href: "/" },
-    { name: "Tentang", href: "#about" },
-    { name: "Produk", href: "#products" },
-    { name: "Petani", href: "#farmers" },
-  ];
 
   return (
     <nav className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b border-border/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-2">
+            <Link to="/admin" className="flex items-center space-x-2">
               <div className="bg-gradient-organic p-2 rounded-lg shadow-gentle">
                 <Leaf className="h-6 w-6 text-primary-foreground" />
               </div>
@@ -30,18 +22,9 @@ const Navbar = () => {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            {navigation.map((item) => (
-              <a
-                key={item.name}
-                href={item.href}
-                className="text-muted-foreground hover:text-foreground transition-colors duration-200"
-              >
-                {item.name}
-              </a>
-            ))}
+          <div className="hidden md:flex items-center">
             <Button asChild variant="default" className="bg-gradient-organic shadow-organic">
-              <Link to="/admin">Admin</Link>
+              <Link to="/admin">Admin Dashboard</Link>
             </Button>
           </div>
 
@@ -61,19 +44,9 @@ const Navbar = () => {
         {isOpen && (
           <div className="md:hidden">
             <div className="px-2 pt-2 pb-3 space-y-1 bg-background border-t border-border/50">
-              {navigation.map((item) => (
-                <a
-                  key={item.name}
-                  href={item.href}
-                  className="block px-3 py-2 text-muted-foreground hover:text-foreground transition-colors duration-200"
-                  onClick={() => setIsOpen(false)}
-                >
-                  {item.name}
-                </a>
-              ))}
               <div className="px-3 py-2">
                 <Button asChild variant="default" className="w-full bg-gradient-organic shadow-organic">
-                  <Link to="/admin">Admin</Link>
+                  <Link to="/admin">Admin Dashboard</Link>
                 </Button>
               </div>
             </div>
