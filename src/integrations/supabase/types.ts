@@ -79,6 +79,44 @@ export type Database = {
           },
         ]
       }
+      panen: {
+        Row: {
+          created_at: string
+          id: string
+          jumlah_kg: number
+          keterangan: string | null
+          lahan_id: string
+          tanggal_panen: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          jumlah_kg: number
+          keterangan?: string | null
+          lahan_id: string
+          tanggal_panen: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          jumlah_kg?: number
+          keterangan?: string | null
+          lahan_id?: string
+          tanggal_panen?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "panen_lahan_id_fkey"
+            columns: ["lahan_id"]
+            isOneToOne: false
+            referencedRelation: "lahan"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       petani: {
         Row: {
           alamat: string
