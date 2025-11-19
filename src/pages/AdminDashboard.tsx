@@ -48,6 +48,7 @@ const AdminDashboard = () => {
   const [landForm, setLandForm] = useState({
     kode_lahan: "",
     keterangan: "",
+    petani_id: "",
   });
   const [editingLand, setEditingLand] = useState<string | null>(null);
   const [landDialogOpen, setLandDialogOpen] = useState(false);
@@ -148,9 +149,10 @@ const AdminDashboard = () => {
     const success = await addLand({
       kode_lahan: landForm.kode_lahan.trim(),
       keterangan: landForm.keterangan.trim() || null,
+      petani_id: landForm.petani_id || null,
     });
     if (success) {
-      setLandForm({ kode_lahan: "", keterangan: "" });
+      setLandForm({ kode_lahan: "", keterangan: "", petani_id: "" });
       setLandDialogOpen(false);
     }
   };
@@ -159,6 +161,7 @@ const AdminDashboard = () => {
     setLandForm({
       kode_lahan: land.kode_lahan,
       keterangan: land.keterangan || "",
+      petani_id: land.petani_id || "",
     });
     setEditingLand(land.id);
     setLandDialogOpen(true);
@@ -178,9 +181,10 @@ const AdminDashboard = () => {
     const success = await updateLand(editingLand, {
       kode_lahan: landForm.kode_lahan.trim(),
       keterangan: landForm.keterangan.trim() || null,
+      petani_id: landForm.petani_id || null,
     });
     if (success) {
-      setLandForm({ kode_lahan: "", keterangan: "" });
+      setLandForm({ kode_lahan: "", keterangan: "", petani_id: "" });
       setEditingLand(null);
       setLandDialogOpen(false);
     }
@@ -550,7 +554,7 @@ const AdminDashboard = () => {
                   <Button 
                     onClick={() => {
                       setEditingLand(null);
-                      setLandForm({ kode_lahan: "", keterangan: "" });
+                      setLandForm({ kode_lahan: "", keterangan: "", petani_id: "" });
                     }}
                     className="bg-gradient-organic shadow-organic hover:shadow-warm"
                   >
@@ -575,6 +579,25 @@ const AdminDashboard = () => {
                         placeholder="Contoh: LHN-001"
                         required
                       />
+                    </div>
+                    <div>
+                      <Label htmlFor="petani">Petani</Label>
+                      <Select
+                        value={landForm.petani_id}
+                        onValueChange={(value) => setLandForm(prev => ({ ...prev, petani_id: value }))}
+                      >
+                        <SelectTrigger id="petani" className="bg-background">
+                          <SelectValue placeholder="Pilih petani (opsional)" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background">
+                          <SelectItem value="">Tidak ada petani</SelectItem>
+                          {farmers.map((farmer) => (
+                            <SelectItem key={farmer.id} value={farmer.id}>
+                              {farmer.nama} ({farmer.kode_petani})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
                       <Label htmlFor="keterangan">Keterangan Lahan</Label>
@@ -609,6 +632,7 @@ const AdminDashboard = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Kode Lahan</TableHead>
+                    <TableHead>Petani</TableHead>
                     <TableHead>Keterangan</TableHead>
                     <TableHead>Aksi</TableHead>
                   </TableRow>
@@ -617,6 +641,12 @@ const AdminDashboard = () => {
                   {lands.map((land) => (
                     <TableRow key={land.id}>
                       <TableCell className="font-medium">{land.kode_lahan}</TableCell>
+                      <TableCell>
+                        {land.petani_id 
+                          ? farmers.find(f => f.id === land.petani_id)?.nama || "-"
+                          : "-"
+                        }
+                      </TableCell>
                       <TableCell className="max-w-md">{land.keterangan || "-"}</TableCell>
                       <TableCell>
                         <div className="flex space-x-2">

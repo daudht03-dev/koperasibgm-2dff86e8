@@ -50,6 +50,7 @@ export type Database = {
           id: string
           keterangan: string | null
           kode_lahan: string
+          petani_id: string | null
           updated_at: string
         }
         Insert: {
@@ -57,6 +58,7 @@ export type Database = {
           id?: string
           keterangan?: string | null
           kode_lahan: string
+          petani_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -64,9 +66,18 @@ export type Database = {
           id?: string
           keterangan?: string | null
           kode_lahan?: string
+          petani_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "lahan_petani_id_fkey"
+            columns: ["petani_id"]
+            isOneToOne: false
+            referencedRelation: "petani"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       petani: {
         Row: {
