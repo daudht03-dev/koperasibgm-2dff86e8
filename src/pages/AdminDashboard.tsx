@@ -149,7 +149,7 @@ const AdminDashboard = () => {
     const success = await addLand({
       kode_lahan: landForm.kode_lahan.trim(),
       keterangan: landForm.keterangan.trim() || null,
-      petani_id: landForm.petani_id || null,
+      petani_id: landForm.petani_id && landForm.petani_id !== "none" ? landForm.petani_id : null,
     });
     if (success) {
       setLandForm({ kode_lahan: "", keterangan: "", petani_id: "" });
@@ -161,7 +161,7 @@ const AdminDashboard = () => {
     setLandForm({
       kode_lahan: land.kode_lahan,
       keterangan: land.keterangan || "",
-      petani_id: land.petani_id || "",
+      petani_id: land.petani_id || "none",
     });
     setEditingLand(land.id);
     setLandDialogOpen(true);
@@ -181,7 +181,7 @@ const AdminDashboard = () => {
     const success = await updateLand(editingLand, {
       kode_lahan: landForm.kode_lahan.trim(),
       keterangan: landForm.keterangan.trim() || null,
-      petani_id: landForm.petani_id || null,
+      petani_id: landForm.petani_id && landForm.petani_id !== "none" ? landForm.petani_id : null,
     });
     if (success) {
       setLandForm({ kode_lahan: "", keterangan: "", petani_id: "" });
@@ -593,7 +593,7 @@ const AdminDashboard = () => {
                           <SelectValue placeholder="Pilih petani (opsional)" />
                         </SelectTrigger>
                         <SelectContent className="bg-background">
-                          <SelectItem value="">Tidak ada petani</SelectItem>
+                          <SelectItem value="none">Tidak ada petani</SelectItem>
                           {farmers.map((farmer) => (
                             <SelectItem key={farmer.id} value={farmer.id}>
                               {farmer.nama} ({farmer.kode_petani})
