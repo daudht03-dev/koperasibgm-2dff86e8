@@ -20,6 +20,14 @@ import { useHarvests } from "@/hooks/use-harvests";
 import { useNavigate, Link } from "react-router-dom";
 import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { 
+  farmerSchema, 
+  landSchema, 
+  harvestSchema, 
+  productSchema, 
+  companyProfileSchema,
+  imageFileSchema
+} from "@/lib/validation-schemas";
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
@@ -42,6 +50,7 @@ const AdminDashboard = () => {
     no_telepon: "",
     rata_rata_panen: "",
   });
+  const [farmerErrors, setFarmerErrors] = useState<Record<string, string>>({});
   const [editingFarmer, setEditingFarmer] = useState<string | null>(null);
   const [farmerDialogOpen, setFarmerDialogOpen] = useState(false);
 
@@ -51,6 +60,7 @@ const AdminDashboard = () => {
     keterangan: "",
     petani_id: "",
   });
+  const [landErrors, setLandErrors] = useState<Record<string, string>>({});
   const [editingLand, setEditingLand] = useState<string | null>(null);
   const [landDialogOpen, setLandDialogOpen] = useState(false);
 
@@ -61,6 +71,7 @@ const AdminDashboard = () => {
     jumlah_kg: "",
     keterangan: "",
   });
+  const [harvestErrors, setHarvestErrors] = useState<Record<string, string>>({});
   const [harvestDialogOpen, setHarvestDialogOpen] = useState(false);
 
   // Form states for products
@@ -70,6 +81,7 @@ const AdminDashboard = () => {
     harga: "",
     gambar_url: "",
   });
+  const [productErrors, setProductErrors] = useState<Record<string, string>>({});
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [productImageFile, setProductImageFile] = useState<File | null>(null);
@@ -82,6 +94,7 @@ const AdminDashboard = () => {
     kontak: "",
     logo_url: "",
   });
+  const [profileErrors, setProfileErrors] = useState<Record<string, string>>({});
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
@@ -94,16 +107,35 @@ const AdminDashboard = () => {
 
   // Handler functions for farmers
   const handleAddFarmer = async () => {
-    const success = await addFarmer({
-      nama: farmerForm.nama,
-      kode_petani: farmerForm.kode_petani,
-      alamat: farmerForm.alamat,
-      no_telepon: farmerForm.no_telepon || null,
-      rata_rata_panen: farmerForm.rata_rata_panen ? parseFloat(farmerForm.rata_rata_panen) : null,
-    });
-    if (success) {
-      setFarmerForm({ nama: "", kode_petani: "", alamat: "", no_telepon: "", rata_rata_panen: "" });
-      setFarmerDialogOpen(false);
+    try {
+      setFarmerErrors({});
+      const validated = farmerSchema.parse(farmerForm);
+      
+      const success = await addFarmer({
+        nama: validated.nama,
+        kode_petani: validated.kode_petani,
+        alamat: validated.alamat,
+        no_telepon: validated.no_telepon || null,
+        rata_rata_panen: validated.rata_rata_panen ? parseFloat(validated.rata_rata_panen) : null,
+      });
+      
+      if (success) {
+        setFarmerForm({ nama: "", kode_petani: "", alamat: "", no_telepon: "", rata_rata_panen: "" });
+        setFarmerDialogOpen(false);
+      }
+    } catch (error: any) {
+      if (error.errors) {
+        const errors: Record<string, string> = {};
+        error.errors.forEach((err: any) => {
+          errors[err.path[0]] = err.message;
+        });
+        setFarmerErrors(errors);
+        toast({
+          title: "Validasi Gagal",
+          description: "Mohon periksa kembali data yang Anda masukkan",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -115,45 +147,76 @@ const AdminDashboard = () => {
       no_telepon: farmer.no_telepon || "",
       rata_rata_panen: farmer.rata_rata_panen?.toString() || "",
     });
+    setFarmerErrors({});
     setEditingFarmer(farmer.id);
     setFarmerDialogOpen(true);
   };
 
   const handleUpdateFarmer = async () => {
     if (!editingFarmer) return;
-    const success = await updateFarmer(editingFarmer, {
-      nama: farmerForm.nama,
-      kode_petani: farmerForm.kode_petani,
-      alamat: farmerForm.alamat,
-      no_telepon: farmerForm.no_telepon || null,
-      rata_rata_panen: farmerForm.rata_rata_panen ? parseFloat(farmerForm.rata_rata_panen) : null,
-    });
-    if (success) {
-      setFarmerForm({ nama: "", kode_petani: "", alamat: "", no_telepon: "", rata_rata_panen: "" });
-      setEditingFarmer(null);
-      setFarmerDialogOpen(false);
+    
+    try {
+      setFarmerErrors({});
+      const validated = farmerSchema.parse(farmerForm);
+      
+      const success = await updateFarmer(editingFarmer, {
+        nama: validated.nama,
+        kode_petani: validated.kode_petani,
+        alamat: validated.alamat,
+        no_telepon: validated.no_telepon || null,
+        rata_rata_panen: validated.rata_rata_panen ? parseFloat(validated.rata_rata_panen) : null,
+      });
+      
+      if (success) {
+        setFarmerForm({ nama: "", kode_petani: "", alamat: "", no_telepon: "", rata_rata_panen: "" });
+        setEditingFarmer(null);
+        setFarmerDialogOpen(false);
+      }
+    } catch (error: any) {
+      if (error.errors) {
+        const errors: Record<string, string> = {};
+        error.errors.forEach((err: any) => {
+          errors[err.path[0]] = err.message;
+        });
+        setFarmerErrors(errors);
+        toast({
+          title: "Validasi Gagal",
+          description: "Mohon periksa kembali data yang Anda masukkan",
+          variant: "destructive",
+        });
+      }
     }
   };
 
   // Handler functions for lands
   const handleAddLand = async () => {
-    if (!landForm.kode_lahan.trim()) {
-      toast({
-        title: "Error",
-        description: "Kode lahan harus diisi",
-        variant: "destructive",
+    try {
+      setLandErrors({});
+      const validated = landSchema.parse(landForm);
+      
+      const success = await addLand({
+        kode_lahan: validated.kode_lahan,
+        keterangan: validated.keterangan || null,
+        petani_id: validated.petani_id && validated.petani_id !== "none" ? validated.petani_id : null,
       });
-      return;
-    }
-    
-    const success = await addLand({
-      kode_lahan: landForm.kode_lahan.trim(),
-      keterangan: landForm.keterangan.trim() || null,
-      petani_id: landForm.petani_id && landForm.petani_id !== "none" ? landForm.petani_id : null,
-    });
-    if (success) {
-      setLandForm({ kode_lahan: "", keterangan: "", petani_id: "" });
-      setLandDialogOpen(false);
+      
+      if (success) {
+        setLandForm({ kode_lahan: "", keterangan: "", petani_id: "" });
+        setLandDialogOpen(false);
+      }
+    } catch (error: any) {
+      if (error.errors) {
+        const errors: Record<string, string> = {};
+        error.errors.forEach((err: any) => {
+          errors[err.path[0]] = err.message;
+        });
+        setLandErrors(errors);
+        toast({
+          title: "Validasi Gagal",
+          description: "Mohon periksa kembali data yang Anda masukkan",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -163,54 +226,75 @@ const AdminDashboard = () => {
       keterangan: land.keterangan || "",
       petani_id: land.petani_id || "none",
     });
+    setLandErrors({});
     setEditingLand(land.id);
     setLandDialogOpen(true);
   };
 
   const handleUpdateLand = async () => {
     if (!editingLand) return;
-    if (!landForm.kode_lahan.trim()) {
-      toast({
-        title: "Error",
-        description: "Kode lahan harus diisi",
-        variant: "destructive",
-      });
-      return;
-    }
     
-    const success = await updateLand(editingLand, {
-      kode_lahan: landForm.kode_lahan.trim(),
-      keterangan: landForm.keterangan.trim() || null,
-      petani_id: landForm.petani_id && landForm.petani_id !== "none" ? landForm.petani_id : null,
-    });
-    if (success) {
-      setLandForm({ kode_lahan: "", keterangan: "", petani_id: "" });
-      setEditingLand(null);
-      setLandDialogOpen(false);
+    try {
+      setLandErrors({});
+      const validated = landSchema.parse(landForm);
+      
+      const success = await updateLand(editingLand, {
+        kode_lahan: validated.kode_lahan,
+        keterangan: validated.keterangan || null,
+        petani_id: validated.petani_id && validated.petani_id !== "none" ? validated.petani_id : null,
+      });
+      
+      if (success) {
+        setLandForm({ kode_lahan: "", keterangan: "", petani_id: "" });
+        setEditingLand(null);
+        setLandDialogOpen(false);
+      }
+    } catch (error: any) {
+      if (error.errors) {
+        const errors: Record<string, string> = {};
+        error.errors.forEach((err: any) => {
+          errors[err.path[0]] = err.message;
+        });
+        setLandErrors(errors);
+        toast({
+          title: "Validasi Gagal",
+          description: "Mohon periksa kembali data yang Anda masukkan",
+          variant: "destructive",
+        });
+      }
     }
   };
 
   // Handler functions for harvest
   const handleAddHarvest = async () => {
-    if (!harvestForm.lahan_id || !harvestForm.tanggal_panen || !harvestForm.jumlah_kg) {
-      toast({
-        title: "Error",
-        description: "Lahan, tanggal panen, dan jumlah hasil panen harus diisi",
-        variant: "destructive",
+    try {
+      setHarvestErrors({});
+      const validated = harvestSchema.parse(harvestForm);
+
+      const success = await addHarvest({
+        lahan_id: validated.lahan_id,
+        tanggal_panen: validated.tanggal_panen,
+        jumlah_kg: parseFloat(validated.jumlah_kg),
+        keterangan: validated.keterangan || null,
       });
-      return;
-    }
 
-    const success = await addHarvest({
-      lahan_id: harvestForm.lahan_id,
-      tanggal_panen: harvestForm.tanggal_panen,
-      jumlah_kg: parseFloat(harvestForm.jumlah_kg),
-      keterangan: harvestForm.keterangan || null,
-    });
-
-    if (success) {
-      setHarvestForm({ lahan_id: "", tanggal_panen: "", jumlah_kg: "", keterangan: "" });
-      setHarvestDialogOpen(false);
+      if (success) {
+        setHarvestForm({ lahan_id: "", tanggal_panen: "", jumlah_kg: "", keterangan: "" });
+        setHarvestDialogOpen(false);
+      }
+    } catch (error: any) {
+      if (error.errors) {
+        const errors: Record<string, string> = {};
+        error.errors.forEach((err: any) => {
+          errors[err.path[0]] = err.message;
+        });
+        setHarvestErrors(errors);
+        toast({
+          title: "Validasi Gagal",
+          description: "Mohon periksa kembali data yang Anda masukkan",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -218,24 +302,55 @@ const AdminDashboard = () => {
   const handleAddProduct = async () => {
     try {
       setLoading(true);
-      let imageUrl = "";
+      setProductErrors({});
       
+      // Validate product form
+      const validated = productSchema.parse(productForm);
+      
+      // Validate image file if provided
+      if (productImageFile) {
+        imageFileSchema.parse(productImageFile);
+      }
+      
+      let imageUrl = "";
       if (productImageFile) {
         imageUrl = await uploadImage(productImageFile) || "";
       }
 
       await createProduct({
-        nama: productForm.nama,
-        deskripsi: productForm.deskripsi || undefined,
-        harga: parseFloat(productForm.harga),
+        nama: validated.nama,
+        deskripsi: validated.deskripsi || undefined,
+        harga: parseFloat(validated.harga),
         gambar_url: imageUrl || undefined,
       });
 
       setProductForm({ nama: "", deskripsi: "", harga: "", gambar_url: "" });
       setProductImageFile(null);
       setProductDialogOpen(false);
-    } catch (error) {
-      console.error('Error adding product:', error);
+    } catch (error: any) {
+      if (error.errors) {
+        const errors: Record<string, string> = {};
+        error.errors.forEach((err: any) => {
+          if (err.path[0]) {
+            errors[err.path[0]] = err.message;
+          } else {
+            errors.image = err.message;
+          }
+        });
+        setProductErrors(errors);
+        toast({
+          title: "Validasi Gagal",
+          description: "Mohon periksa kembali data yang Anda masukkan",
+          variant: "destructive",
+        });
+      } else {
+        console.error('Error adding product:', error);
+        toast({
+          title: "Error",
+          description: "Gagal menambahkan produk",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -248,6 +363,7 @@ const AdminDashboard = () => {
       harga: product.harga.toString(),
       gambar_url: product.gambar_url || "",
     });
+    setProductErrors({});
     setEditingProduct(product.id);
     setProductDialogOpen(true);
   };
@@ -257,16 +373,25 @@ const AdminDashboard = () => {
     
     try {
       setLoading(true);
-      let imageUrl = productForm.gambar_url;
+      setProductErrors({});
       
+      // Validate product form
+      const validated = productSchema.parse(productForm);
+      
+      // Validate image file if provided
+      if (productImageFile) {
+        imageFileSchema.parse(productImageFile);
+      }
+      
+      let imageUrl = productForm.gambar_url;
       if (productImageFile) {
         imageUrl = await uploadImage(productImageFile) || imageUrl;
       }
 
       await updateProduct(editingProduct, {
-        nama: productForm.nama,
-        deskripsi: productForm.deskripsi || undefined,
-        harga: parseFloat(productForm.harga),
+        nama: validated.nama,
+        deskripsi: validated.deskripsi || undefined,
+        harga: parseFloat(validated.harga),
         gambar_url: imageUrl || undefined,
       });
 
@@ -274,8 +399,30 @@ const AdminDashboard = () => {
       setProductImageFile(null);
       setEditingProduct(null);
       setProductDialogOpen(false);
-    } catch (error) {
-      console.error('Error updating product:', error);
+    } catch (error: any) {
+      if (error.errors) {
+        const errors: Record<string, string> = {};
+        error.errors.forEach((err: any) => {
+          if (err.path[0]) {
+            errors[err.path[0]] = err.message;
+          } else {
+            errors.image = err.message;
+          }
+        });
+        setProductErrors(errors);
+        toast({
+          title: "Validasi Gagal",
+          description: "Mohon periksa kembali data yang Anda masukkan",
+          variant: "destructive",
+        });
+      } else {
+        console.error('Error updating product:', error);
+        toast({
+          title: "Error",
+          description: "Gagal mengupdate produk",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -285,24 +432,55 @@ const AdminDashboard = () => {
   const handleUpdateProfile = async () => {
     try {
       setLoading(true);
-      let logoUrl = profileForm.logo_url;
+      setProfileErrors({});
       
+      // Validate profile form
+      const validated = companyProfileSchema.parse(profileForm);
+      
+      // Validate logo file if provided
+      if (logoFile) {
+        imageFileSchema.parse(logoFile);
+      }
+      
+      let logoUrl = profileForm.logo_url;
       if (logoFile) {
         logoUrl = await uploadLogo(logoFile) || logoUrl;
       }
 
       await updateProfile({
-        nama_perusahaan: profileForm.nama_perusahaan,
-        deskripsi: profileForm.deskripsi || undefined,
-        alamat: profileForm.alamat || undefined,
-        kontak: profileForm.kontak || undefined,
+        nama_perusahaan: validated.nama_perusahaan,
+        deskripsi: validated.deskripsi || undefined,
+        alamat: validated.alamat || undefined,
+        kontak: validated.kontak || undefined,
         logo_url: logoUrl || undefined,
       });
 
       setLogoFile(null);
       setProfileDialogOpen(false);
-    } catch (error) {
-      console.error('Error updating profile:', error);
+    } catch (error: any) {
+      if (error.errors) {
+        const errors: Record<string, string> = {};
+        error.errors.forEach((err: any) => {
+          if (err.path[0]) {
+            errors[err.path[0]] = err.message;
+          } else {
+            errors.logo = err.message;
+          }
+        });
+        setProfileErrors(errors);
+        toast({
+          title: "Validasi Gagal",
+          description: "Mohon periksa kembali data yang Anda masukkan",
+          variant: "destructive",
+        });
+      } else {
+        console.error('Error updating profile:', error);
+        toast({
+          title: "Error",
+          description: "Gagal mengupdate profil perusahaan",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -408,7 +586,11 @@ const AdminDashboard = () => {
                         id="nama"
                         value={farmerForm.nama}
                         onChange={(e) => setFarmerForm(prev => ({ ...prev, nama: e.target.value }))}
+                        className={farmerErrors.nama ? "border-destructive" : ""}
                       />
+                      {farmerErrors.nama && (
+                        <p className="text-sm text-destructive mt-1">{farmerErrors.nama}</p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="kode">Kode Petani</Label>
@@ -416,7 +598,11 @@ const AdminDashboard = () => {
                         id="kode"
                         value={farmerForm.kode_petani}
                         onChange={(e) => setFarmerForm(prev => ({ ...prev, kode_petani: e.target.value }))}
+                        className={farmerErrors.kode_petani ? "border-destructive" : ""}
                       />
+                      {farmerErrors.kode_petani && (
+                        <p className="text-sm text-destructive mt-1">{farmerErrors.kode_petani}</p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="alamat">Alamat</Label>
@@ -424,25 +610,37 @@ const AdminDashboard = () => {
                         id="alamat"
                         value={farmerForm.alamat}
                         onChange={(e) => setFarmerForm(prev => ({ ...prev, alamat: e.target.value }))}
+                        className={farmerErrors.alamat ? "border-destructive" : ""}
                       />
+                      {farmerErrors.alamat && (
+                        <p className="text-sm text-destructive mt-1">{farmerErrors.alamat}</p>
+                      )}
                     </div>
                     <div>
-                      <Label htmlFor="telepon">No. Telepon</Label>
+                      <Label htmlFor="telepon">No. Telepon (Opsional)</Label>
                       <Input
                         id="telepon"
                         value={farmerForm.no_telepon}
                         onChange={(e) => setFarmerForm(prev => ({ ...prev, no_telepon: e.target.value }))}
+                        className={farmerErrors.no_telepon ? "border-destructive" : ""}
                       />
+                      {farmerErrors.no_telepon && (
+                        <p className="text-sm text-destructive mt-1">{farmerErrors.no_telepon}</p>
+                      )}
                     </div>
                     <div>
-                      <Label htmlFor="panen">Rata-rata Panen (kg/bulan)</Label>
+                      <Label htmlFor="panen">Rata-rata Panen (kg/bulan) (Opsional)</Label>
                       <Input
                         id="panen"
                         type="number"
                         step="0.01"
                         value={farmerForm.rata_rata_panen}
                         onChange={(e) => setFarmerForm(prev => ({ ...prev, rata_rata_panen: e.target.value }))}
+                        className={farmerErrors.rata_rata_panen ? "border-destructive" : ""}
                       />
+                      {farmerErrors.rata_rata_panen && (
+                        <p className="text-sm text-destructive mt-1">{farmerErrors.rata_rata_panen}</p>
+                      )}
                     </div>
                     <div className="flex justify-end space-x-2">
                       <Button
@@ -580,8 +778,11 @@ const AdminDashboard = () => {
                         value={landForm.kode_lahan}
                         onChange={(e) => setLandForm(prev => ({ ...prev, kode_lahan: e.target.value }))}
                         placeholder="Contoh: LHN-001"
-                        required
+                        className={landErrors.kode_lahan ? "border-destructive" : ""}
                       />
+                      {landErrors.kode_lahan && (
+                        <p className="text-sm text-destructive mt-1">{landErrors.kode_lahan}</p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="petani">Petani</Label>
@@ -603,14 +804,18 @@ const AdminDashboard = () => {
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="keterangan">Keterangan Lahan</Label>
+                      <Label htmlFor="keterangan">Keterangan Lahan (Opsional)</Label>
                       <Textarea
                         id="keterangan"
                         value={landForm.keterangan}
                         onChange={(e) => setLandForm(prev => ({ ...prev, keterangan: e.target.value }))}
                         placeholder="Deskripsi atau catatan tentang lahan ini"
                         rows={4}
+                        className={landErrors.keterangan ? "border-destructive" : ""}
                       />
+                      {landErrors.keterangan && (
+                        <p className="text-sm text-destructive mt-1">{landErrors.keterangan}</p>
+                      )}
                     </div>
                     <div className="flex justify-end space-x-2">
                       <Button
@@ -730,16 +935,24 @@ const AdminDashboard = () => {
                         id="nama-produk"
                         value={productForm.nama}
                         onChange={(e) => setProductForm(prev => ({ ...prev, nama: e.target.value }))}
+                        className={productErrors.nama ? "border-destructive" : ""}
                       />
+                      {productErrors.nama && (
+                        <p className="text-sm text-destructive mt-1">{productErrors.nama}</p>
+                      )}
                     </div>
                     <div>
-                      <Label htmlFor="deskripsi-produk">Deskripsi</Label>
+                      <Label htmlFor="deskripsi-produk">Deskripsi (Opsional)</Label>
                       <Textarea
                         id="deskripsi-produk"
                         rows={3}
                         value={productForm.deskripsi}
                         onChange={(e) => setProductForm(prev => ({ ...prev, deskripsi: e.target.value }))}
+                        className={productErrors.deskripsi ? "border-destructive" : ""}
                       />
+                      {productErrors.deskripsi && (
+                        <p className="text-sm text-destructive mt-1">{productErrors.deskripsi}</p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="harga-produk">Harga (Rp)</Label>
@@ -749,16 +962,24 @@ const AdminDashboard = () => {
                         step="0.01"
                         value={productForm.harga}
                         onChange={(e) => setProductForm(prev => ({ ...prev, harga: e.target.value }))}
+                        className={productErrors.harga ? "border-destructive" : ""}
                       />
+                      {productErrors.harga && (
+                        <p className="text-sm text-destructive mt-1">{productErrors.harga}</p>
+                      )}
                     </div>
                     <div>
-                      <Label htmlFor="gambar-produk">Upload Gambar</Label>
+                      <Label htmlFor="gambar-produk">Upload Gambar (Opsional, max 5MB)</Label>
                       <Input
                         id="gambar-produk"
                         type="file"
                         accept="image/*"
                         onChange={(e) => setProductImageFile(e.target.files?.[0] || null)}
+                        className={productErrors.image ? "border-destructive" : ""}
                       />
+                      {productErrors.image && (
+                        <p className="text-sm text-destructive mt-1">{productErrors.image}</p>
+                      )}
                       {productForm.gambar_url && (
                         <div className="mt-2">
                           <img 
@@ -896,7 +1117,7 @@ const AdminDashboard = () => {
                           value={harvestForm.lahan_id}
                           onValueChange={(value) => setHarvestForm(prev => ({ ...prev, lahan_id: value }))}
                         >
-                          <SelectTrigger id="lahan" className="bg-background">
+                          <SelectTrigger id="lahan" className={`bg-background ${harvestErrors.lahan_id ? "border-destructive" : ""}`}>
                             <SelectValue placeholder="Pilih lahan" />
                           </SelectTrigger>
                           <SelectContent className="bg-background">
@@ -910,6 +1131,9 @@ const AdminDashboard = () => {
                             })}
                           </SelectContent>
                         </Select>
+                        {harvestErrors.lahan_id && (
+                          <p className="text-sm text-destructive mt-1">{harvestErrors.lahan_id}</p>
+                        )}
                       </div>
                       <div>
                         <Label htmlFor="tanggal">Tanggal Panen</Label>
@@ -918,8 +1142,11 @@ const AdminDashboard = () => {
                           type="date"
                           value={harvestForm.tanggal_panen}
                           onChange={(e) => setHarvestForm(prev => ({ ...prev, tanggal_panen: e.target.value }))}
-                          required
+                          className={harvestErrors.tanggal_panen ? "border-destructive" : ""}
                         />
+                        {harvestErrors.tanggal_panen && (
+                          <p className="text-sm text-destructive mt-1">{harvestErrors.tanggal_panen}</p>
+                        )}
                       </div>
                       <div>
                         <Label htmlFor="jumlah">Jumlah (kg)</Label>
@@ -931,18 +1158,25 @@ const AdminDashboard = () => {
                           value={harvestForm.jumlah_kg}
                           onChange={(e) => setHarvestForm(prev => ({ ...prev, jumlah_kg: e.target.value }))}
                           placeholder="0"
-                          required
+                          className={harvestErrors.jumlah_kg ? "border-destructive" : ""}
                         />
+                        {harvestErrors.jumlah_kg && (
+                          <p className="text-sm text-destructive mt-1">{harvestErrors.jumlah_kg}</p>
+                        )}
                       </div>
                       <div>
-                        <Label htmlFor="keterangan-panen">Keterangan</Label>
+                        <Label htmlFor="keterangan-panen">Keterangan (Opsional)</Label>
                         <Textarea
                           id="keterangan-panen"
                           value={harvestForm.keterangan}
                           onChange={(e) => setHarvestForm(prev => ({ ...prev, keterangan: e.target.value }))}
                           placeholder="Catatan tambahan (opsional)"
                           rows={3}
+                          className={harvestErrors.keterangan ? "border-destructive" : ""}
                         />
+                        {harvestErrors.keterangan && (
+                          <p className="text-sm text-destructive mt-1">{harvestErrors.keterangan}</p>
+                        )}
                       </div>
                       <div className="flex justify-end space-x-2">
                         <Button
@@ -1060,43 +1294,63 @@ const AdminDashboard = () => {
                         id="nama-perusahaan"
                         value={profileForm.nama_perusahaan}
                         onChange={(e) => setProfileForm(prev => ({ ...prev, nama_perusahaan: e.target.value }))}
+                        className={profileErrors.nama_perusahaan ? "border-destructive" : ""}
                       />
+                      {profileErrors.nama_perusahaan && (
+                        <p className="text-sm text-destructive mt-1">{profileErrors.nama_perusahaan}</p>
+                      )}
                     </div>
                     <div>
-                      <Label htmlFor="deskripsi-perusahaan">Deskripsi</Label>
+                      <Label htmlFor="deskripsi-perusahaan">Deskripsi (Opsional)</Label>
                       <Textarea
                         id="deskripsi-perusahaan"
                         rows={3}
                         value={profileForm.deskripsi}
                         onChange={(e) => setProfileForm(prev => ({ ...prev, deskripsi: e.target.value }))}
+                        className={profileErrors.deskripsi ? "border-destructive" : ""}
                       />
+                      {profileErrors.deskripsi && (
+                        <p className="text-sm text-destructive mt-1">{profileErrors.deskripsi}</p>
+                      )}
                     </div>
                     <div>
-                      <Label htmlFor="alamat-perusahaan">Alamat</Label>
+                      <Label htmlFor="alamat-perusahaan">Alamat (Opsional)</Label>
                       <Textarea
                         id="alamat-perusahaan"
                         rows={2}
                         value={profileForm.alamat}
                         onChange={(e) => setProfileForm(prev => ({ ...prev, alamat: e.target.value }))}
+                        className={profileErrors.alamat ? "border-destructive" : ""}
                       />
+                      {profileErrors.alamat && (
+                        <p className="text-sm text-destructive mt-1">{profileErrors.alamat}</p>
+                      )}
                     </div>
                     <div>
-                      <Label htmlFor="kontak-perusahaan">Kontak</Label>
+                      <Label htmlFor="kontak-perusahaan">Kontak (Opsional)</Label>
                       <Input
                         id="kontak-perusahaan"
                         value={profileForm.kontak}
                         onChange={(e) => setProfileForm(prev => ({ ...prev, kontak: e.target.value }))}
                         placeholder="email@domain.com | +62 xxx-xxxx-xxxx"
+                        className={profileErrors.kontak ? "border-destructive" : ""}
                       />
+                      {profileErrors.kontak && (
+                        <p className="text-sm text-destructive mt-1">{profileErrors.kontak}</p>
+                      )}
                     </div>
                     <div>
-                      <Label htmlFor="logo-perusahaan">Upload Logo</Label>
+                      <Label htmlFor="logo-perusahaan">Upload Logo (Opsional, max 5MB)</Label>
                       <Input
                         id="logo-perusahaan"
                         type="file"
                         accept="image/*"
                         onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                        className={profileErrors.logo ? "border-destructive" : ""}
                       />
+                      {profileErrors.logo && (
+                        <p className="text-sm text-destructive mt-1">{profileErrors.logo}</p>
+                      )}
                       {profileForm.logo_url && (
                         <div className="mt-2">
                           <img 
