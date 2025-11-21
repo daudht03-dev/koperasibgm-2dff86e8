@@ -6,6 +6,7 @@ import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
 import { useProducts } from "@/hooks/use-products";
 import { formatRupiah } from "@/lib/utils";
+import { ProductCardSkeleton } from "@/components/ui/skeleton-templates";
 
 const Products = () => {
   const { products, loading } = useProducts();
@@ -30,8 +31,10 @@ const Products = () => {
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {loading ? (
-            <div className="text-center py-12">
-              <div className="text-muted-foreground">Memuat produk...</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <ProductCardSkeleton key={i} showPrice />
+              ))}
             </div>
           ) : products.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
