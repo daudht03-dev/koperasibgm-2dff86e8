@@ -109,8 +109,26 @@ export const imageFileSchema = z.instanceof(File)
     "File harus berformat JPG, PNG, atau WebP"
   );
 
+// Authentication validation schema
+export const authSchema = z.object({
+  email: z.string()
+    .trim()
+    .min(1, "Email harus diisi")
+    .email("Format email tidak valid")
+    .max(255, "Email maksimal 255 karakter"),
+  password: z.string()
+    .min(8, "Password minimal 8 karakter")
+    .max(128, "Password maksimal 128 karakter"),
+  fullName: z.string()
+    .trim()
+    .min(2, "Nama minimal 2 karakter")
+    .max(100, "Nama maksimal 100 karakter")
+    .optional(),
+});
+
 export type FarmerFormData = z.infer<typeof farmerSchema>;
 export type LandFormData = z.infer<typeof landSchema>;
 export type HarvestFormData = z.infer<typeof harvestSchema>;
 export type ProductFormData = z.infer<typeof productSchema>;
 export type CompanyProfileFormData = z.infer<typeof companyProfileSchema>;
+export type AuthFormData = z.infer<typeof authSchema>;
