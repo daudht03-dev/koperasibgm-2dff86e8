@@ -14,9 +14,17 @@ const Navbar = () => {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link to="/admin" className="flex items-center space-x-2">
-              <div className="bg-gradient-organic p-2 rounded-lg shadow-gentle">
-                <Leaf className="h-6 w-6 text-primary-foreground" />
-              </div>
+              {profile?.logo_url ? (
+                <img 
+                  src={profile.logo_url} 
+                  alt={profile.nama_perusahaan}
+                  className="h-10 w-10 object-contain"
+                />
+              ) : (
+                <div className="bg-gradient-organic p-2 rounded-lg shadow-gentle">
+                  <Leaf className="h-6 w-6 text-primary-foreground" />
+                </div>
+              )}
               <span className="text-xl font-bold text-foreground">
                 {profile?.nama_perusahaan || "Berkah Gendis Mandiri"}
               </span>
