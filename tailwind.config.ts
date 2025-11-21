@@ -77,6 +77,7 @@ export default {
         "organic": "var(--shadow-organic)",
         "warm": "var(--shadow-warm)", 
         "gentle": "var(--shadow-gentle)",
+        "glow": "var(--shadow-glow)",
       },
       transitionTimingFunction: {
         "organic": "var(--transition-organic)",
