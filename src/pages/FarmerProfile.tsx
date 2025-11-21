@@ -3,9 +3,8 @@ import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, MapPin, TreePine, Phone, Calendar, QrCode } from "lucide-react";
+import { ArrowLeft, MapPin, TreePine, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
@@ -16,7 +15,6 @@ interface Petani {
   nama: string;
   alamat: string;
   rata_rata_panen: number;
-  no_telepon?: string;
   created_at: string;
 }
 
@@ -27,7 +25,7 @@ interface Lahan {
   created_at: string;
 }
 
-const FarmerDetail = () => {
+const FarmerProfile = () => {
   const { id } = useParams<{ id: string }>();
   const [petani, setPetani] = useState<Petani | null>(null);
   const [lands, setLands] = useState<Lahan[]>([]);
@@ -36,15 +34,15 @@ const FarmerDetail = () => {
 
   useEffect(() => {
     if (id) {
-      fetchPetaniDetail(id);
+      fetchFarmerProfile(id);
     }
   }, [id]);
 
-  const fetchPetaniDetail = async (petaniId: string) => {
+  const fetchFarmerProfile = async (petaniId: string) => {
     try {
       const { data, error } = await supabase
         .from("petani")
-        .select("*")
+        .select("id, kode_petani, nama, alamat, rata_rata_panen, created_at")
         .eq("id", petaniId)
         .single();
 
@@ -55,7 +53,7 @@ const FarmerDetail = () => {
       // Fetch lands associated with this farmer
       const { data: landsData, error: landsError } = await supabase
         .from("lahan")
-        .select("*")
+        .select("id, kode_lahan, keterangan, created_at")
         .eq("petani_id", petaniId)
         .order("created_at", { ascending: false });
 
@@ -65,7 +63,7 @@ const FarmerDetail = () => {
         setLands(landsData || []);
       }
     } catch (error: any) {
-      console.error("Error fetching petani detail:", error);
+      console.error("Error fetching farmer profile:", error);
       setError("Gagal memuat data petani");
     } finally {
       setLoading(false);
@@ -154,16 +152,6 @@ const FarmerDetail = () => {
                     <p className="text-foreground">{petani.alamat}</p>
                   </div>
                   
-                  {petani.no_telepon && (
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2 text-muted-foreground">
-                        <Phone className="h-4 w-4" />
-                        <span className="text-sm">No. Telepon</span>
-                      </div>
-                      <p className="text-foreground">{petani.no_telepon}</p>
-                    </div>
-                  )}
-                  
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2 text-muted-foreground">
                       <TreePine className="h-4 w-4" />
@@ -209,7 +197,6 @@ const FarmerDetail = () => {
                 </div>
               </CardContent>
             </Card>
-
           </div>
         </div>
 
@@ -264,4 +251,4 @@ const FarmerDetail = () => {
   );
 };
 
-export default FarmerDetail;
+export default FarmerProfile;

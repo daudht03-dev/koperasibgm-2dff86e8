@@ -42,8 +42,8 @@ const QRCodePage = () => {
 
       setPetani(data);
       
-      // Generate QR Code
-      const farmerUrl = `${window.location.origin}/petani/${data.id}`;
+      // Generate QR Code that points to public profile
+      const farmerUrl = `${window.location.origin}/profil-petani/${data.id}`;
       const qrDataURL = await QRCode.toDataURL(farmerUrl, {
         width: 400,
         margin: 2,
@@ -122,7 +122,7 @@ const QRCodePage = () => {
   const handleCopyLink = async () => {
     if (!petani) return;
 
-    const farmerUrl = `${window.location.origin}/petani/${petani.id}`;
+    const farmerUrl = `${window.location.origin}/profil-petani/${petani.id}`;
     
     try {
       await navigator.clipboard.writeText(farmerUrl);
@@ -145,7 +145,7 @@ const QRCodePage = () => {
   const handleShare = async () => {
     if (!petani) return;
 
-    const farmerUrl = `${window.location.origin}/petani/${petani.id}`;
+    const farmerUrl = `${window.location.origin}/profil-petani/${petani.id}`;
     
     if (navigator.share) {
       try {
@@ -196,9 +196,9 @@ const QRCodePage = () => {
         {/* Header */}
         <div className="mb-8">
           <Button variant="ghost" asChild className="mb-4">
-            <Link to={`/petani/${petani.id}`}>
+            <Link to="/admin">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Kembali ke Profil
+              Kembali ke Dashboard
             </Link>
           </Button>
           
