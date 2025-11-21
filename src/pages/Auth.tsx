@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Leaf, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Leaf, Eye, EyeOff, ArrowLeft, Download } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { useNavigate, Link } from "react-router-dom";
@@ -209,6 +209,19 @@ const Auth = () => {
                   ? "Belum punya akun? Daftar di sini" 
                   : "Sudah punya akun? Login di sini"
                 }
+              </Button>
+            </div>
+
+            <div className="mt-4 text-center">
+              <Button
+                variant="link"
+                asChild
+                className="text-muted-foreground hover:text-foreground text-sm"
+              >
+                <Link to="/install">
+                  <Download className="h-3 w-3 mr-1" />
+                  Install Aplikasi di HP
+                </Link>
               </Button>
             </div>
           </CardContent>
