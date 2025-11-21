@@ -28,6 +28,7 @@ import {
   companyProfileSchema,
   imageFileSchema
 } from "@/lib/validation-schemas";
+import { TableSkeleton, StatsSkeleton, CardSkeleton } from "@/components/ui/skeleton-templates";
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
@@ -666,17 +667,20 @@ const AdminDashboard = () => {
               </Dialog>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Kode</TableHead>
-                    <TableHead>Nama</TableHead>
-                    <TableHead>Alamat</TableHead>
-                    <TableHead>Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {farmers.map((farmer) => (
+              {!farmers ? (
+                <TableSkeleton rows={8} columns={4} />
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Kode</TableHead>
+                      <TableHead>Nama</TableHead>
+                      <TableHead>Alamat</TableHead>
+                      <TableHead>Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {farmers.map((farmer) => (
                     <TableRow key={farmer.id}>
                       <TableCell className="font-medium">{farmer.kode_petani}</TableCell>
                       <TableCell>{farmer.nama}</TableCell>
@@ -736,9 +740,10 @@ const AdminDashboard = () => {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         )}
@@ -837,17 +842,20 @@ const AdminDashboard = () => {
               </Dialog>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Kode Lahan</TableHead>
-                    <TableHead>Petani</TableHead>
-                    <TableHead>Keterangan</TableHead>
-                    <TableHead>Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {lands.map((land) => (
+              {!lands ? (
+                <TableSkeleton rows={8} columns={4} />
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Kode Lahan</TableHead>
+                      <TableHead>Petani</TableHead>
+                      <TableHead>Keterangan</TableHead>
+                      <TableHead>Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {lands.map((land) => (
                     <TableRow key={land.id}>
                       <TableCell className="font-medium">{land.kode_lahan}</TableCell>
                       <TableCell>
@@ -893,9 +901,10 @@ const AdminDashboard = () => {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         )}

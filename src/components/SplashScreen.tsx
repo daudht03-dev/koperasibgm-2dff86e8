@@ -8,7 +8,7 @@ interface SplashScreenProps {
   duration?: number;
 }
 
-const SplashScreen = ({ onFinish, duration = 2000 }: SplashScreenProps) => {
+const SplashScreen = ({ onFinish, duration = 3500 }: SplashScreenProps) => {
   const [isVisible, setIsVisible] = useState(true);
   const { profile, loading: profileLoading } = useCompanyProfile();
 
