@@ -10,6 +10,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { authSchema } from "@/lib/validation-schemas";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ProfileSkeleton } from "@/components/ui/skeleton-templates";
 import { z } from "zod";
 
 const Auth = () => {
