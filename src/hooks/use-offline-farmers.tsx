@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 export interface OfflineFarmer {
   id: string;
@@ -96,12 +98,65 @@ export const useOfflineFarmers = () => {
     }
   };
 
+  const syncAllFarmers = async () => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (!stored) return { success: true, synced: 0 };
+
+      const farmers: OfflineFarmer[] = JSON.parse(stored);
+      let syncedCount = 0;
+
+      for (const farmer of farmers) {
+        try {
+          // Fetch fresh data from database
+          const { data: petaniData, error: petaniError } = await supabase
+            .from("petani")
+            .select("id, kode_petani, nama, alamat, created_at")
+            .eq("id", farmer.id)
+            .single();
+
+          if (petaniError) throw petaniError;
+
+          // Fetch fresh lands data
+          const { data: landsData, error: landsError } = await supabase
+            .from("lahan")
+            .select("id, kode_lahan, keterangan, created_at")
+            .eq("petani_id", farmer.id)
+            .order("created_at", { ascending: false });
+
+          if (landsError) throw landsError;
+
+          // Update offline storage with fresh data
+          saveFarmer({
+            id: petaniData.id,
+            kode_petani: petaniData.kode_petani,
+            nama: petaniData.nama,
+            alamat: petaniData.alamat,
+            created_at: petaniData.created_at,
+            lands: landsData || [],
+            saved_at: new Date().toISOString(),
+          });
+
+          syncedCount++;
+        } catch (error) {
+          console.error(`Error syncing farmer ${farmer.id}:`, error);
+        }
+      }
+
+      return { success: true, synced: syncedCount };
+    } catch (error) {
+      console.error("Error syncing farmers:", error);
+      return { success: false, synced: 0 };
+    }
+  };
+
   return {
     offlineFarmers,
     saveFarmer,
     getFarmer,
     deleteFarmer,
     clearAll,
+    syncAllFarmers,
     refetch: loadOfflineFarmers,
   };
 };
