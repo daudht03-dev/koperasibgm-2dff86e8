@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps) => {
-  const { user, session, loading } = useAuth();
+  const { user, session, loading, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,13 +19,13 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
         return;
       }
 
-      // If admin role is required, check role from profiles table
-      if (requireAdmin) {
-        // For now, we'll assume any authenticated user is admin
-        // You can later add role checking from profiles table
+      // Check admin role from database
+      if (requireAdmin && !isAdmin) {
+        navigate("/login");
+        return;
       }
     }
-  }, [user, session, loading, navigate, requireAdmin]);
+  }, [user, session, loading, isAdmin, navigate, requireAdmin]);
 
   if (loading) {
     return (
