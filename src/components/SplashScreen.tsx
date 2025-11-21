@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Leaf } from "lucide-react";
+import { useCompanyProfile } from "@/hooks/use-company-profile";
 
 interface SplashScreenProps {
   onFinish: () => void;
@@ -8,6 +9,7 @@ interface SplashScreenProps {
 
 const SplashScreen = ({ onFinish, duration = 2000 }: SplashScreenProps) => {
   const [isVisible, setIsVisible] = useState(true);
+  const { profile } = useCompanyProfile();
 
   useEffect(() => {
     // Trigger haptic feedback on mount
@@ -90,35 +92,51 @@ const SplashScreen = ({ onFinish, duration = 2000 }: SplashScreenProps) => {
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-gradient-to-br from-organic-green via-organic-green to-organic-amber animate-fade-out">
-      <div className="text-center space-y-8 animate-scale-in px-4">
-        {/* Logo */}
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-gradient-to-br from-organic-green via-organic-green to-organic-amber animate-fade-out overflow-hidden">
+      {/* Animated background particles */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-white/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "0s", animationDuration: "3s" }} />
+        <div className="absolute top-1/3 right-1/4 w-40 h-40 bg-organic-amber/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s", animationDuration: "4s" }} />
+        <div className="absolute bottom-1/4 left-1/3 w-36 h-36 bg-white/15 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "0.5s", animationDuration: "3.5s" }} />
+      </div>
+
+      <div className="text-center space-y-8 animate-scale-in px-4 relative z-10">
+        {/* Logo with enhanced animation */}
         <div className="relative">
-          <div className="bg-white/90 backdrop-blur-sm w-28 h-28 rounded-3xl flex items-center justify-center mx-auto shadow-2xl shadow-organic-green/30 animate-pulse">
-            <Leaf className="h-14 w-14 text-organic-green" strokeWidth={2.5} />
+          <div className="bg-white/95 backdrop-blur-lg w-32 h-32 rounded-[2rem] flex items-center justify-center mx-auto shadow-2xl shadow-organic-green/40 animate-float border-4 border-white/20 overflow-hidden">
+            {profile?.logo_url ? (
+              <img 
+                src={profile.logo_url} 
+                alt={profile.nama_perusahaan || "Logo"}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <Leaf className="h-16 w-16 text-organic-green animate-gentle-spin" strokeWidth={2} />
+            )}
           </div>
           
-          {/* Decorative circles */}
-          <div className="absolute -top-2 -right-2 w-8 h-8 bg-organic-amber/60 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
-          <div className="absolute -bottom-2 -left-2 w-6 h-6 bg-white/50 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
+          {/* Enhanced decorative circles with glow */}
+          <div className="absolute -top-3 -right-3 w-10 h-10 bg-organic-amber/80 rounded-full animate-bounce shadow-lg shadow-organic-amber/50" style={{ animationDelay: "0.2s" }} />
+          <div className="absolute -bottom-3 -left-3 w-8 h-8 bg-white/80 rounded-full animate-bounce shadow-lg shadow-white/50" style={{ animationDelay: "0.4s" }} />
+          <div className="absolute top-1/2 -right-4 w-6 h-6 bg-organic-green-light/60 rounded-full animate-bounce" style={{ animationDelay: "0.6s" }} />
         </div>
 
-        {/* Company Name */}
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-white tracking-tight drop-shadow-lg">
-            Berkah Gendis Mandiri
+        {/* Company Name with enhanced styling */}
+        <div className="space-y-3">
+          <h1 className="text-4xl font-bold text-white tracking-tight drop-shadow-2xl animate-slide-up">
+            {profile?.nama_perusahaan || "Berkah Gendis Mandiri"}
           </h1>
-          <p className="text-white/90 text-sm font-medium tracking-wide drop-shadow">
-            Gula Kelapa Organik Berkualitas
+          <p className="text-white/95 text-base font-medium tracking-wide drop-shadow-lg animate-slide-up" style={{ animationDelay: "0.1s" }}>
+            {profile?.deskripsi || "Gula Kelapa Organik Berkualitas"}
           </p>
         </div>
 
-        {/* Loading indicator */}
+        {/* Enhanced loading indicator with shimmer */}
         <div className="flex justify-center">
-          <div className="flex gap-2">
-            <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: "0s" }} />
-            <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: "0.1s" }} />
-            <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
+          <div className="flex gap-3">
+            <div className="w-2.5 h-2.5 bg-white rounded-full animate-bounce shadow-lg shadow-white/50" style={{ animationDelay: "0s" }} />
+            <div className="w-2.5 h-2.5 bg-white rounded-full animate-bounce shadow-lg shadow-white/50" style={{ animationDelay: "0.15s" }} />
+            <div className="w-2.5 h-2.5 bg-white rounded-full animate-bounce shadow-lg shadow-white/50" style={{ animationDelay: "0.3s" }} />
           </div>
         </div>
       </div>

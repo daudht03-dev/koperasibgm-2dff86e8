@@ -115,8 +115,16 @@ const Auth = () => {
 
         <Card className="shadow-gentle border-border/50">
           <CardHeader className="text-center space-y-4">
-            <div className="bg-gradient-organic w-16 h-16 rounded-full flex items-center justify-center mx-auto shadow-organic">
-              <Leaf className="h-8 w-8 text-primary-foreground" />
+            <div className="bg-gradient-organic w-16 h-16 rounded-full flex items-center justify-center mx-auto shadow-organic overflow-hidden">
+              {profile?.logo_url ? (
+                <img 
+                  src={profile.logo_url} 
+                  alt={profile.nama_perusahaan}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <Leaf className="h-8 w-8 text-primary-foreground" />
+              )}
             </div>
             <div>
               <CardTitle className="text-2xl font-bold text-foreground">
