@@ -517,6 +517,45 @@ const AdminDashboard = () => {
           </Button>
         </div>
 
+        {/* Quick Actions */}
+        <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Button
+            variant="outline"
+            asChild
+            className="justify-start h-auto p-4 border-organic-green/20 hover:bg-organic-green/5"
+          >
+            <Link to="/scan">
+              <div className="flex items-center space-x-3">
+                <div className="bg-gradient-organic p-3 rounded-lg">
+                  <QrCode className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-foreground">Scan QR Code</p>
+                  <p className="text-sm text-muted-foreground">Scan profil petani</p>
+                </div>
+              </div>
+            </Link>
+          </Button>
+          
+          <Button
+            variant="outline"
+            asChild
+            className="justify-start h-auto p-4 border-organic-green/20 hover:bg-organic-green/5"
+          >
+            <Link to="/offline-farmers">
+              <div className="flex items-center space-x-3">
+                <div className="bg-gradient-organic p-3 rounded-lg">
+                  <Users className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-foreground">Data Offline</p>
+                  <p className="text-sm text-muted-foreground">Akses tanpa internet</p>
+                </div>
+              </div>
+            </Link>
+          </Button>
+        </div>
+
         {/* Tab Navigation */}
         <div className="mb-6">
           <div className="flex space-x-1 rounded-lg bg-muted p-1 overflow-x-auto">
