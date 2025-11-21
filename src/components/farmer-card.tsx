@@ -10,8 +10,6 @@ interface FarmerCardProps {
     kode_petani: string;
     nama: string;
     alamat: string;
-    rata_rata_panen: number;
-    no_telepon?: string;
     lahan?: Array<{
       id: string;
       luas: number;
@@ -69,17 +67,6 @@ const FarmerCard = ({ petani, showQRCode = false }: FarmerCardProps) => {
             <p className="font-medium text-foreground">{totalTanaman} pohon</p>
           </div>
         </div>
-
-        {petani.rata_rata_panen && (
-          <div className="pt-2 border-t border-border/50">
-            <div className="text-sm">
-              <span className="text-muted-foreground">Rata-rata Panen: </span>
-              <span className="font-medium text-organic-green">
-                {petani.rata_rata_panen} kg/bulan
-              </span>
-            </div>
-          </div>
-        )}
 
         <div className="pt-3 flex space-x-2">
           <Button variant="outline" size="sm" asChild className="flex-1">

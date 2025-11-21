@@ -11,6 +11,7 @@ import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-coconut-sugar.jpg";
 import { useProducts } from "@/hooks/use-products";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
+import { useLands } from "@/hooks/use-lands";
 import { formatRupiah } from "@/lib/utils";
 
 interface Petani {
@@ -18,8 +19,6 @@ interface Petani {
   kode_petani: string;
   nama: string;
   alamat: string;
-  rata_rata_panen: number;
-  no_telepon?: string;
 }
 
 interface KontenWebsite {
@@ -36,6 +35,7 @@ const Home = () => {
   
   const { products } = useProducts();
   const { profile: companyProfile } = useCompanyProfile();
+  const { lands } = useLands();
 
   useEffect(() => {
     fetchData();
@@ -129,10 +129,8 @@ const Home = () => {
               <div className="bg-gradient-earth w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 shadow-warm">
                 <TreePine className="h-8 w-8 text-primary-foreground" />
               </div>
-              <h3 className="text-3xl font-bold text-foreground mb-2">
-                {petaniList.reduce((sum, petani) => sum + petani.rata_rata_panen, 0).toFixed(1)}
-              </h3>
-              <p className="text-muted-foreground">Kg Produksi/Bulan</p>
+              <h3 className="text-3xl font-bold text-foreground mb-2">{lands.length}</h3>
+              <p className="text-muted-foreground">Lahan Terdaftar</p>
             </div>
             <div className="text-center">
               <div className="bg-organic-amber w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 shadow-gentle">

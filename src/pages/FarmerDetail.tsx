@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, MapPin, TreePine, Phone, Calendar, QrCode } from "lucide-react";
+import { ArrowLeft, MapPin, TreePine, Calendar, QrCode } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
@@ -15,8 +15,6 @@ interface Petani {
   kode_petani: string;
   nama: string;
   alamat: string;
-  rata_rata_panen: number;
-  no_telepon?: string;
   created_at: string;
 }
 
@@ -154,26 +152,6 @@ const FarmerDetail = () => {
                     <p className="text-foreground">{petani.alamat}</p>
                   </div>
                   
-                  {petani.no_telepon && (
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2 text-muted-foreground">
-                        <Phone className="h-4 w-4" />
-                        <span className="text-sm">No. Telepon</span>
-                      </div>
-                      <p className="text-foreground">{petani.no_telepon}</p>
-                    </div>
-                  )}
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2 text-muted-foreground">
-                      <TreePine className="h-4 w-4" />
-                      <span className="text-sm">Rata-rata Panen</span>
-                    </div>
-                    <p className="text-organic-green font-medium">
-                      {petani.rata_rata_panen} kg/bulan
-                    </p>
-                  </div>
-                  
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2 text-muted-foreground">
                       <Calendar className="h-4 w-4" />
@@ -196,20 +174,18 @@ const FarmerDetail = () => {
           <div className="space-y-6">
             <Card className="shadow-gentle border-border/50 bg-gradient-to-br from-card to-organic-cream/30">
               <CardHeader>
-                <CardTitle>Ringkasan</CardTitle>
+                <CardTitle>Informasi Lahan</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="text-center">
-                  <div className="bg-organic-amber w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 shadow-gentle">
-                    <TreePine className="h-8 w-8 text-organic-brown" />
+                  <div className="bg-organic-green w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 shadow-gentle">
+                    <MapPin className="h-8 w-8 text-primary-foreground" />
                   </div>
-                  <h3 className="text-3xl font-bold text-foreground">{petani.rata_rata_panen}</h3>
-                  <p className="text-muted-foreground">kg/bulan</p>
-                  <p className="text-sm text-muted-foreground mt-2">Rata-rata Panen</p>
+                  <h3 className="text-3xl font-bold text-foreground">{lands.length}</h3>
+                  <p className="text-sm text-muted-foreground mt-2">Total Lahan Terdaftar</p>
                 </div>
               </CardContent>
             </Card>
-
           </div>
         </div>
 
