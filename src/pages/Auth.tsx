@@ -8,6 +8,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { useNavigate, Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { authSchema } from "@/lib/validation-schemas";
+import { z } from "zod";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -27,8 +29,26 @@ const Auth = () => {
     setLoading(true);
 
     try {
+      // Validate inputs
+      const validationData = isLogin 
+        ? { email, password }
+        : { email, password, fullName };
+      
+      const result = authSchema.safeParse(validationData);
+      
+      if (!result.success) {
+        const firstError = result.error.errors[0];
+        toast({
+          title: "Validasi Gagal",
+          description: firstError.message,
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
       if (isLogin) {
-        const { error } = await signIn(email, password);
+        const { error } = await signIn(result.data.email, result.data.password);
         if (error) {
           toast({
             title: "Error Login",
@@ -45,7 +65,7 @@ const Auth = () => {
           navigate("/admin");
         }
       } else {
-        const { error } = await signUp(email, password, fullName);
+        const { error } = await signUp(result.data.email, result.data.password, result.data.fullName || "");
         if (error) {
           toast({
             title: "Error Registrasi",
@@ -140,11 +160,11 @@ const Auth = () => {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Masukkan password"
+                    placeholder="Masukkan password (minimal 8 karakter)"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    minLength={6}
+                    minLength={8}
                     className="border-border/50 focus:border-organic-green pr-10"
                   />
                   <Button
