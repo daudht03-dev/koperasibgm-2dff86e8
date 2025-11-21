@@ -15,18 +15,6 @@ export const farmerSchema = z.object({
     .trim()
     .min(1, "Alamat harus diisi")
     .max(500, "Alamat maksimal 500 karakter"),
-  no_telepon: z.string()
-    .trim()
-    .regex(/^[0-9+\-\s()]*$/, "Nomor telepon tidak valid")
-    .max(20, "Nomor telepon maksimal 20 karakter")
-    .optional()
-    .or(z.literal("")),
-  rata_rata_panen: z.string()
-    .trim()
-    .refine((val) => val === "" || !isNaN(parseFloat(val)), "Rata-rata panen harus berupa angka")
-    .refine((val) => val === "" || parseFloat(val) >= 0, "Rata-rata panen tidak boleh negatif")
-    .optional()
-    .or(z.literal("")),
 });
 
 // Land validation schema

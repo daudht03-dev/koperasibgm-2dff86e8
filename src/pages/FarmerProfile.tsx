@@ -14,7 +14,6 @@ interface Petani {
   kode_petani: string;
   nama: string;
   alamat: string;
-  rata_rata_panen: number;
   created_at: string;
 }
 
@@ -42,7 +41,7 @@ const FarmerProfile = () => {
     try {
       const { data, error } = await supabase
         .from("petani")
-        .select("id, kode_petani, nama, alamat, rata_rata_panen, created_at")
+        .select("id, kode_petani, nama, alamat, created_at")
         .eq("id", petaniId)
         .single();
 
@@ -154,16 +153,6 @@ const FarmerProfile = () => {
                   
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2 text-muted-foreground">
-                      <TreePine className="h-4 w-4" />
-                      <span className="text-sm">Rata-rata Panen</span>
-                    </div>
-                    <p className="text-organic-green font-medium">
-                      {petani.rata_rata_panen} kg/bulan
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2 text-muted-foreground">
                       <Calendar className="h-4 w-4" />
                       <span className="text-sm">Terdaftar Sejak</span>
                     </div>
@@ -184,16 +173,15 @@ const FarmerProfile = () => {
           <div className="space-y-6">
             <Card className="shadow-gentle border-border/50 bg-gradient-to-br from-card to-organic-cream/30">
               <CardHeader>
-                <CardTitle>Ringkasan</CardTitle>
+                <CardTitle>Informasi Lahan</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="text-center">
-                  <div className="bg-organic-amber w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 shadow-gentle">
-                    <TreePine className="h-8 w-8 text-organic-brown" />
+                  <div className="bg-organic-green w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 shadow-gentle">
+                    <MapPin className="h-8 w-8 text-primary-foreground" />
                   </div>
-                  <h3 className="text-3xl font-bold text-foreground">{petani.rata_rata_panen}</h3>
-                  <p className="text-muted-foreground">kg/bulan</p>
-                  <p className="text-sm text-muted-foreground mt-2">Rata-rata Panen</p>
+                  <h3 className="text-3xl font-bold text-foreground">{lands.length}</h3>
+                  <p className="text-sm text-muted-foreground mt-2">Total Lahan Terdaftar</p>
                 </div>
               </CardContent>
             </Card>

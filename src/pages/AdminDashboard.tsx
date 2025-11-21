@@ -47,8 +47,6 @@ const AdminDashboard = () => {
     nama: "",
     kode_petani: "",
     alamat: "",
-    no_telepon: "",
-    rata_rata_panen: "",
   });
   const [farmerErrors, setFarmerErrors] = useState<Record<string, string>>({});
   const [editingFarmer, setEditingFarmer] = useState<string | null>(null);
@@ -115,12 +113,10 @@ const AdminDashboard = () => {
         nama: validated.nama,
         kode_petani: validated.kode_petani,
         alamat: validated.alamat,
-        no_telepon: validated.no_telepon || null,
-        rata_rata_panen: validated.rata_rata_panen ? parseFloat(validated.rata_rata_panen) : null,
       });
       
       if (success) {
-        setFarmerForm({ nama: "", kode_petani: "", alamat: "", no_telepon: "", rata_rata_panen: "" });
+        setFarmerForm({ nama: "", kode_petani: "", alamat: "" });
         setFarmerDialogOpen(false);
       }
     } catch (error: any) {
@@ -144,8 +140,6 @@ const AdminDashboard = () => {
       nama: farmer.nama,
       kode_petani: farmer.kode_petani,
       alamat: farmer.alamat,
-      no_telepon: farmer.no_telepon || "",
-      rata_rata_panen: farmer.rata_rata_panen?.toString() || "",
     });
     setFarmerErrors({});
     setEditingFarmer(farmer.id);
@@ -163,12 +157,10 @@ const AdminDashboard = () => {
         nama: validated.nama,
         kode_petani: validated.kode_petani,
         alamat: validated.alamat,
-        no_telepon: validated.no_telepon || null,
-        rata_rata_panen: validated.rata_rata_panen ? parseFloat(validated.rata_rata_panen) : null,
       });
       
       if (success) {
-        setFarmerForm({ nama: "", kode_petani: "", alamat: "", no_telepon: "", rata_rata_panen: "" });
+        setFarmerForm({ nama: "", kode_petani: "", alamat: "" });
         setEditingFarmer(null);
         setFarmerDialogOpen(false);
       }
@@ -564,7 +556,7 @@ const AdminDashboard = () => {
                   <Button 
                     onClick={() => {
                       setEditingFarmer(null);
-                      setFarmerForm({ nama: "", kode_petani: "", alamat: "", no_telepon: "", rata_rata_panen: "" });
+                      setFarmerForm({ nama: "", kode_petani: "", alamat: "" });
                     }}
                     className="bg-gradient-organic shadow-organic hover:shadow-warm"
                   >
@@ -616,32 +608,6 @@ const AdminDashboard = () => {
                         <p className="text-sm text-destructive mt-1">{farmerErrors.alamat}</p>
                       )}
                     </div>
-                    <div>
-                      <Label htmlFor="telepon">No. Telepon (Opsional)</Label>
-                      <Input
-                        id="telepon"
-                        value={farmerForm.no_telepon}
-                        onChange={(e) => setFarmerForm(prev => ({ ...prev, no_telepon: e.target.value }))}
-                        className={farmerErrors.no_telepon ? "border-destructive" : ""}
-                      />
-                      {farmerErrors.no_telepon && (
-                        <p className="text-sm text-destructive mt-1">{farmerErrors.no_telepon}</p>
-                      )}
-                    </div>
-                    <div>
-                      <Label htmlFor="panen">Rata-rata Panen (kg/bulan) (Opsional)</Label>
-                      <Input
-                        id="panen"
-                        type="number"
-                        step="0.01"
-                        value={farmerForm.rata_rata_panen}
-                        onChange={(e) => setFarmerForm(prev => ({ ...prev, rata_rata_panen: e.target.value }))}
-                        className={farmerErrors.rata_rata_panen ? "border-destructive" : ""}
-                      />
-                      {farmerErrors.rata_rata_panen && (
-                        <p className="text-sm text-destructive mt-1">{farmerErrors.rata_rata_panen}</p>
-                      )}
-                    </div>
                     <div className="flex justify-end space-x-2">
                       <Button
                         variant="outline"
@@ -667,8 +633,6 @@ const AdminDashboard = () => {
                     <TableHead>Kode</TableHead>
                     <TableHead>Nama</TableHead>
                     <TableHead>Alamat</TableHead>
-                    <TableHead>No. Telepon</TableHead>
-                    <TableHead>Rata-rata Panen</TableHead>
                     <TableHead>Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -678,8 +642,6 @@ const AdminDashboard = () => {
                       <TableCell className="font-medium">{farmer.kode_petani}</TableCell>
                       <TableCell>{farmer.nama}</TableCell>
                       <TableCell className="max-w-xs truncate">{farmer.alamat}</TableCell>
-                      <TableCell>{farmer.no_telepon || "-"}</TableCell>
-                      <TableCell>{farmer.rata_rata_panen ? `${farmer.rata_rata_panen} kg` : "-"}</TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
                           <Button
