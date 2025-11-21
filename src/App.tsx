@@ -9,6 +9,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import FarmerDetail from "./pages/FarmerDetail";
 import FarmerProfile from "./pages/FarmerProfile";
 import QRCodePage from "./pages/QRCode";
+import QRScanner from "./pages/QRScanner";
+import OfflineFarmers from "./pages/OfflineFarmers";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
 import NotFound from "./pages/NotFound";
@@ -38,6 +40,8 @@ const App = () => (
             />
             <Route path="/petani/:id" element={<FarmerDetail />} />
             <Route path="/profil-petani/:id" element={<FarmerProfile />} />
+            <Route path="/scan" element={<QRScanner />} />
+            <Route path="/offline-farmers" element={<OfflineFarmers />} />
             <Route 
               path="/petani/:id/qr" 
               element={

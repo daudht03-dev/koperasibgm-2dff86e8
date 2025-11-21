@@ -4,8 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, MapPin, TreePine, Calendar } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ArrowLeft, MapPin, TreePine, Calendar, WifiOff, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useOfflineFarmers } from "@/hooks/use-offline-farmers";
+import { toast } from "@/hooks/use-toast";
 import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
 
@@ -30,6 +33,8 @@ const FarmerProfile = () => {
   const [lands, setLands] = useState<Lahan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
+  const { saveFarmer, getFarmer } = useOfflineFarmers();
 
   useEffect(() => {
     if (id) {
@@ -61,9 +66,41 @@ const FarmerProfile = () => {
       } else {
         setLands(landsData || []);
       }
+
+      // Save to offline storage
+      saveFarmer({
+        id: data.id,
+        kode_petani: data.kode_petani,
+        nama: data.nama,
+        alamat: data.alamat,
+        created_at: data.created_at,
+        lands: landsData || [],
+        saved_at: new Date().toISOString(),
+      });
+
+      setIsOffline(false);
     } catch (error: any) {
       console.error("Error fetching farmer profile:", error);
-      setError("Gagal memuat data petani");
+      
+      // Try to load from offline storage
+      const offlineFarmer = getFarmer(petaniId);
+      if (offlineFarmer) {
+        setPetani({
+          id: offlineFarmer.id,
+          kode_petani: offlineFarmer.kode_petani,
+          nama: offlineFarmer.nama,
+          alamat: offlineFarmer.alamat,
+          created_at: offlineFarmer.created_at,
+        });
+        setLands(offlineFarmer.lands);
+        setIsOffline(true);
+        toast({
+          title: "Mode Offline",
+          description: "Menampilkan data dari penyimpanan offline",
+        });
+      } else {
+        setError("Gagal memuat data petani dan tidak ada data offline");
+      }
     } finally {
       setLoading(false);
     }
@@ -115,6 +152,15 @@ const FarmerProfile = () => {
               Kembali ke Beranda
             </Link>
           </Button>
+
+          {isOffline && (
+            <Alert className="mb-4 border-organic-green/20 bg-organic-green/5">
+              <WifiOff className="h-4 w-4" />
+              <AlertDescription>
+                Anda sedang melihat data offline. Data ini terakhir disimpan saat Anda online.
+              </AlertDescription>
+            </Alert>
+          )}
           
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
