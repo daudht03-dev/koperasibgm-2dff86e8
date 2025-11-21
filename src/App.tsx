@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/use-auth";
 import { useOnlineSync } from "@/hooks/use-online-sync";
+import { useState, useEffect } from "react";
+import SplashScreen from "@/components/SplashScreen";
 import Auth from "./pages/Auth";
 import AdminDashboard from "./pages/AdminDashboard";
 import FarmerDetail from "./pages/FarmerDetail";
@@ -55,18 +57,40 @@ const AppContent = () => {
   );
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  const [showSplash, setShowSplash] = useState(true);
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    // Check if app is running in standalone mode (installed as PWA)
+    const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches 
+      || (window.navigator as any).standalone 
+      || document.referrer.includes('android-app://');
+    
+    setIsStandalone(isInStandaloneMode);
+    
+    // Only show splash screen if app is installed
+    if (!isInStandaloneMode) {
+      setShowSplash(false);
+    }
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          {showSplash && isStandalone && (
+            <SplashScreen onFinish={() => setShowSplash(false)} />
+          )}
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
