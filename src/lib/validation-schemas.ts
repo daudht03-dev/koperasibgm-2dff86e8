@@ -9,8 +9,7 @@ export const farmerSchema = z.object({
   kode_petani: z.string()
     .trim()
     .min(1, "Kode petani harus diisi")
-    .max(20, "Kode petani maksimal 20 karakter")
-    .regex(/^[A-Z0-9-]+$/, "Kode petani hanya boleh berisi huruf besar, angka, dan tanda strip"),
+    .max(50, "Kode petani maksimal 50 karakter"),
   alamat: z.string()
     .trim()
     .min(1, "Alamat harus diisi")
