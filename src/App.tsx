@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/use-auth";
 import Auth from "./pages/Auth";
 import AdminDashboard from "./pages/AdminDashboard";
 import FarmerDetail from "./pages/FarmerDetail";
+import FarmerProfile from "./pages/FarmerProfile";
 import QRCodePage from "./pages/QRCode";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
@@ -36,7 +37,15 @@ const App = () => (
               } 
             />
             <Route path="/petani/:id" element={<FarmerDetail />} />
-            <Route path="/petani/:id/qr" element={<QRCodePage />} />
+            <Route path="/profil-petani/:id" element={<FarmerProfile />} />
+            <Route 
+              path="/petani/:id/qr" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <QRCodePage />
+                </ProtectedRoute>
+              } 
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
