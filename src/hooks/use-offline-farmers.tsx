@@ -6,7 +6,6 @@ export interface OfflineFarmer {
   id: string;
   kode_petani: string;
   nama: string;
-  alamat: string;
   created_at: string;
   lands: Array<{
     id: string;
@@ -108,10 +107,10 @@ export const useOfflineFarmers = () => {
 
       for (const farmer of farmers) {
         try {
-          // Fetch fresh data from database
+          // Fetch fresh data from database (using public view)
           const { data: petaniData, error: petaniError } = await supabase
-            .from("petani")
-            .select("id, kode_petani, nama, alamat, created_at")
+            .from("petani_public")
+            .select("id, kode_petani, nama, created_at")
             .eq("id", farmer.id)
             .single();
 
@@ -131,7 +130,6 @@ export const useOfflineFarmers = () => {
             id: petaniData.id,
             kode_petani: petaniData.kode_petani,
             nama: petaniData.nama,
-            alamat: petaniData.alamat,
             created_at: petaniData.created_at,
             lands: landsData || [],
             saved_at: new Date().toISOString(),

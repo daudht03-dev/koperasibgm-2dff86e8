@@ -16,7 +16,6 @@ interface Petani {
   id: string;
   kode_petani: string;
   nama: string;
-  alamat: string;
   created_at: string;
 }
 
@@ -45,8 +44,8 @@ const FarmerProfile = () => {
   const fetchFarmerProfile = async (petaniId: string) => {
     try {
       const { data, error } = await supabase
-        .from("petani")
-        .select("id, kode_petani, nama, alamat, created_at")
+        .from("petani_public")
+        .select("id, kode_petani, nama, created_at")
         .eq("id", petaniId)
         .single();
 
@@ -72,7 +71,6 @@ const FarmerProfile = () => {
         id: data.id,
         kode_petani: data.kode_petani,
         nama: data.nama,
-        alamat: data.alamat,
         created_at: data.created_at,
         lands: landsData || [],
         saved_at: new Date().toISOString(),
@@ -89,7 +87,6 @@ const FarmerProfile = () => {
           id: offlineFarmer.id,
           kode_petani: offlineFarmer.kode_petani,
           nama: offlineFarmer.nama,
-          alamat: offlineFarmer.alamat,
           created_at: offlineFarmer.created_at,
         });
         setLands(offlineFarmer.lands);
@@ -188,15 +185,7 @@ const FarmerProfile = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2 text-muted-foreground">
-                      <MapPin className="h-4 w-4" />
-                      <span className="text-sm">Alamat</span>
-                    </div>
-                    <p className="text-foreground">{petani.alamat}</p>
-                  </div>
-                  
+                <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2 text-muted-foreground">
                       <Calendar className="h-4 w-4" />
