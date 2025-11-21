@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Button } from "./button";
 import { Menu, X, Leaf } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useCompanyProfile } from "@/hooks/use-company-profile";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { profile } = useCompanyProfile();
 
   return (
     <nav className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b border-border/50">
@@ -16,7 +18,7 @@ const Navbar = () => {
                 <Leaf className="h-6 w-6 text-primary-foreground" />
               </div>
               <span className="text-xl font-bold text-foreground">
-                Berkah Gendis Official
+                {profile?.nama_perusahaan || "Berkah Gendis Mandiri"}
               </span>
             </Link>
           </div>

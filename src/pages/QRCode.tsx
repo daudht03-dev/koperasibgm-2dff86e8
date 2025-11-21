@@ -6,6 +6,7 @@ import { ArrowLeft, Download, Share, Copy, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import QRCode from "qrcode";
 import { useToast } from "@/hooks/use-toast";
+import { useCompanyProfile } from "@/hooks/use-company-profile";
 
 interface Petani {
   id: string;
@@ -23,6 +24,7 @@ const QRCodePage = () => {
   const [copied, setCopied] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
+  const { profile } = useCompanyProfile();
 
   useEffect(() => {
     if (id) {
@@ -93,7 +95,7 @@ const QRCodePage = () => {
       ctx.fillStyle = "#1a5d3a";
       ctx.font = "bold 24px Arial";
       ctx.textAlign = "center";
-      ctx.fillText("Berkah Gendis Official", canvas.width / 2, 40);
+      ctx.fillText(profile?.nama_perusahaan || "Berkah Gendis Mandiri", canvas.width / 2, 40);
 
       // Draw farmer info
       ctx.fillStyle = "#333333";
@@ -150,7 +152,7 @@ const QRCodePage = () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `${petani.nama} - Petani Mitra Berkah Gendis Official`,
+          title: `${petani.nama} - Petani Mitra ${profile?.nama_perusahaan || "Berkah Gendis Mandiri"}`,
           text: `Lihat profil lengkap petani ${petani.nama} (${petani.kode_petani})`,
           url: farmerUrl,
         });

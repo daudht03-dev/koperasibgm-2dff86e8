@@ -84,7 +84,7 @@ export const useCompanyProfile = () => {
       if (!profile) {
         // Create new profile if doesn't exist - ensure nama_perusahaan is provided
         const createData = {
-          nama_perusahaan: profileData.nama_perusahaan || 'Berkah Gendis Official',
+          nama_perusahaan: profileData.nama_perusahaan || 'Berkah Gendis Mandiri',
           deskripsi: profileData.deskripsi,
           logo_url: profileData.logo_url,
           alamat: profileData.alamat,
