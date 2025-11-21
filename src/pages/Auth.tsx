@@ -9,6 +9,7 @@ import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { useNavigate, Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { authSchema } from "@/lib/validation-schemas";
+import { Skeleton } from "@/components/ui/skeleton";
 import { z } from "zod";
 
 const Auth = () => {
@@ -20,7 +21,7 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
 
   const { signIn, signUp, user, isAdmin } = useAuth();
-  const { profile } = useCompanyProfile();
+  const { profile, loading: profileLoading } = useCompanyProfile();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -115,27 +116,42 @@ const Auth = () => {
 
         <Card className="shadow-gentle border-border/50">
           <CardHeader className="text-center space-y-4">
-            <div className="bg-gradient-organic w-16 h-16 rounded-full flex items-center justify-center mx-auto shadow-organic overflow-hidden">
-              {profile?.logo_url ? (
-                <img 
-                  src={profile.logo_url} 
-                  alt={profile.nama_perusahaan}
-                  className="w-full h-full object-cover"
-                />
+            {/* Logo Section with Loading State */}
+            <div className="relative">
+              {profileLoading ? (
+                <Skeleton className="w-16 h-16 rounded-full mx-auto" />
               ) : (
-                <Leaf className="h-8 w-8 text-primary-foreground" />
+                <div className="bg-gradient-organic w-16 h-16 rounded-full flex items-center justify-center mx-auto shadow-organic overflow-hidden transition-all duration-300">
+                  {profile?.logo_url ? (
+                    <img 
+                      src={profile.logo_url} 
+                      alt={profile.nama_perusahaan}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Leaf className="h-8 w-8 text-primary-foreground" />
+                  )}
+                </div>
               )}
             </div>
-            <div>
+
+            {/* Title & Description with Loading State */}
+            <div className="space-y-2">
               <CardTitle className="text-2xl font-bold text-foreground">
                 {isLogin ? "Login Admin" : "Daftar Admin"}
               </CardTitle>
-              <CardDescription className="text-muted-foreground">
-                {isLogin 
-                  ? `Masuk ke dashboard admin ${profile?.nama_perusahaan || "Berkah Gendis Mandiri"}` 
-                  : "Buat akun admin baru"
-                }
-              </CardDescription>
+              {profileLoading ? (
+                <div className="flex flex-col items-center gap-2">
+                  <Skeleton className="h-4 w-64" />
+                </div>
+              ) : (
+                <CardDescription className="text-muted-foreground transition-opacity duration-300">
+                  {isLogin 
+                    ? `Masuk ke dashboard admin ${profile?.nama_perusahaan || "Berkah Gendis Mandiri"}` 
+                    : "Buat akun admin baru"
+                  }
+                </CardDescription>
+              )}
             </div>
           </CardHeader>
 
@@ -236,7 +252,13 @@ const Auth = () => {
         </Card>
 
         <div className="mt-6 text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} {profile?.nama_perusahaan || "Berkah Gendis Mandiri"}</p>
+          {profileLoading ? (
+            <Skeleton className="h-4 w-48 mx-auto" />
+          ) : (
+            <p className="transition-opacity duration-300">
+              © {new Date().getFullYear()} {profile?.nama_perusahaan || "Berkah Gendis Mandiri"}
+            </p>
+          )}
         </div>
       </div>
     </div>

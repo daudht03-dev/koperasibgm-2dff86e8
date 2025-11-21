@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Leaf } from "lucide-react";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface SplashScreenProps {
   onFinish: () => void;
@@ -9,7 +10,7 @@ interface SplashScreenProps {
 
 const SplashScreen = ({ onFinish, duration = 2000 }: SplashScreenProps) => {
   const [isVisible, setIsVisible] = useState(true);
-  const { profile } = useCompanyProfile();
+  const { profile, loading: profileLoading } = useCompanyProfile();
 
   useEffect(() => {
     // Trigger haptic feedback on mount
@@ -103,32 +104,49 @@ const SplashScreen = ({ onFinish, duration = 2000 }: SplashScreenProps) => {
       <div className="text-center space-y-8 animate-scale-in px-4 relative z-10">
         {/* Logo with enhanced animation */}
         <div className="relative">
-          <div className="bg-white/95 backdrop-blur-lg w-32 h-32 rounded-[2rem] flex items-center justify-center mx-auto shadow-2xl shadow-organic-green/40 animate-float border-4 border-white/20 overflow-hidden">
-            {profile?.logo_url ? (
-              <img 
-                src={profile.logo_url} 
-                alt={profile.nama_perusahaan || "Logo"}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <Leaf className="h-16 w-16 text-organic-green animate-gentle-spin" strokeWidth={2} />
-            )}
-          </div>
+          {profileLoading ? (
+            <Skeleton className="w-32 h-32 rounded-[2rem] mx-auto" />
+          ) : (
+            <div className="bg-white/95 backdrop-blur-lg w-32 h-32 rounded-[2rem] flex items-center justify-center mx-auto shadow-2xl shadow-organic-green/40 animate-float border-4 border-white/20 overflow-hidden transition-all duration-500">
+              {profile?.logo_url ? (
+                <img 
+                  src={profile.logo_url} 
+                  alt={profile.nama_perusahaan || "Logo"}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <Leaf className="h-16 w-16 text-organic-green animate-gentle-spin" strokeWidth={2} />
+              )}
+            </div>
+          )}
           
           {/* Enhanced decorative circles with glow */}
-          <div className="absolute -top-3 -right-3 w-10 h-10 bg-organic-amber/80 rounded-full animate-bounce shadow-lg shadow-organic-amber/50" style={{ animationDelay: "0.2s" }} />
-          <div className="absolute -bottom-3 -left-3 w-8 h-8 bg-white/80 rounded-full animate-bounce shadow-lg shadow-white/50" style={{ animationDelay: "0.4s" }} />
-          <div className="absolute top-1/2 -right-4 w-6 h-6 bg-organic-green-light/60 rounded-full animate-bounce" style={{ animationDelay: "0.6s" }} />
+          {!profileLoading && (
+            <>
+              <div className="absolute -top-3 -right-3 w-10 h-10 bg-organic-amber/80 rounded-full animate-bounce shadow-lg shadow-organic-amber/50" style={{ animationDelay: "0.2s" }} />
+              <div className="absolute -bottom-3 -left-3 w-8 h-8 bg-white/80 rounded-full animate-bounce shadow-lg shadow-white/50" style={{ animationDelay: "0.4s" }} />
+              <div className="absolute top-1/2 -right-4 w-6 h-6 bg-organic-green-light/60 rounded-full animate-bounce" style={{ animationDelay: "0.6s" }} />
+            </>
+          )}
         </div>
 
         {/* Company Name with enhanced styling */}
         <div className="space-y-3">
-          <h1 className="text-4xl font-bold text-white tracking-tight drop-shadow-2xl animate-slide-up">
-            {profile?.nama_perusahaan || "Berkah Gendis Mandiri"}
-          </h1>
-          <p className="text-white/95 text-base font-medium tracking-wide drop-shadow-lg animate-slide-up" style={{ animationDelay: "0.1s" }}>
-            {profile?.deskripsi || "Gula Kelapa Organik Berkualitas"}
-          </p>
+          {profileLoading ? (
+            <>
+              <Skeleton className="h-9 w-72 mx-auto" />
+              <Skeleton className="h-6 w-56 mx-auto" />
+            </>
+          ) : (
+            <>
+              <h1 className="text-4xl font-bold text-white tracking-tight drop-shadow-2xl animate-slide-up transition-all duration-500">
+                {profile?.nama_perusahaan || "Berkah Gendis Mandiri"}
+              </h1>
+              <p className="text-white/95 text-base font-medium tracking-wide drop-shadow-lg animate-slide-up transition-all duration-500" style={{ animationDelay: "0.1s" }}>
+                {profile?.deskripsi || "Gula Kelapa Organik Berkualitas"}
+              </p>
+            </>
+          )}
         </div>
 
         {/* Enhanced loading indicator with shimmer */}
