@@ -15,6 +15,7 @@ import OfflineFarmers from "./pages/OfflineFarmers";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
 import NotFound from "./pages/NotFound";
+import Install from "./pages/Install";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const AppContent = () => {
     <Routes>
             <Route path="/" element={<Navigate to="/admin" replace />} />
             <Route path="/login" element={<Auth />} />
+            <Route path="/install" element={<Install />} />
             <Route path="/produk" element={<Products />} />
             <Route path="/produk/:id" element={<ProductDetail />} />
             <Route 
