@@ -22,8 +22,7 @@ export const landSchema = z.object({
   kode_lahan: z.string()
     .trim()
     .min(1, "Kode lahan harus diisi")
-    .max(20, "Kode lahan maksimal 20 karakter")
-    .regex(/^[A-Z0-9-]+$/, "Kode lahan hanya boleh berisi huruf besar, angka, dan tanda strip"),
+    .max(50, "Kode lahan maksimal 50 karakter"),
   keterangan: z.string()
     .trim()
     .max(500, "Keterangan maksimal 500 karakter")
