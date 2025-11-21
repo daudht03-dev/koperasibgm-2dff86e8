@@ -10,6 +10,12 @@ const SplashScreen = ({ onFinish, duration = 2000 }: SplashScreenProps) => {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
+    // Trigger haptic feedback on mount
+    triggerHapticFeedback();
+    
+    // Play welcome sound (optional - will only work if user has interacted)
+    playWelcomeSound();
+
     const timer = setTimeout(() => {
       setIsVisible(false);
       setTimeout(onFinish, 300); // Wait for fade-out animation
@@ -17,6 +23,69 @@ const SplashScreen = ({ onFinish, duration = 2000 }: SplashScreenProps) => {
 
     return () => clearTimeout(timer);
   }, [duration, onFinish]);
+
+  // Haptic feedback function
+  const triggerHapticFeedback = () => {
+    // Check if Vibration API is supported
+    if ('vibrate' in navigator) {
+      try {
+        // Gentle welcome pattern: short-pause-short (feels organic and welcoming)
+        // Pattern: [vibrate, pause, vibrate, pause, vibrate]
+        navigator.vibrate([50, 100, 30, 80, 50]);
+      } catch (error) {
+        console.log('Haptic feedback not supported');
+      }
+    }
+  };
+
+  // Sound effect function
+  const playWelcomeSound = () => {
+    try {
+      // Create a subtle, organic sound using Web Audio API
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Create oscillator for a pleasant "organic" tone
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Natural, warm frequency (A note - 440Hz)
+      oscillator.frequency.value = 440;
+      oscillator.type = 'sine'; // Smooth, organic sound
+      
+      // Gentle fade in and out
+      const now = audioContext.currentTime;
+      gainNode.gain.setValueAtTime(0, now);
+      gainNode.gain.linearRampToValueAtTime(0.08, now + 0.05); // Fade in
+      gainNode.gain.linearRampToValueAtTime(0, now + 0.3); // Fade out
+      
+      oscillator.start(now);
+      oscillator.stop(now + 0.3);
+      
+      // Add a second harmonic for richness
+      const oscillator2 = audioContext.createOscillator();
+      const gainNode2 = audioContext.createGain();
+      
+      oscillator2.connect(gainNode2);
+      gainNode2.connect(audioContext.destination);
+      
+      oscillator2.frequency.value = 880; // One octave higher
+      oscillator2.type = 'sine';
+      
+      gainNode2.gain.setValueAtTime(0, now);
+      gainNode2.gain.linearRampToValueAtTime(0.04, now + 0.05);
+      gainNode2.gain.linearRampToValueAtTime(0, now + 0.25);
+      
+      oscillator2.start(now + 0.05);
+      oscillator2.stop(now + 0.35);
+      
+    } catch (error) {
+      // Audio API not supported or failed - gracefully ignore
+      console.log('Audio playback not available');
+    }
+  };
 
   if (!isVisible) return null;
 

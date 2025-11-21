@@ -117,6 +117,10 @@ const Install = () => {
                           <CheckCircle className="h-4 w-4 text-organic-green mt-0.5 flex-shrink-0" />
                           <span>Loading lebih cepat</span>
                         </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="h-4 w-4 text-organic-green mt-0.5 flex-shrink-0" />
+                          <span>Splash screen dengan haptic feedback</span>
+                        </li>
                       </ul>
                     </div>
                     
