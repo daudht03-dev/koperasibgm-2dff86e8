@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Leaf, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { useNavigate, Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
@@ -17,6 +18,7 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
 
   const { signIn, signUp } = useAuth();
+  const { profile } = useCompanyProfile();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -95,7 +97,7 @@ const Auth = () => {
               </CardTitle>
               <CardDescription className="text-muted-foreground">
                 {isLogin 
-                  ? "Masuk ke dashboard admin Berkah Gendis Official" 
+                  ? `Masuk ke dashboard admin ${profile?.nama_perusahaan || "Berkah Gendis Mandiri"}` 
                   : "Buat akun admin baru"
                 }
               </CardDescription>
@@ -186,7 +188,7 @@ const Auth = () => {
         </Card>
 
         <div className="mt-6 text-center text-sm text-muted-foreground">
-          <p>© 2024 Berkah Gendis Official</p>
+          <p>© {new Date().getFullYear()} {profile?.nama_perusahaan || "Berkah Gendis Mandiri"}</p>
         </div>
       </div>
     </div>

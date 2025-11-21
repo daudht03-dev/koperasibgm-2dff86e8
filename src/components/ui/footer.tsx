@@ -27,11 +27,11 @@ const Footer = () => {
                 </div>
               )}
               <span className="text-xl font-bold">
-                {loading ? "Loading..." : (profile?.nama_perusahaan || "Berkah Gendis Official")}
+                {loading ? "Loading..." : (profile?.nama_perusahaan || "Berkah Gendis Mandiri")}
               </span>
             </div>
             <p className="text-primary-foreground/80 mb-4">
-              {loading ? "Memuat..." : (profile?.deskripsi || "Produsen gula kelapa organik berkualitas tinggi yang bekerja sama langsung dengan petani lokal. Menghadirkan produk alami dan sehat untuk keluarga Indonesia.")}
+              {loading ? "Memuat..." : (profile?.deskripsi || "Produsen gula kelapa organik berkualitas tinggi yang bekerja sama langsung dengan petani lokal")}
             </p>
             <div className="space-y-2">
               {profile?.kontak && (
@@ -83,7 +83,7 @@ const Footer = () => {
 
         <div className="border-t border-primary-foreground/20 mt-8 pt-8 text-center">
           <p className="text-primary-foreground/60">
-            © {new Date().getFullYear()} {profile?.nama_perusahaan || "Berkah Gendis Official"}. Semua hak dilindungi.
+            © {new Date().getFullYear()} {profile?.nama_perusahaan || "Berkah Gendis Mandiri"}. Semua hak dilindungi.
           </p>
         </div>
       </div>
