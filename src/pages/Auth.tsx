@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,10 +19,17 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, user, isAdmin } = useAuth();
   const { profile } = useCompanyProfile();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Auto-redirect if already logged in as admin
+  useEffect(() => {
+    if (user && isAdmin) {
+      navigate("/admin");
+    }
+  }, [user, isAdmin, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +69,7 @@ const Auth = () => {
             title: "Login Berhasil",
             description: "Selamat datang di dashboard admin!",
           });
-          navigate("/admin");
+          // Redirect akan ditangani oleh useEffect setelah isAdmin di-set
         }
       } else {
         const { error } = await signUp(result.data.email, result.data.password, result.data.fullName || "");
