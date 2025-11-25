@@ -253,6 +253,7 @@ export type Database = {
           qr_logo_size: number | null
           qr_logo_url: string | null
           qr_size: number | null
+          template_settings: Json | null
           updated_at: string
         }
         Insert: {
@@ -272,6 +273,7 @@ export type Database = {
           qr_logo_size?: number | null
           qr_logo_url?: string | null
           qr_size?: number | null
+          template_settings?: Json | null
           updated_at?: string
         }
         Update: {
@@ -291,6 +293,7 @@ export type Database = {
           qr_logo_size?: number | null
           qr_logo_url?: string | null
           qr_size?: number | null
+          template_settings?: Json | null
           updated_at?: string
         }
         Relationships: []
