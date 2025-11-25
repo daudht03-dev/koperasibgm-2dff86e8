@@ -10,6 +10,7 @@ interface PackagingLabelProps {
   sniCertified: boolean;
   isOrganic: boolean;
   companyName?: string;
+  weight?: number;
   customColors?: {
     primary: string;
     backgroundStart: string;
@@ -32,6 +33,7 @@ export const PackagingLabel = ({
   sniCertified,
   isOrganic,
   companyName = "Berkah Gendis Mandiri",
+  weight,
   customColors,
   customFont = "Playfair Display",
   customLogo,
@@ -100,28 +102,54 @@ export const PackagingLabel = ({
       }}
     >
       {/* Company Logo & Name Header */}
-      <div className="text-center mb-6">
+      <div className="text-center mb-4">
         {customLogo && (
-          <div className="flex justify-center mb-3">
-            <img src={customLogo} alt="Company Logo" className="h-16 w-auto object-contain" />
+          <div className="flex justify-center mb-2">
+            <img src={customLogo} alt="Company Logo" className="h-12 w-auto object-contain" />
           </div>
         )}
         <h1 
-          className="text-3xl font-bold tracking-wide"
+          className="text-2xl font-bold tracking-wide"
           style={{ color: `hsl(${primaryColor})` }}
         >
           {companyName}
         </h1>
         <div 
-          className="h-1 mt-2 mx-auto w-3/4"
+          className="h-0.5 mt-1 mx-auto w-2/3"
           style={{ backgroundColor: `hsl(${primaryColor})` }}
         ></div>
+      </div>
+
+      {/* Weight Field */}
+      <div className="mb-4">
+        <div className="flex items-center justify-center gap-2">
+          <span 
+            className="text-lg font-semibold"
+            style={{ color: `hsl(${primaryColor})` }}
+          >
+            Berat :
+          </span>
+          <div className="flex items-center gap-1">
+            <div 
+              className="border-b-2 w-16 text-center font-semibold"
+              style={{ borderColor: `hsl(${primaryColor})`, color: `hsl(${primaryColor})` }}
+            >
+              {weight || '___'}
+            </div>
+            <span 
+              className="text-lg font-semibold"
+              style={{ color: `hsl(${primaryColor})` }}
+            >
+              Kg
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Farmer Name */}
       <div className="mb-4">
         <p 
-          className="text-2xl font-semibold text-center"
+          className="text-xl font-semibold text-center"
           style={{ color: `hsl(${primaryColor})` }}
         >
           {farmerName}
@@ -130,35 +158,35 @@ export const PackagingLabel = ({
 
       {/* Certifications */}
       <div 
-        className="mb-6 bg-white/50 rounded-lg p-4"
+        className="mb-4 bg-white/50 rounded-lg p-3"
         style={{ 
           borderWidth: '2px',
           borderColor: `hsl(${primaryColor})`,
         }}
       >
-        <div className="grid grid-cols-3 gap-3">
-          <div className="flex flex-col items-center gap-2">
-            <Checkbox checked={euCertified} disabled className="scale-125" />
+        <div className="flex justify-center items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <Checkbox checked={euCertified} disabled className="scale-110" />
             <span 
-              className="text-xs font-medium text-center"
+              className="text-xs font-medium"
               style={{ color: `hsl(${primaryColor})` }}
             >
               EU
             </span>
           </div>
-          <div className="flex flex-col items-center gap-2">
-            <Checkbox checked={corNopCertified} disabled className="scale-125" />
+          <div className="flex items-center gap-1.5">
+            <Checkbox checked={corNopCertified} disabled className="scale-110" />
             <span 
-              className="text-xs font-medium text-center"
+              className="text-xs font-medium"
               style={{ color: `hsl(${primaryColor})` }}
             >
-              COR-NOP<br/>Equivalent
+              COR-NOP Equivalent
             </span>
           </div>
-          <div className="flex flex-col items-center gap-2">
-            <Checkbox checked={sniCertified} disabled className="scale-125" />
+          <div className="flex items-center gap-1.5">
+            <Checkbox checked={sniCertified} disabled className="scale-110" />
             <span 
-              className="text-xs font-medium text-center"
+              className="text-xs font-medium"
               style={{ color: `hsl(${primaryColor})` }}
             >
               SNI
@@ -168,9 +196,9 @@ export const PackagingLabel = ({
       </div>
 
       {/* QR Code */}
-      <div className="flex flex-col items-center mb-6">
+      <div className="flex flex-col items-center mb-4">
         <div 
-          className="bg-white p-3 rounded-lg shadow-md"
+          className="bg-white p-2 rounded-lg shadow-md"
           style={{ 
             borderWidth: '2px',
             borderColor: `hsl(${primaryColor})`,
@@ -182,7 +210,7 @@ export const PackagingLabel = ({
           />
         </div>
         <p 
-          className="text-sm mt-2 text-center font-medium"
+          className="text-xs mt-2 text-center font-medium"
           style={{ color: `hsl(${primaryColor})` }}
         >
           Scan untuk melihat detail profil
@@ -192,7 +220,7 @@ export const PackagingLabel = ({
       {/* Organic/Conventional Badge */}
       <div className="mt-auto">
         <div 
-          className={`text-center py-3 rounded-lg font-bold text-xl tracking-widest ${
+          className={`text-center py-2 rounded-lg font-bold text-lg tracking-widest ${
             isOrganic 
               ? 'bg-green-700 text-white' 
               : 'bg-amber-700 text-white'
