@@ -269,18 +269,21 @@ export type Database = {
     Views: {
       petani_public: {
         Row: {
+          alamat: string | null
           created_at: string | null
           id: string | null
           kode_petani: string | null
           nama: string | null
         }
         Insert: {
+          alamat?: string | null
           created_at?: string | null
           id?: string | null
           kode_petani?: string | null
           nama?: string | null
         }
         Update: {
+          alamat?: string | null
           created_at?: string | null
           id?: string | null
           kode_petani?: string | null
