@@ -20,6 +20,7 @@ interface TemplateSettings {
   logo_size: "small" | "medium" | "large";
   qr_position: "center" | "left" | "right";
   certification_layout: "horizontal" | "vertical" | "grid";
+  orientation: "vertical" | "horizontal";
 }
 
 const DEFAULT_SETTINGS: TemplateSettings = {
@@ -33,6 +34,7 @@ const DEFAULT_SETTINGS: TemplateSettings = {
   logo_size: "medium",
   qr_position: "center",
   certification_layout: "horizontal",
+  orientation: "vertical",
 };
 
 export const TemplateEditor = () => {
@@ -162,6 +164,22 @@ export const TemplateEditor = () => {
           <div className="space-y-4 pt-4 border-t">
             <h3 className="text-sm font-semibold">Pengaturan Layout</h3>
 
+            <div className="space-y-2">
+              <Label>Orientasi Label</Label>
+              <Select
+                value={settings.orientation}
+                onValueChange={(value) => updateSetting("orientation", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="vertical">Vertikal</SelectItem>
+                  <SelectItem value="horizontal">Horizontal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {settings.show_logo && (
               <div className="space-y-2">
                 <Label>Ukuran Logo</Label>
@@ -238,7 +256,7 @@ export const TemplateEditor = () => {
             Preview real-time dari pengaturan template Anda
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex justify-center">
+        <CardContent className={`flex justify-center ${settings.orientation === 'horizontal' ? 'overflow-x-auto' : ''}`}>
           <PackagingLabel
             farmerName="Contoh Petani"
             farmerId="preview"

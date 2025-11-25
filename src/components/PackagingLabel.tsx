@@ -13,6 +13,7 @@ interface TemplateSettings {
   logo_size?: "small" | "medium" | "large";
   qr_position?: "center" | "left" | "right";
   certification_layout?: "horizontal" | "vertical" | "grid";
+  orientation?: "vertical" | "horizontal";
 }
 
 interface PackagingLabelProps {
@@ -113,6 +114,7 @@ export const PackagingLabel = ({
     logo_size: "medium",
     qr_position: "center",
     certification_layout: "horizontal",
+    orientation: "vertical",
     ...templateSettings,
   };
 
@@ -139,165 +141,265 @@ export const PackagingLabel = ({
 
   // Template A - Klasik
   if (template === "template_a") {
+    const isHorizontal = settings.orientation === "horizontal";
+    
     return (
       <div 
-        className={`rounded-lg p-6 ${
-          showForPrint ? 'w-[400px] h-[600px]' : 'w-full max-w-md'
-        } flex flex-col justify-between shadow-xl`}
+        className={`relative ${
+          showForPrint 
+            ? 'w-full h-full' 
+            : isHorizontal 
+              ? 'w-[700px] h-[350px]' 
+              : 'w-full max-w-md'
+        } flex ${isHorizontal ? 'flex-row' : 'flex-col justify-between'} border-2`}
         style={{ 
           pageBreakAfter: 'always',
-          background: `linear-gradient(to bottom right, hsl(${bgStart}), hsl(${bgEnd}))`,
-          borderWidth: '4px',
           borderColor: `hsl(${primaryColor})`,
+          background: `linear-gradient(135deg, hsl(${bgStart}), hsl(${bgEnd}))`,
           fontFamily: customFont,
         }}
       >
-        {/* Company Logo & Name Header */}
-        {(settings.show_logo || settings.show_company_name) && (
-          <div className="text-center mb-4">
-            {settings.show_logo && customLogo && (
-              <div className="flex justify-center mb-2">
-                <img 
-                  src={customLogo} 
-                  alt="Company Logo" 
-                  className={`${logoSizeMap[settings.logo_size!]} w-auto object-contain`} 
-                />
-              </div>
-            )}
-            {settings.show_company_name && (
-              <>
-                <h1 
-                  className="text-2xl font-bold tracking-wide"
-                  style={{ color: `hsl(${primaryColor})` }}
-                >
-                  {companyName}
-                </h1>
-                <div 
-                  className="h-0.5 mt-1 mx-auto w-2/3"
-                  style={{ backgroundColor: `hsl(${primaryColor})` }}
-                ></div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Weight Field */}
-        {settings.show_weight && (
-          <div className="mb-4">
-            <div className="flex items-center justify-center gap-2">
-              <span 
-                className="text-lg font-semibold"
-                style={{ color: `hsl(${primaryColor})` }}
-              >
-                Berat :
-              </span>
-              <div className="flex items-center gap-1">
-                <div 
-                  className="border-b-2 w-16 text-center font-semibold"
-                  style={{ borderColor: `hsl(${primaryColor})`, color: `hsl(${primaryColor})` }}
-                >
-                  {weight || '___'}
+        {isHorizontal ? (
+          <>
+            {/* Left Section - Weight & Farmer */}
+            <div className="w-1/3 border-r-2 flex flex-col" style={{ borderColor: `hsl(${primaryColor})` }}>
+              {/* Logo and Company Name */}
+              {(settings.show_logo || settings.show_company_name) && (
+                <div className="px-4 py-3 flex items-center gap-3 border-b-2" style={{ borderColor: `hsl(${primaryColor})` }}>
+                  {settings.show_logo && customLogo && (
+                    <img 
+                      src={customLogo} 
+                      alt="Logo" 
+                      className={`object-contain ${logoSizeMap[settings.logo_size!]}`}
+                    />
+                  )}
+                  {settings.show_company_name && (
+                    <h2 className="font-bold text-base" style={{ color: `hsl(${primaryColor})` }}>
+                      {companyName}
+                    </h2>
+                  )}
                 </div>
-                <span 
-                  className="text-lg font-semibold"
+              )}
+
+              {/* Weight - Large Space */}
+              {settings.show_weight && (
+                <div className="flex-1 px-4 py-4 flex flex-col justify-center">
+                  <p className="text-lg font-bold mb-3" style={{ color: `hsl(${primaryColor})` }}>Berat :</p>
+                  <div className="flex items-end gap-2 mb-8">
+                    <div className="flex-1 border-b-2 h-12" style={{ borderColor: `hsl(${primaryColor})` }}></div>
+                    <span className="text-base font-medium" style={{ color: `hsl(${primaryColor})` }}>Kg</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Farmer Name */}
+              {settings.show_farmer_name && (
+                <div className="px-4 pb-4">
+                  <p className="font-bold text-sm" style={{ color: `hsl(${primaryColor})` }}>
+                    {farmerName}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Middle Section - Certifications */}
+            <div className="flex-1 flex items-center justify-center px-4">
+              {settings.show_certifications && (
+                <div className="flex flex-col gap-3">
+                  {euCertified && (
+                    <div className="flex items-center justify-center px-4 py-2 border-2 rounded" style={{ borderColor: `hsl(${primaryColor})` }}>
+                      <span className="text-sm font-bold" style={{ color: `hsl(${primaryColor})` }}>EU</span>
+                    </div>
+                  )}
+                  {corNopCertified && (
+                    <div className="flex items-center justify-center px-4 py-2 border-2 rounded" style={{ borderColor: `hsl(${primaryColor})` }}>
+                      <span className="text-xs font-bold" style={{ color: `hsl(${primaryColor})` }}>COR-NOP Equivalent</span>
+                    </div>
+                  )}
+                  {sniCertified && (
+                    <div className="flex items-center justify-center px-4 py-2 border-2 rounded" style={{ borderColor: `hsl(${primaryColor})` }}>
+                      <span className="text-sm font-bold" style={{ color: `hsl(${primaryColor})` }}>SNI</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Right Section - QR & Status */}
+            <div className="w-1/3 border-l-2 flex flex-col items-center justify-center px-4 py-4 relative" style={{ borderColor: `hsl(${primaryColor})` }}>
+              {settings.show_qr && (
+                <div className="text-center">
+                  <canvas ref={qrCodeRef} className="mx-auto" />
+                  <p className="text-[10px] mt-2" style={{ color: `hsl(${primaryColor})` }}>Scan untuk melihat detail profil</p>
+                </div>
+              )}
+
+              {/* Badge Organik/Konvensional */}
+              {settings.show_status_badge && (
+                <div 
+                  className="absolute bottom-4 right-4 px-3 py-1 rounded-full shadow-lg"
+                  style={{ 
+                    backgroundColor: isOrganic ? '#22c55e' : '#f59e0b',
+                    color: 'white'
+                  }}
+                >
+                  <span className="font-bold text-xs">
+                    {isOrganic ? 'ORGANIK' : 'KONVENSIONAL'}
+                  </span>
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="rounded-lg p-6 flex flex-col justify-between">
+            {/* Company Logo & Name Header */}
+            {(settings.show_logo || settings.show_company_name) && (
+              <div className="text-center mb-4">
+                {settings.show_logo && customLogo && (
+                  <div className="flex justify-center mb-2">
+                    <img 
+                      src={customLogo} 
+                      alt="Company Logo" 
+                      className={`${logoSizeMap[settings.logo_size!]} w-auto object-contain`} 
+                    />
+                  </div>
+                )}
+                {settings.show_company_name && (
+                  <>
+                    <h1 
+                      className="text-2xl font-bold tracking-wide"
+                      style={{ color: `hsl(${primaryColor})` }}
+                    >
+                      {companyName}
+                    </h1>
+                    <div 
+                      className="h-0.5 mt-1 mx-auto w-2/3"
+                      style={{ backgroundColor: `hsl(${primaryColor})` }}
+                    ></div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Weight Field */}
+            {settings.show_weight && (
+              <div className="mb-4">
+                <div className="flex items-center justify-center gap-2">
+                  <span 
+                    className="text-lg font-semibold"
+                    style={{ color: `hsl(${primaryColor})` }}
+                  >
+                    Berat :
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <div 
+                      className="border-b-2 w-16 text-center font-semibold"
+                      style={{ borderColor: `hsl(${primaryColor})`, color: `hsl(${primaryColor})` }}
+                    >
+                      {weight || '___'}
+                    </div>
+                    <span 
+                      className="text-lg font-semibold"
+                      style={{ color: `hsl(${primaryColor})` }}
+                    >
+                      Kg
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Farmer Name */}
+            {settings.show_farmer_name && (
+              <div className="mb-4">
+                <p 
+                  className="text-xl font-semibold text-center"
                   style={{ color: `hsl(${primaryColor})` }}
                 >
-                  Kg
-                </span>
+                  {farmerName}
+                </p>
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* Farmer Name */}
-        {settings.show_farmer_name && (
-          <div className="mb-4">
-            <p 
-              className="text-xl font-semibold text-center"
-              style={{ color: `hsl(${primaryColor})` }}
-            >
-              {farmerName}
-            </p>
-          </div>
-        )}
+            {/* Certifications */}
+            {settings.show_certifications && (
+              <div 
+                className="mb-4 bg-white/50 rounded-lg p-3"
+                style={{ 
+                  borderWidth: '2px',
+                  borderColor: `hsl(${primaryColor})`,
+                }}
+              >
+                <div className={certLayoutMap[settings.certification_layout!]}>
+                  <div className="flex items-center gap-1.5">
+                    <Checkbox checked={euCertified} disabled className="scale-110" />
+                    <span 
+                      className="text-xs font-medium"
+                      style={{ color: `hsl(${primaryColor})` }}
+                    >
+                      EU
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Checkbox checked={corNopCertified} disabled className="scale-110" />
+                    <span 
+                      className="text-xs font-medium"
+                      style={{ color: `hsl(${primaryColor})` }}
+                    >
+                      COR-NOP Equivalent
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Checkbox checked={sniCertified} disabled className="scale-110" />
+                    <span 
+                      className="text-xs font-medium"
+                      style={{ color: `hsl(${primaryColor})` }}
+                    >
+                      SNI
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
 
-        {/* Certifications */}
-        {settings.show_certifications && (
-          <div 
-            className="mb-4 bg-white/50 rounded-lg p-3"
-            style={{ 
-              borderWidth: '2px',
-              borderColor: `hsl(${primaryColor})`,
-            }}
-          >
-            <div className={certLayoutMap[settings.certification_layout!]}>
-              <div className="flex items-center gap-1.5">
-                <Checkbox checked={euCertified} disabled className="scale-110" />
-                <span 
-                  className="text-xs font-medium"
+            {/* QR Code */}
+            {settings.show_qr && (
+              <div className={`flex flex-col ${qrAlignmentMap[settings.qr_position!]} mb-4`}>
+                <div 
+                  className="bg-white p-2 rounded-lg shadow-md"
+                  style={{ 
+                    borderWidth: '2px',
+                    borderColor: `hsl(${primaryColor})`,
+                  }}
+                >
+                  <canvas
+                    ref={qrCodeRef}
+                    className="max-w-full h-auto"
+                  />
+                </div>
+                <p 
+                  className="text-xs mt-2 text-center font-medium"
                   style={{ color: `hsl(${primaryColor})` }}
                 >
-                  EU
-                </span>
+                  Scan untuk melihat detail profil
+                </p>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Checkbox checked={corNopCertified} disabled className="scale-110" />
-                <span 
-                  className="text-xs font-medium"
-                  style={{ color: `hsl(${primaryColor})` }}
-                >
-                  COR-NOP Equivalent
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Checkbox checked={sniCertified} disabled className="scale-110" />
-                <span 
-                  className="text-xs font-medium"
-                  style={{ color: `hsl(${primaryColor})` }}
-                >
-                  SNI
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* QR Code */}
-        {settings.show_qr && (
-          <div className={`flex flex-col ${qrAlignmentMap[settings.qr_position!]} mb-4`}>
-            <div 
-              className="bg-white p-2 rounded-lg shadow-md"
-              style={{ 
-                borderWidth: '2px',
-                borderColor: `hsl(${primaryColor})`,
-              }}
-            >
-              <canvas
-                ref={qrCodeRef}
-                className="max-w-full h-auto"
-              />
-            </div>
-            <p 
-              className="text-xs mt-2 text-center font-medium"
-              style={{ color: `hsl(${primaryColor})` }}
-            >
-              Scan untuk melihat detail profil
-            </p>
-          </div>
-        )}
-
-        {/* Organic/Conventional Badge */}
-        {settings.show_status_badge && (
-          <div className="mt-auto">
-            <div 
-              className={`text-center py-2 rounded-lg font-bold text-lg tracking-widest ${
-                isOrganic 
-                  ? 'bg-green-700 text-white' 
-                  : 'bg-amber-700 text-white'
-              }`}
-            >
-              {isOrganic ? 'ORGANIK' : 'KONVENSIONAL'}
-            </div>
+            {/* Organic/Conventional Badge */}
+            {settings.show_status_badge && (
+              <div className="mt-auto">
+                <div 
+                  className={`text-center py-2 rounded-lg font-bold text-lg tracking-widest ${
+                    isOrganic 
+                      ? 'bg-green-700 text-white' 
+                      : 'bg-amber-700 text-white'
+                  }`}
+                >
+                  {isOrganic ? 'ORGANIK' : 'KONVENSIONAL'}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
