@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
-import { Palette, Type, Upload, QrCode } from "lucide-react";
+import { Palette, Type, Upload, QrCode, ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { PackagingLabel } from "./PackagingLabel";
+import { TemplateBuilder } from "./TemplateBuilder";
 import { supabase } from "@/integrations/supabase/client";
 
 const FONT_OPTIONS = [
@@ -27,6 +29,7 @@ const ERROR_CORRECTION_OPTIONS = [
 ];
 
 export const LabelCustomization = () => {
+  const navigate = useNavigate();
   const { profile, updateProfile, uploadLogo } = useCompanyProfile();
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>("");
@@ -211,6 +214,19 @@ export const LabelCustomization = () => {
 
   return (
     <div className="space-y-6">
+      {/* Back Button */}
+      <Button
+        variant="ghost"
+        onClick={() => navigate(-1)}
+        className="mb-4"
+      >
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Kembali
+      </Button>
+
+      {/* Template Builder */}
+      <TemplateBuilder />
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
