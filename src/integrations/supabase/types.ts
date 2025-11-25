@@ -246,12 +246,14 @@ export type Database = {
           label_background_start: string | null
           label_font_family: string | null
           label_primary_color: string | null
+          label_template: string | null
           logo_url: string | null
           nama_perusahaan: string
           qr_error_correction: string | null
           qr_logo_size: number | null
           qr_logo_url: string | null
           qr_size: number | null
+          template_settings: Json | null
           updated_at: string
         }
         Insert: {
@@ -264,12 +266,14 @@ export type Database = {
           label_background_start?: string | null
           label_font_family?: string | null
           label_primary_color?: string | null
+          label_template?: string | null
           logo_url?: string | null
           nama_perusahaan: string
           qr_error_correction?: string | null
           qr_logo_size?: number | null
           qr_logo_url?: string | null
           qr_size?: number | null
+          template_settings?: Json | null
           updated_at?: string
         }
         Update: {
@@ -282,12 +286,14 @@ export type Database = {
           label_background_start?: string | null
           label_font_family?: string | null
           label_primary_color?: string | null
+          label_template?: string | null
           logo_url?: string | null
           nama_perusahaan?: string
           qr_error_correction?: string | null
           qr_logo_size?: number | null
           qr_logo_url?: string | null
           qr_size?: number | null
+          template_settings?: Json | null
           updated_at?: string
         }
         Relationships: []
