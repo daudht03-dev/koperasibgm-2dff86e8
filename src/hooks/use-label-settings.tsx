@@ -9,7 +9,6 @@ export interface LabelSettings {
   cor_nop_certified: boolean;
   sni_certified: boolean;
   is_organic: boolean;
-  berat_kg: number;
   created_at: string;
   updated_at: string;
 }
@@ -75,7 +74,6 @@ export const useLabelSettings = () => {
             cor_nop_certified: settings.cor_nop_certified ?? false,
             sni_certified: settings.sni_certified ?? false,
             is_organic: settings.is_organic ?? true,
-            berat_kg: settings.berat_kg ?? 1,
           },
           { onConflict: "petani_id" }
         )

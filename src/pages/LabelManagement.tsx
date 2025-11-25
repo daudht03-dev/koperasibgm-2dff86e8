@@ -1,9 +1,9 @@
 import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PackagingLabel } from "@/components/PackagingLabel";
@@ -31,7 +31,6 @@ export const LabelManagement = () => {
     cor_nop_certified: false,
     sni_certified: false,
     is_organic: true,
-    berat_kg: 1,
   });
 
   const [bulkSettings, setBulkSettings] = useState<Partial<LabelSettings>>({
@@ -39,7 +38,6 @@ export const LabelManagement = () => {
     cor_nop_certified: false,
     sni_certified: false,
     is_organic: true,
-    berat_kg: 1,
   });
 
   const handleOpenSettings = async (farmerId: string) => {
@@ -55,7 +53,6 @@ export const LabelManagement = () => {
         cor_nop_certified: false,
         sni_certified: false,
         is_organic: true,
-        berat_kg: 1,
       });
     }
     setSettingsDialogOpen(true);
@@ -85,7 +82,6 @@ export const LabelManagement = () => {
         cor_nop_certified: false,
         sni_certified: false,
         is_organic: true,
-        berat_kg: 1,
       });
     }
     setPreviewDialogOpen(true);
@@ -214,7 +210,6 @@ export const LabelManagement = () => {
                           <PackagingLabel
                             farmerName={farmer.nama}
                             farmerId={farmer.id}
-                            weight={settings?.berat_kg || 1}
                             euCertified={settings?.eu_certified || false}
                             corNopCertified={settings?.cor_nop_certified || false}
                             sniCertified={settings?.sni_certified || false}
@@ -308,15 +303,23 @@ export const LabelManagement = () => {
             <DialogTitle>Pengaturan Label - {selectedFarmer?.nama}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="weight">Berat (Kg)</Label>
-              <Input
-                id="weight"
-                type="number"
-                step="0.1"
-                value={currentSettings.berat_kg || 1}
-                onChange={(e) => setCurrentSettings({ ...currentSettings, berat_kg: parseFloat(e.target.value) })}
-              />
+            <div className="space-y-3">
+              <Label>Status Produk</Label>
+              <RadioGroup
+                value={currentSettings.is_organic ? "organic" : "conventional"}
+                onValueChange={(value) => 
+                  setCurrentSettings({ ...currentSettings, is_organic: value === "organic" })
+                }
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="organic" id="organic" />
+                  <label htmlFor="organic" className="text-sm font-medium cursor-pointer">Organik</label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="conventional" id="conventional" />
+                  <label htmlFor="conventional" className="text-sm font-medium cursor-pointer">Konvensional</label>
+                </div>
+              </RadioGroup>
             </div>
 
             <div className="space-y-3">
@@ -353,20 +356,6 @@ export const LabelManagement = () => {
               </div>
             </div>
 
-            <div className="space-y-3">
-              <Label>Status Produk</Label>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="organic"
-                  checked={currentSettings.is_organic}
-                  onCheckedChange={(checked) => 
-                    setCurrentSettings({ ...currentSettings, is_organic: checked as boolean })
-                  }
-                />
-                <label htmlFor="organic" className="text-sm font-medium">Organik</label>
-              </div>
-            </div>
-
             <Button onClick={handleSaveSettings} className="w-full">
               Simpan Pengaturan
             </Button>
@@ -381,15 +370,23 @@ export const LabelManagement = () => {
             <DialogTitle>Edit Massal - {selectedFarmerIds.length} Petani</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="bulk-weight">Berat (Kg)</Label>
-              <Input
-                id="bulk-weight"
-                type="number"
-                step="0.1"
-                value={bulkSettings.berat_kg || 1}
-                onChange={(e) => setBulkSettings({ ...bulkSettings, berat_kg: parseFloat(e.target.value) })}
-              />
+            <div className="space-y-3">
+              <Label>Status Produk</Label>
+              <RadioGroup
+                value={bulkSettings.is_organic ? "organic" : "conventional"}
+                onValueChange={(value) => 
+                  setBulkSettings({ ...bulkSettings, is_organic: value === "organic" })
+                }
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="organic" id="bulk-organic" />
+                  <label htmlFor="bulk-organic" className="text-sm font-medium cursor-pointer">Organik</label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="conventional" id="bulk-conventional" />
+                  <label htmlFor="bulk-conventional" className="text-sm font-medium cursor-pointer">Konvensional</label>
+                </div>
+              </RadioGroup>
             </div>
 
             <div className="space-y-3">
@@ -426,20 +423,6 @@ export const LabelManagement = () => {
               </div>
             </div>
 
-            <div className="space-y-3">
-              <Label>Status Produk</Label>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="bulk-organic"
-                  checked={bulkSettings.is_organic}
-                  onCheckedChange={(checked) => 
-                    setBulkSettings({ ...bulkSettings, is_organic: checked as boolean })
-                  }
-                />
-                <label htmlFor="bulk-organic" className="text-sm font-medium">Organik</label>
-              </div>
-            </div>
-
             <Button onClick={handleSaveBulkSettings} className="w-full">
               Simpan untuk {selectedFarmerIds.length} Petani
             </Button>
@@ -459,7 +442,6 @@ export const LabelManagement = () => {
                 <PackagingLabel
                   farmerName={selectedFarmer.nama}
                   farmerId={selectedFarmer.id}
-                  weight={currentSettings.berat_kg || 1}
                   euCertified={currentSettings.eu_certified || false}
                   corNopCertified={currentSettings.cor_nop_certified || false}
                   sniCertified={currentSettings.sni_certified || false}
