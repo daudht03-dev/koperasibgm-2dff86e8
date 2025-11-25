@@ -17,6 +17,10 @@ interface PackagingLabelProps {
   };
   customFont?: string;
   customLogo?: string;
+  qrSize?: number;
+  qrErrorCorrection?: 'L' | 'M' | 'Q' | 'H';
+  qrLogo?: string;
+  qrLogoSize?: number;
   showForPrint?: boolean;
 }
 
@@ -31,23 +35,52 @@ export const PackagingLabel = ({
   customColors,
   customFont = "Playfair Display",
   customLogo,
+  qrSize = 200,
+  qrErrorCorrection = 'M',
+  qrLogo,
+  qrLogoSize = 50,
   showForPrint = false,
 }: PackagingLabelProps) => {
-  const qrCodeRef = useRef<HTMLImageElement>(null);
+  const qrCodeRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const generateQRCode = async () => {
       if (qrCodeRef.current) {
         const profileUrl = `${window.location.origin}/profil-petani/${farmerId}`;
-        const qrCodeDataUrl = await QRCode.toDataURL(profileUrl, {
-          width: 200,
+        
+        // Generate QR code on canvas
+        const canvas = qrCodeRef.current;
+        await QRCode.toCanvas(canvas, profileUrl, {
+          width: qrSize,
           margin: 1,
+          errorCorrectionLevel: qrErrorCorrection,
         });
-        qrCodeRef.current.src = qrCodeDataUrl;
+
+        // If logo is provided, overlay it on the QR code
+        if (qrLogo) {
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              const logoSize = qrLogoSize;
+              const centerX = (canvas.width - logoSize) / 2;
+              const centerY = (canvas.height - logoSize) / 2;
+              
+              // Draw white background for logo
+              ctx.fillStyle = 'white';
+              ctx.fillRect(centerX - 5, centerY - 5, logoSize + 10, logoSize + 10);
+              
+              // Draw logo
+              ctx.drawImage(img, centerX, centerY, logoSize, logoSize);
+            };
+            img.src = qrLogo;
+          }
+        }
       }
     };
     generateQRCode();
-  }, [farmerId]);
+  }, [farmerId, qrSize, qrErrorCorrection, qrLogo, qrLogoSize]);
 
   const primaryColor = customColors?.primary || "30 71% 42%";
   const bgStart = customColors?.backgroundStart || "40 100% 97%";
@@ -143,10 +176,9 @@ export const PackagingLabel = ({
             borderColor: `hsl(${primaryColor})`,
           }}
         >
-          <img
+          <canvas
             ref={qrCodeRef}
-            alt="QR Code"
-            className="w-32 h-32"
+            className="max-w-full h-auto"
           />
         </div>
         <p 

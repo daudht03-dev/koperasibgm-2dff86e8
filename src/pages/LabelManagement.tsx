@@ -221,7 +221,7 @@ export const LabelManagement = () => {
                 <div className="space-y-4">
                   <div ref={printRef} className="space-y-8 print:space-y-0">
                     {farmers.map((farmer) => {
-                       const settings = labelSettings.find(s => s.petani_id === farmer.id);
+                      const settings = labelSettings.find(s => s.petani_id === farmer.id);
                       return (
                         <div key={farmer.id} className="flex justify-center">
                           <PackagingLabel
@@ -239,6 +239,10 @@ export const LabelManagement = () => {
                             } : undefined}
                             customFont={profile?.label_font_family}
                             customLogo={profile?.logo_url}
+                            qrSize={profile?.qr_size}
+                            qrErrorCorrection={profile?.qr_error_correction as 'L' | 'M' | 'Q' | 'H'}
+                            qrLogo={profile?.qr_logo_url}
+                            qrLogoSize={profile?.qr_logo_size}
                             showForPrint={true}
                           />
                         </div>
@@ -478,6 +482,10 @@ export const LabelManagement = () => {
                   } : undefined}
                   customFont={profile?.label_font_family}
                   customLogo={profile?.logo_url}
+                  qrSize={profile?.qr_size}
+                  qrErrorCorrection={profile?.qr_error_correction as 'L' | 'M' | 'Q' | 'H'}
+                  qrLogo={profile?.qr_logo_url}
+                  qrLogoSize={profile?.qr_logo_size}
                   showForPrint={true}
                 />
               )}
@@ -515,6 +523,10 @@ export const LabelManagement = () => {
         } : undefined}
         customFont={profile?.label_font_family}
         customLogo={profile?.logo_url}
+        qrSize={profile?.qr_size}
+        qrErrorCorrection={profile?.qr_error_correction as 'L' | 'M' | 'Q' | 'H'}
+        qrLogo={profile?.qr_logo_url}
+        qrLogoSize={profile?.qr_logo_size}
       />
     </div>
   );

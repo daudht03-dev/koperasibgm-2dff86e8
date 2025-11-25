@@ -13,6 +13,10 @@ export interface CompanyProfile {
   label_background_start?: string;
   label_background_end?: string;
   label_font_family?: string;
+  qr_size?: number;
+  qr_error_correction?: string;
+  qr_logo_url?: string;
+  qr_logo_size?: number;
   created_at: string;
   updated_at: string;
 }
