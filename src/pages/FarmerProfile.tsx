@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, MapPin, TreePine, Calendar, WifiOff, Download } from "lucide-react";
+import { ArrowLeft, MapPin, TreePine, WifiOff, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOfflineFarmers } from "@/hooks/use-offline-farmers";
 import { toast } from "@/hooks/use-toast";
@@ -16,6 +16,7 @@ interface Petani {
   id: string;
   kode_petani: string;
   nama: string;
+  alamat: string;
   created_at: string;
 }
 
@@ -45,7 +46,7 @@ const FarmerProfile = () => {
     try {
       const { data, error } = await supabase
         .from("petani_public")
-        .select("id, kode_petani, nama, created_at")
+        .select("id, kode_petani, nama, alamat, created_at")
         .eq("id", petaniId)
         .single();
 
@@ -71,6 +72,7 @@ const FarmerProfile = () => {
         id: data.id,
         kode_petani: data.kode_petani,
         nama: data.nama,
+        alamat: data.alamat,
         created_at: data.created_at,
         lands: landsData || [],
         saved_at: new Date().toISOString(),
@@ -87,6 +89,7 @@ const FarmerProfile = () => {
           id: offlineFarmer.id,
           kode_petani: offlineFarmer.kode_petani,
           nama: offlineFarmer.nama,
+          alamat: offlineFarmer.alamat,
           created_at: offlineFarmer.created_at,
         });
         setLands(offlineFarmer.lands);
@@ -188,15 +191,11 @@ const FarmerProfile = () => {
                 <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2 text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      <span className="text-sm">Terdaftar Sejak</span>
+                      <MapPin className="h-4 w-4" />
+                      <span className="text-sm">Alamat</span>
                     </div>
                     <p className="text-foreground">
-                      {new Date(petani.created_at).toLocaleDateString('id-ID', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
+                      {petani.alamat}
                     </p>
                   </div>
                 </div>
