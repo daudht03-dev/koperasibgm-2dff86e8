@@ -21,6 +21,8 @@ interface TemplateSettings {
   qr_position: "center" | "left" | "right";
   certification_layout: "horizontal" | "vertical" | "grid";
   orientation: "vertical" | "horizontal";
+  element_spacing: "compact" | "normal" | "relaxed";
+  padding: "small" | "medium" | "large";
 }
 
 const DEFAULT_SETTINGS: TemplateSettings = {
@@ -35,6 +37,8 @@ const DEFAULT_SETTINGS: TemplateSettings = {
   qr_position: "center",
   certification_layout: "horizontal",
   orientation: "vertical",
+  element_spacing: "normal",
+  padding: "medium",
 };
 
 export const TemplateEditor = () => {
@@ -236,6 +240,40 @@ export const TemplateEditor = () => {
                 </Select>
               </div>
             )}
+
+            <div className="space-y-2">
+              <Label>Jarak Antar Elemen</Label>
+              <Select
+                value={settings.element_spacing}
+                onValueChange={(value) => updateSetting("element_spacing", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="compact">Padat</SelectItem>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="relaxed">Longgar</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Padding Label</Label>
+              <Select
+                value={settings.padding}
+                onValueChange={(value) => updateSetting("padding", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="small">Kecil</SelectItem>
+                  <SelectItem value="medium">Sedang</SelectItem>
+                  <SelectItem value="large">Besar</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <Button onClick={handleSaveSettings} className="w-full gap-2">

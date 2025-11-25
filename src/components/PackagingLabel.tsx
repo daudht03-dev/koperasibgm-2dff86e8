@@ -14,6 +14,8 @@ interface TemplateSettings {
   qr_position?: "center" | "left" | "right";
   certification_layout?: "horizontal" | "vertical" | "grid";
   orientation?: "vertical" | "horizontal";
+  element_spacing?: "compact" | "normal" | "relaxed";
+  padding?: "small" | "medium" | "large";
 }
 
 interface PackagingLabelProps {
@@ -115,6 +117,8 @@ export const PackagingLabel = ({
     qr_position: "center",
     certification_layout: "horizontal",
     orientation: "vertical",
+    element_spacing: "normal",
+    padding: "medium",
     ...templateSettings,
   };
 
@@ -139,6 +143,20 @@ export const PackagingLabel = ({
     grid: "grid grid-cols-2 gap-2",
   };
 
+  // Spacing classes
+  const spacingMap = {
+    compact: "gap-2",
+    normal: "gap-4",
+    relaxed: "gap-6",
+  };
+
+  // Padding classes
+  const paddingMap = {
+    small: "p-3",
+    medium: "p-4 px-6",
+    large: "p-6 px-8",
+  };
+
   // Template A - Klasik
   if (template === "template_a") {
     const isHorizontal = settings.orientation === "horizontal";
@@ -161,11 +179,11 @@ export const PackagingLabel = ({
       >
         {isHorizontal ? (
           <>
-            {/* Left Section - Logo, Company Name & Farmer */}
-            <div className="w-1/2 border-r-2 flex flex-col" style={{ borderColor: `hsl(${primaryColor})` }}>
+            {/* Left Section - Logo, Company Name, Farmer Name, QR & Certifications */}
+            <div className={`w-1/2 border-r-2 flex flex-col ${paddingMap[settings.padding!]}`} style={{ borderColor: `hsl(${primaryColor})` }}>
               {/* Logo and Company Name */}
               {(settings.show_logo || settings.show_company_name) && (
-                <div className="px-4 py-3 flex items-center gap-3 border-b-2" style={{ borderColor: `hsl(${primaryColor})` }}>
+                <div className={`flex items-center ${spacingMap[settings.element_spacing!]} pb-3 border-b-2`} style={{ borderColor: `hsl(${primaryColor})` }}>
                   {settings.show_logo && customLogo && (
                     <img 
                       src={customLogo} 
@@ -181,72 +199,68 @@ export const PackagingLabel = ({
                 </div>
               )}
 
-              {/* Farmer Name - Center */}
-              {settings.show_farmer_name && (
-                <div className="flex-1 flex items-center justify-center px-4">
-                  <p className="font-bold text-2xl text-center" style={{ color: `hsl(${primaryColor})` }}>
+              {/* Farmer Name - Above QR */}
+              <div className={`flex-1 flex flex-col ${spacingMap[settings.element_spacing!]} justify-center items-center`}>
+                {settings.show_farmer_name && (
+                  <p className="font-bold text-2xl text-center mb-2" style={{ color: `hsl(${primaryColor})` }}>
                     {farmerName}
                   </p>
-                </div>
-              )}
+                )}
+
+                {/* QR Code */}
+                {settings.show_qr && (
+                  <div className="text-center">
+                    <canvas ref={qrCodeRef} className="mx-auto" />
+                    <p className="text-[10px] mt-2" style={{ color: `hsl(${primaryColor})` }}>Scan untuk detail profil</p>
+                  </div>
+                )}
+
+                {/* Certifications - Below QR */}
+                {settings.show_certifications && (
+                  <div className="flex justify-center gap-2 mt-3">
+                    {euCertified && (
+                      <div className="flex items-center justify-center px-2 py-1 border-2 rounded" style={{ borderColor: `hsl(${primaryColor})` }}>
+                        <span className="text-xs font-bold" style={{ color: `hsl(${primaryColor})` }}>EU</span>
+                      </div>
+                    )}
+                    {corNopCertified && (
+                      <div className="flex items-center justify-center px-2 py-1 border-2 rounded" style={{ borderColor: `hsl(${primaryColor})` }}>
+                        <span className="text-[10px] font-bold" style={{ color: `hsl(${primaryColor})` }}>COR-NOP</span>
+                      </div>
+                    )}
+                    {sniCertified && (
+                      <div className="flex items-center justify-center px-2 py-1 border-2 rounded" style={{ borderColor: `hsl(${primaryColor})` }}>
+                        <span className="text-xs font-bold" style={{ color: `hsl(${primaryColor})` }}>SNI</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Right Section - Weight, QR & Certifications */}
-            <div className="w-1/2 flex flex-col px-4 py-4 relative">
-              {/* Weight - Top */}
+            {/* Right Section - Weight Only */}
+            <div className={`w-1/2 flex flex-col justify-center ${paddingMap[settings.padding!]} relative`}>
+              {/* Weight - Large Center */}
               {settings.show_weight && (
-                <div className="mb-4 pb-4 border-b-2" style={{ borderColor: `hsl(${primaryColor})` }}>
-                  <p className="text-lg font-bold mb-3" style={{ color: `hsl(${primaryColor})` }}>Berat :</p>
-                  <div className="flex items-end gap-2">
-                    <div className="flex-1 border-b-2 h-12" style={{ borderColor: `hsl(${primaryColor})` }}></div>
-                    <span className="text-base font-medium" style={{ color: `hsl(${primaryColor})` }}>Kg</span>
+                <div className="text-center">
+                  <p className="text-2xl font-bold mb-6" style={{ color: `hsl(${primaryColor})` }}>Berat</p>
+                  <div className="flex items-end justify-center gap-3 mb-4">
+                    <div className="flex-1 border-b-4 h-20 max-w-[200px]" style={{ borderColor: `hsl(${primaryColor})` }}></div>
+                    <span className="text-3xl font-bold pb-2" style={{ color: `hsl(${primaryColor})` }}>Kg</span>
                   </div>
                 </div>
               )}
 
-              {/* QR Code & Certifications */}
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  {settings.show_qr && (
-                    <div className="mb-3">
-                      <canvas ref={qrCodeRef} className="mx-auto" />
-                      <p className="text-[10px] mt-2" style={{ color: `hsl(${primaryColor})` }}>Scan untuk melihat detail profil</p>
-                    </div>
-                  )}
-
-                  {/* Certifications - Below QR */}
-                  {settings.show_certifications && (
-                    <div className="flex justify-center gap-2 mt-2">
-                      {euCertified && (
-                        <div className="flex items-center justify-center px-2 py-1 border-2 rounded" style={{ borderColor: `hsl(${primaryColor})` }}>
-                          <span className="text-xs font-bold" style={{ color: `hsl(${primaryColor})` }}>EU</span>
-                        </div>
-                      )}
-                      {corNopCertified && (
-                        <div className="flex items-center justify-center px-2 py-1 border-2 rounded" style={{ borderColor: `hsl(${primaryColor})` }}>
-                          <span className="text-[10px] font-bold" style={{ color: `hsl(${primaryColor})` }}>COR-NOP</span>
-                        </div>
-                      )}
-                      {sniCertified && (
-                        <div className="flex items-center justify-center px-2 py-1 border-2 rounded" style={{ borderColor: `hsl(${primaryColor})` }}>
-                          <span className="text-xs font-bold" style={{ color: `hsl(${primaryColor})` }}>SNI</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
               {/* Badge Organik/Konvensional */}
               {settings.show_status_badge && (
                 <div 
-                  className="absolute bottom-4 right-4 px-3 py-1 rounded-full shadow-lg"
+                  className="absolute bottom-4 right-4 px-4 py-2 rounded-full shadow-lg"
                   style={{ 
                     backgroundColor: isOrganic ? '#22c55e' : '#f59e0b',
                     color: 'white'
                   }}
                 >
-                  <span className="font-bold text-xs">
+                  <span className="font-bold text-sm">
                     {isOrganic ? 'ORGANIK' : 'KONVENSIONAL'}
                   </span>
                 </div>
@@ -430,10 +444,11 @@ export const PackagingLabel = ({
       >
         {isHorizontal ? (
           <>
-            {/* Left Section */}
-            <div className="w-1/2 flex flex-col border-r-2 pr-4" style={{ borderColor: `hsl(${primaryColor} / 0.3)` }}>
+            {/* Left Section - Logo, Company Name, Farmer Name, QR & Certifications */}
+            <div className={`w-1/2 border-r-2 flex flex-col ${paddingMap[settings.padding!]}`} style={{ borderColor: `hsl(${primaryColor} / 0.3)` }}>
+              {/* Logo and Company Name */}
               <div 
-                className="rounded-xl p-4 mb-4"
+                className={`rounded-xl ${paddingMap[settings.padding!]} ${spacingMap[settings.element_spacing!]}`}
                 style={{ 
                   background: `linear-gradient(135deg, hsl(${primaryColor}), hsl(${primaryColor} / 0.8))`,
                 }}
@@ -450,20 +465,52 @@ export const PackagingLabel = ({
                 </div>
               </div>
 
-              {settings.show_farmer_name && (
-                <div className="flex-1 flex items-center justify-center">
+              {/* Farmer Name, QR & Certifications */}
+              <div className={`flex-1 flex flex-col ${spacingMap[settings.element_spacing!]} justify-center items-center mt-4`}>
+                {settings.show_farmer_name && (
                   <span 
-                    className="text-2xl font-bold text-center"
+                    className="text-2xl font-bold text-center mb-2"
                     style={{ color: `hsl(${primaryColor})` }}
                   >
                     {farmerName}
                   </span>
-                </div>
-              )}
+                )}
+
+                {settings.show_qr && (
+                  <div className="text-center">
+                    <div className="bg-white p-3 rounded-xl shadow-md inline-block">
+                      <canvas ref={qrCodeRef} className="max-w-full h-auto" />
+                    </div>
+                    <p className="text-xs mt-2" style={{ color: `hsl(${primaryColor})` }}>
+                      Scan QR untuk info lengkap
+                    </p>
+                  </div>
+                )}
+
+                {settings.show_certifications && (
+                  <div className="flex justify-center gap-2 mt-3">
+                    {euCertified && (
+                      <div className="bg-white px-2 py-1 rounded shadow">
+                        <span className="text-xs font-bold" style={{ color: `hsl(${primaryColor})` }}>EU</span>
+                      </div>
+                    )}
+                    {corNopCertified && (
+                      <div className="bg-white px-2 py-1 rounded shadow">
+                        <span className="text-[10px] font-bold" style={{ color: `hsl(${primaryColor})` }}>COR-NOP</span>
+                      </div>
+                    )}
+                    {sniCertified && (
+                      <div className="bg-white px-2 py-1 rounded shadow">
+                        <span className="text-xs font-bold" style={{ color: `hsl(${primaryColor})` }}>SNI</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {settings.show_status_badge && (
                 <div 
-                  className="mt-4 text-center py-2 rounded-xl font-bold text-white uppercase tracking-wider"
+                  className={`mt-4 text-center py-2 rounded-xl font-bold text-white uppercase tracking-wider`}
                   style={{ 
                     background: isOrganic 
                       ? 'linear-gradient(135deg, #2E7D32, #4CAF50)' 
@@ -475,31 +522,26 @@ export const PackagingLabel = ({
               )}
             </div>
 
-            {/* Right Section */}
-            <div className="w-1/2 flex flex-col pl-4">
+            {/* Right Section - Weight Only */}
+            <div className={`w-1/2 flex flex-col justify-center ${paddingMap[settings.padding!]}`}>
               {settings.show_weight && (
                 <div 
-                  className="rounded-xl p-4 shadow-md mb-4"
+                  className={`rounded-xl ${paddingMap[settings.padding!]} shadow-md text-center`}
                   style={{ 
                     background: 'white',
                     borderLeft: `4px solid hsl(${primaryColor})`,
                   }}
                 >
                   <span 
-                    className="text-sm font-semibold block mb-2"
+                    className="text-2xl font-semibold block mb-6"
                     style={{ color: `hsl(${primaryColor})` }}
                   >
                     BERAT
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-end justify-center gap-3">
+                    <div className="flex-1 border-b-4 h-20 max-w-[200px]" style={{ borderColor: `hsl(${primaryColor})` }}></div>
                     <span 
-                      className="text-2xl font-bold"
-                      style={{ color: `hsl(${primaryColor})` }}
-                    >
-                      {weight || '___'}
-                    </span>
-                    <span 
-                      className="text-sm font-semibold"
+                      className="text-3xl font-bold pb-2"
                       style={{ color: `hsl(${primaryColor})` }}
                     >
                       KG
@@ -507,41 +549,6 @@ export const PackagingLabel = ({
                   </div>
                 </div>
               )}
-
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  {settings.show_qr && (
-                    <>
-                      <div className="bg-white p-3 rounded-xl shadow-md inline-block">
-                        <canvas ref={qrCodeRef} className="max-w-full h-auto" />
-                      </div>
-                      <p className="text-xs mt-2" style={{ color: `hsl(${primaryColor})` }}>
-                        Scan QR untuk info lengkap
-                      </p>
-                    </>
-                  )}
-
-                  {settings.show_certifications && (
-                    <div className="flex justify-center gap-2 mt-3">
-                      {euCertified && (
-                        <div className="bg-white px-2 py-1 rounded shadow">
-                          <span className="text-xs font-bold" style={{ color: `hsl(${primaryColor})` }}>EU</span>
-                        </div>
-                      )}
-                      {corNopCertified && (
-                        <div className="bg-white px-2 py-1 rounded shadow">
-                          <span className="text-[10px] font-bold" style={{ color: `hsl(${primaryColor})` }}>COR-NOP</span>
-                        </div>
-                      )}
-                      {sniCertified && (
-                        <div className="bg-white px-2 py-1 rounded shadow">
-                          <span className="text-xs font-bold" style={{ color: `hsl(${primaryColor})` }}>SNI</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
           </>
         ) : (
@@ -706,9 +713,9 @@ export const PackagingLabel = ({
     >
       {isHorizontal ? (
         <>
-          {/* Left Section */}
-          <div className="w-1/2 flex flex-col pr-4 border-r" style={{ borderColor: `hsl(${primaryColor} / 0.2)` }}>
-            <div className="flex items-start justify-between mb-4">
+          {/* Left Section - Logo, Company Name, Farmer Name, QR & Certifications */}
+          <div className={`w-1/2 flex flex-col border-r ${paddingMap[settings.padding!]}`} style={{ borderColor: `hsl(${primaryColor} / 0.2)` }}>
+            <div className={`flex items-start justify-between ${spacingMap[settings.element_spacing!]} pb-3 border-b`} style={{ borderColor: `hsl(${primaryColor} / 0.2)` }}>
               {settings.show_logo && customLogo && (
                 <img src={customLogo} alt="Company Logo" className={`object-contain ${logoSizeMap[settings.logo_size!]}`} />
               )}
@@ -724,9 +731,10 @@ export const PackagingLabel = ({
               )}
             </div>
 
-            {settings.show_farmer_name && (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center w-full">
+            {/* Farmer Name, QR & Certifications */}
+            <div className={`flex-1 flex flex-col ${spacingMap[settings.element_spacing!]} justify-center items-center`}>
+              {settings.show_farmer_name && (
+                <div className="text-center w-full mb-2">
                   <p 
                     className="text-xs uppercase tracking-widest mb-2"
                     style={{ color: `hsl(${primaryColor} / 0.6)` }}
@@ -740,12 +748,47 @@ export const PackagingLabel = ({
                     {farmerName}
                   </h2>
                 </div>
-              </div>
-            )}
+              )}
+
+              {settings.show_qr && (
+                <div className="text-center">
+                  <canvas ref={qrCodeRef} className="max-w-full h-auto mx-auto" />
+                  <p 
+                    className="text-xs mt-2 uppercase tracking-wider"
+                    style={{ color: `hsl(${primaryColor} / 0.6)` }}
+                  >
+                    Scan untuk detail
+                  </p>
+                </div>
+              )}
+
+              {settings.show_certifications && (
+                <div className="flex items-center justify-center gap-3 mt-3">
+                  {euCertified && (
+                    <div className="text-center">
+                      <Checkbox checked={euCertified} disabled className="mb-1 scale-75" />
+                      <p className="text-[10px]" style={{ color: `hsl(${primaryColor})` }}>EU</p>
+                    </div>
+                  )}
+                  {corNopCertified && (
+                    <div className="text-center">
+                      <Checkbox checked={corNopCertified} disabled className="mb-1 scale-75" />
+                      <p className="text-[10px]" style={{ color: `hsl(${primaryColor})` }}>COR-NOP</p>
+                    </div>
+                  )}
+                  {sniCertified && (
+                    <div className="text-center">
+                      <Checkbox checked={sniCertified} disabled className="mb-1 scale-75" />
+                      <p className="text-[10px]" style={{ color: `hsl(${primaryColor})` }}>SNI</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {settings.show_status_badge && (
               <div 
-                className="mt-4 text-center py-2 uppercase tracking-widest text-xs font-bold"
+                className={`mt-4 text-center py-2 uppercase tracking-widest text-xs font-bold`}
                 style={{ 
                   color: isOrganic ? '#2E7D32' : '#F57C00',
                   borderTop: `2px solid ${isOrganic ? '#2E7D32' : '#F57C00'}`,
@@ -756,25 +799,20 @@ export const PackagingLabel = ({
             )}
           </div>
 
-          {/* Right Section */}
-          <div className="w-1/2 flex flex-col pl-4">
+          {/* Right Section - Weight Only */}
+          <div className={`w-1/2 flex flex-col justify-center ${paddingMap[settings.padding!]}`}>
             {settings.show_weight && (
-              <div className="mb-4 pb-4 border-b" style={{ borderColor: `hsl(${primaryColor} / 0.2)` }}>
+              <div className="text-center">
                 <p 
-                  className="text-xs uppercase tracking-widest mb-2"
+                  className="text-xs uppercase tracking-widest mb-6"
                   style={{ color: `hsl(${primaryColor} / 0.6)` }}
                 >
                   Berat
                 </p>
-                <div className="flex items-baseline gap-2">
+                <div className="flex items-end justify-center gap-3">
+                  <div className="flex-1 border-b-4 h-20 max-w-[200px]" style={{ borderColor: `hsl(${primaryColor})` }}></div>
                   <span 
-                    className="text-3xl font-bold"
-                    style={{ color: `hsl(${primaryColor})` }}
-                  >
-                    {weight || '___'}
-                  </span>
-                  <span 
-                    className="text-lg font-semibold"
+                    className="text-3xl font-bold pb-2"
                     style={{ color: `hsl(${primaryColor})` }}
                   >
                     Kg
@@ -782,45 +820,6 @@ export const PackagingLabel = ({
                 </div>
               </div>
             )}
-
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                {settings.show_qr && (
-                  <div className="mb-3">
-                    <canvas ref={qrCodeRef} className="max-w-full h-auto mx-auto" />
-                    <p 
-                      className="text-xs mt-2 uppercase tracking-wider"
-                      style={{ color: `hsl(${primaryColor} / 0.6)` }}
-                    >
-                      Scan untuk detail
-                    </p>
-                  </div>
-                )}
-
-                {settings.show_certifications && (
-                  <div className="flex items-center justify-center gap-3 mt-3">
-                    {euCertified && (
-                      <div className="text-center">
-                        <Checkbox checked={euCertified} disabled className="mb-1 scale-75" />
-                        <p className="text-[10px]" style={{ color: `hsl(${primaryColor})` }}>EU</p>
-                      </div>
-                    )}
-                    {corNopCertified && (
-                      <div className="text-center">
-                        <Checkbox checked={corNopCertified} disabled className="mb-1 scale-75" />
-                        <p className="text-[10px]" style={{ color: `hsl(${primaryColor})` }}>COR-NOP</p>
-                      </div>
-                    )}
-                    {sniCertified && (
-                      <div className="text-center">
-                        <Checkbox checked={sniCertified} disabled className="mb-1 scale-75" />
-                        <p className="text-[10px]" style={{ color: `hsl(${primaryColor})` }}>SNI</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
         </>
       ) : (
