@@ -10,6 +10,12 @@ import { toast } from "@/hooks/use-toast";
 import { PackagingLabel } from "./PackagingLabel";
 import { supabase } from "@/integrations/supabase/client";
 
+const TEMPLATE_OPTIONS = [
+  { value: "template_a", label: "Template A - Klasik" },
+  { value: "template_b", label: "Template B - Modern" },
+  { value: "template_c", label: "Template C - Minimalis" },
+];
+
 const FONT_OPTIONS = [
   { value: "Playfair Display", label: "Playfair Display (Klasik)" },
   { value: "Lora", label: "Lora (Elegan)" },
@@ -34,6 +40,7 @@ export const LabelCustomization = () => {
   const [qrLogoPreview, setQrLogoPreview] = useState<string>("");
   
   const [customSettings, setCustomSettings] = useState({
+    label_template: "template_a",
     label_primary_color: "30 71% 42%",
     label_background_start: "40 100% 97%",
     label_background_end: "33 100% 87%",
@@ -46,6 +53,7 @@ export const LabelCustomization = () => {
   useEffect(() => {
     if (profile) {
       setCustomSettings({
+        label_template: profile.label_template || "template_a",
         label_primary_color: profile.label_primary_color || "30 71% 42%",
         label_background_start: profile.label_background_start || "40 100% 97%",
         label_background_end: profile.label_background_end || "33 100% 87%",
@@ -222,6 +230,31 @@ export const LabelCustomization = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Template Selection */}
+          <div className="space-y-3">
+            <Label>Pilih Template Label</Label>
+            <Select
+              value={customSettings.label_template}
+              onValueChange={(value) =>
+                setCustomSettings({ ...customSettings, label_template: value })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TEMPLATE_OPTIONS.map((template) => (
+                  <SelectItem key={template.value} value={template.value}>
+                    {template.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Pilih gaya template yang sesuai dengan brand Anda
+            </p>
+          </div>
+
           {/* Logo Upload */}
           <div className="space-y-3">
             <Label className="flex items-center gap-2">
@@ -483,6 +516,7 @@ export const LabelCustomization = () => {
             sniCertified={true}
             isOrganic={true}
             companyName={profile?.nama_perusahaan}
+            template={customSettings.label_template}
             customColors={{
               primary: customSettings.label_primary_color,
               backgroundStart: customSettings.label_background_start,

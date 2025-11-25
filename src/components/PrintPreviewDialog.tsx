@@ -24,6 +24,7 @@ interface PrintPreviewDialogProps {
     backgroundStart: string;
     backgroundEnd: string;
   };
+  template?: string;
   customFont?: string;
   customLogo?: string;
   qrSize?: number;
@@ -37,6 +38,7 @@ export const PrintPreviewDialog = ({
   onOpenChange,
   farmers,
   companyName,
+  template,
   customColors,
   customFont,
   customLogo,
@@ -116,6 +118,7 @@ export const PrintPreviewDialog = ({
                     sniCertified={farmer.sniCertified}
                     isOrganic={farmer.isOrganic}
                     companyName={companyName}
+                    template={template}
                     customColors={customColors}
                     customFont={customFont}
                     customLogo={customLogo}

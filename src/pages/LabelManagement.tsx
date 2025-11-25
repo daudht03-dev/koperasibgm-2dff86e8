@@ -232,6 +232,7 @@ export const LabelManagement = () => {
                             sniCertified={settings?.sni_certified || false}
                             isOrganic={settings?.is_organic !== false}
                             companyName={profile?.nama_perusahaan}
+                            template={profile?.label_template}
                             customColors={profile?.label_primary_color ? {
                               primary: profile.label_primary_color,
                               backgroundStart: profile.label_background_start || "40 100% 97%",
@@ -475,6 +476,7 @@ export const LabelManagement = () => {
                   sniCertified={currentSettings.sni_certified || false}
                   isOrganic={currentSettings.is_organic !== false}
                   companyName={profile?.nama_perusahaan}
+                  template={profile?.label_template}
                   customColors={profile?.label_primary_color ? {
                     primary: profile.label_primary_color,
                     backgroundStart: profile.label_background_start || "40 100% 97%",
@@ -516,6 +518,7 @@ export const LabelManagement = () => {
             };
           })}
         companyName={profile?.nama_perusahaan}
+        template={profile?.label_template}
         customColors={profile?.label_primary_color ? {
           primary: profile.label_primary_color,
           backgroundStart: profile.label_background_start || "40 100% 97%",
