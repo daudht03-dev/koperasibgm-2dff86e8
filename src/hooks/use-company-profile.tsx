@@ -9,6 +9,10 @@ export interface CompanyProfile {
   logo_url?: string;
   alamat?: string;
   kontak?: string;
+  label_primary_color?: string;
+  label_background_start?: string;
+  label_background_end?: string;
+  label_font_family?: string;
   created_at: string;
   updated_at: string;
 }

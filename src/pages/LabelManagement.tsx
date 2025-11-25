@@ -11,9 +11,10 @@ import { PrintPreviewDialog } from "@/components/PrintPreviewDialog";
 import { useFarmers } from "@/hooks/use-farmers";
 import { useLabelSettings, LabelSettings } from "@/hooks/use-label-settings";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
-import { Printer, Settings, FileDown, Edit, LayoutGrid } from "lucide-react";
+import { Printer, Settings, FileDown, Edit, LayoutGrid, Palette } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useReactToPrint } from "react-to-print";
+import { Link } from "react-router-dom";
 
 export const LabelManagement = () => {
   const { farmers } = useFarmers();
@@ -166,13 +167,23 @@ export const LabelManagement = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Printer className="h-5 w-5" />
-            Manajemen Label Kemasan
-          </CardTitle>
-          <CardDescription>
-            Kelola dan cetak label kemasan untuk setiap petani
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Printer className="h-5 w-5" />
+                Manajemen Label Kemasan
+              </CardTitle>
+              <CardDescription>
+                Kelola dan cetak label kemasan untuk setiap petani
+              </CardDescription>
+            </div>
+            <Link to="/label-settings">
+              <Button variant="outline" className="gap-2">
+                <Palette className="h-4 w-4" />
+                Kustomisasi Label
+              </Button>
+            </Link>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="mb-4 flex justify-between items-center">
@@ -210,7 +221,7 @@ export const LabelManagement = () => {
                 <div className="space-y-4">
                   <div ref={printRef} className="space-y-8 print:space-y-0">
                     {farmers.map((farmer) => {
-                      const settings = labelSettings.find(s => s.petani_id === farmer.id);
+                       const settings = labelSettings.find(s => s.petani_id === farmer.id);
                       return (
                         <div key={farmer.id} className="flex justify-center">
                           <PackagingLabel
@@ -221,6 +232,13 @@ export const LabelManagement = () => {
                             sniCertified={settings?.sni_certified || false}
                             isOrganic={settings?.is_organic !== false}
                             companyName={profile?.nama_perusahaan}
+                            customColors={profile?.label_primary_color ? {
+                              primary: profile.label_primary_color,
+                              backgroundStart: profile.label_background_start || "40 100% 97%",
+                              backgroundEnd: profile.label_background_end || "33 100% 87%",
+                            } : undefined}
+                            customFont={profile?.label_font_family}
+                            customLogo={profile?.logo_url}
                             showForPrint={true}
                           />
                         </div>
@@ -453,6 +471,13 @@ export const LabelManagement = () => {
                   sniCertified={currentSettings.sni_certified || false}
                   isOrganic={currentSettings.is_organic !== false}
                   companyName={profile?.nama_perusahaan}
+                  customColors={profile?.label_primary_color ? {
+                    primary: profile.label_primary_color,
+                    backgroundStart: profile.label_background_start || "40 100% 97%",
+                    backgroundEnd: profile.label_background_end || "33 100% 87%",
+                  } : undefined}
+                  customFont={profile?.label_font_family}
+                  customLogo={profile?.logo_url}
                   showForPrint={true}
                 />
               )}
@@ -483,6 +508,13 @@ export const LabelManagement = () => {
             };
           })}
         companyName={profile?.nama_perusahaan}
+        customColors={profile?.label_primary_color ? {
+          primary: profile.label_primary_color,
+          backgroundStart: profile.label_background_start || "40 100% 97%",
+          backgroundEnd: profile.label_background_end || "33 100% 87%",
+        } : undefined}
+        customFont={profile?.label_font_family}
+        customLogo={profile?.logo_url}
       />
     </div>
   );

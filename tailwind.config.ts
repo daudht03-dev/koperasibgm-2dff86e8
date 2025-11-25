@@ -82,6 +82,14 @@ export default {
       transitionTimingFunction: {
         "organic": "var(--transition-organic)",
       },
+      fontFamily: {
+        'playfair': ['Playfair Display', 'serif'],
+        'lora': ['Lora', 'serif'],
+        'merriweather': ['Merriweather', 'serif'],
+        'roboto': ['Roboto', 'sans-serif'],
+        'open-sans': ['Open Sans', 'sans-serif'],
+        'montserrat': ['Montserrat', 'sans-serif'],
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
