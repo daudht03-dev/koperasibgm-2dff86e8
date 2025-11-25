@@ -176,8 +176,10 @@ export type Database = {
         Row: {
           alamat: string
           created_at: string
+          custom_data: Json | null
           id: string
           kode_petani: string
+          logo_url: string | null
           nama: string
           no_telepon: string | null
           rata_rata_panen: number | null
@@ -186,8 +188,10 @@ export type Database = {
         Insert: {
           alamat: string
           created_at?: string
+          custom_data?: Json | null
           id?: string
           kode_petani: string
+          logo_url?: string | null
           nama: string
           no_telepon?: string | null
           rata_rata_panen?: number | null
@@ -196,8 +200,10 @@ export type Database = {
         Update: {
           alamat?: string
           created_at?: string
+          custom_data?: Json | null
           id?: string
           kode_petani?: string
+          logo_url?: string | null
           nama?: string
           no_telepon?: string | null
           rata_rata_panen?: number | null
@@ -239,6 +245,7 @@ export type Database = {
         Row: {
           alamat: string | null
           created_at: string
+          custom_fields: Json | null
           deskripsi: string | null
           id: string
           kontak: string | null
@@ -259,6 +266,7 @@ export type Database = {
         Insert: {
           alamat?: string | null
           created_at?: string
+          custom_fields?: Json | null
           deskripsi?: string | null
           id?: string
           kontak?: string | null
@@ -279,6 +287,7 @@ export type Database = {
         Update: {
           alamat?: string | null
           created_at?: string
+          custom_fields?: Json | null
           deskripsi?: string | null
           id?: string
           kontak?: string | null

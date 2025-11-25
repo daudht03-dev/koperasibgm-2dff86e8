@@ -19,6 +19,7 @@ export interface CompanyProfile {
   qr_logo_url?: string;
   qr_logo_size?: number;
   template_settings?: any;
+  custom_fields?: any;
   created_at: string;
   updated_at: string;
 }
