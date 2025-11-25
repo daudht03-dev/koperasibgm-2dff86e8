@@ -5,8 +5,11 @@ import { Button } from "@/components/ui/button";
 import { LabelCustomization } from "@/components/LabelCustomization";
 import { TemplateBuilder, TemplateElement } from "@/components/TemplateBuilder";
 import { PackagingLabel } from "@/components/PackagingLabel";
+import { CustomFieldsManager } from "@/components/CustomFieldsManager";
+import { FarmerLogoBatchUpload } from "@/components/FarmerLogoBatchUpload";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function LabelSettings() {
   const navigate = useNavigate();
@@ -27,7 +30,22 @@ export default function LabelSettings() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left side: Customization and Builder */}
         <div className="space-y-6">
-          <LabelCustomization />
+          <Tabs defaultValue="customization" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="customization">Warna & Font</TabsTrigger>
+              <TabsTrigger value="fields">Custom Fields</TabsTrigger>
+              <TabsTrigger value="logos">Logo Petani</TabsTrigger>
+            </TabsList>
+            <TabsContent value="customization" className="space-y-6">
+              <LabelCustomization />
+            </TabsContent>
+            <TabsContent value="fields" className="space-y-6">
+              <CustomFieldsManager />
+            </TabsContent>
+            <TabsContent value="logos" className="space-y-6">
+              <FarmerLogoBatchUpload />
+            </TabsContent>
+          </Tabs>
           <TemplateBuilder onElementsChange={setPreviewElements} />
         </div>
 

@@ -6,6 +6,7 @@ import { TemplateElement } from "./TemplateBuilder";
 interface PackagingLabelProps {
   farmerName: string;
   farmerCode?: string;
+  farmerLogo?: string;
   farmerId: string;
   euCertified: boolean;
   corNopCertified: boolean;
@@ -25,11 +26,13 @@ interface PackagingLabelProps {
   qrLogoSize?: number;
   showForPrint?: boolean;
   templateElements?: TemplateElement[];
+  customData?: Record<string, string>;
 }
 
 export const PackagingLabel = ({
   farmerName,
   farmerCode,
+  farmerLogo,
   farmerId,
   euCertified,
   corNopCertified,
@@ -45,6 +48,7 @@ export const PackagingLabel = ({
   qrLogoSize = 50,
   showForPrint = false,
   templateElements,
+  customData = {},
 }: PackagingLabelProps) => {
   const qrCodeRef = useRef<HTMLCanvasElement>(null);
 
@@ -109,6 +113,13 @@ export const PackagingLabel = ({
         return customLogo ? (
           <div key={element.id} style={elementStyles} className="flex justify-center">
             <img src={customLogo} alt="Company Logo" className="h-16 w-auto object-contain" />
+          </div>
+        ) : null;
+
+      case "farmer_logo":
+        return farmerLogo ? (
+          <div key={element.id} style={elementStyles} className="flex justify-center">
+            <img src={farmerLogo} alt="Farmer Logo" className="h-12 w-auto object-contain" />
           </div>
         ) : null;
 
@@ -248,6 +259,23 @@ export const PackagingLabel = ({
             >
               {isOrganic ? 'ORGANIK' : 'KONVENSIONAL'}
             </div>
+          </div>
+        );
+
+      case "custom_field":
+        const fieldValue = element.customFieldId ? customData[element.customFieldId] : undefined;
+        if (!fieldValue) return null;
+        return (
+          <div key={element.id} style={elementStyles}>
+            <p 
+              className="text-center"
+              style={{ 
+                color: `hsl(${primaryColor})`,
+                fontSize: `${element.styles?.fontSize || 14}px`,
+              }}
+            >
+              <span className="font-semibold">{element.label}:</span> {fieldValue}
+            </p>
           </div>
         );
 

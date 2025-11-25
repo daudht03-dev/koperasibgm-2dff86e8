@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DndContext, DragEndEvent, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -11,9 +11,10 @@ import { toast } from "@/hooks/use-toast";
 
 export interface TemplateElement {
   id: string;
-  type: "company_logo" | "company_name" | "farmer_name" | "certifications" | "qr_code" | "organic_badge";
+  type: "company_logo" | "company_name" | "farmer_name" | "farmer_logo" | "certifications" | "qr_code" | "organic_badge" | "custom_field";
   label: string;
   enabled: boolean;
+  customFieldId?: string; // For custom_field type
   styles?: {
     marginTop?: number;
     marginBottom?: number;
@@ -26,6 +27,7 @@ export interface TemplateElement {
 const DEFAULT_ELEMENTS: TemplateElement[] = [
   { id: "company_logo", type: "company_logo", label: "Logo Perusahaan", enabled: true, styles: { marginTop: 0, marginBottom: 4, paddingX: 0, paddingY: 0, fontSize: 16 } },
   { id: "company_name", type: "company_name", label: "Nama Perusahaan", enabled: true, styles: { marginTop: 0, marginBottom: 4, paddingX: 0, paddingY: 0, fontSize: 30 } },
+  { id: "farmer_logo", type: "farmer_logo", label: "Logo Petani", enabled: false, styles: { marginTop: 0, marginBottom: 4, paddingX: 0, paddingY: 0, fontSize: 16 } },
   { id: "farmer_name", type: "farmer_name", label: "Nama Petani", enabled: true, styles: { marginTop: 0, marginBottom: 4, paddingX: 0, paddingY: 0, fontSize: 24 } },
   { id: "certifications", type: "certifications", label: "Sertifikasi", enabled: true, styles: { marginTop: 0, marginBottom: 4, paddingX: 4, paddingY: 4, fontSize: 12 } },
   { id: "qr_code", type: "qr_code", label: "QR Code", enabled: true, styles: { marginTop: 0, marginBottom: 4, paddingX: 3, paddingY: 3, fontSize: 14 } },
@@ -156,6 +158,15 @@ interface TemplateBuilderProps {
 
 export const TemplateBuilder = ({ onElementsChange }: TemplateBuilderProps) => {
   const { profile, updateProfile } = useCompanyProfile();
+  
+  // Get custom fields from profile
+  const customFields = useMemo(() => {
+    if (profile?.custom_fields && Array.isArray(profile.custom_fields)) {
+      return profile.custom_fields.filter((f: any) => f.enabled);
+    }
+    return [];
+  }, [profile?.custom_fields]);
+
   const [elements, setElements] = useState<TemplateElement[]>(() => {
     if (profile?.template_settings) {
       const saved = profile.template_settings as { elements?: TemplateElement[] };
@@ -163,6 +174,26 @@ export const TemplateBuilder = ({ onElementsChange }: TemplateBuilderProps) => {
     }
     return DEFAULT_ELEMENTS;
   });
+
+  // Update elements when custom fields change
+  useEffect(() => {
+    setElements(prevElements => {
+      // Remove old custom field elements
+      const withoutCustomFields = prevElements.filter(e => e.type !== 'custom_field');
+      
+      // Add new custom field elements
+      const customFieldElements: TemplateElement[] = customFields.map((field: any) => ({
+        id: `custom_${field.id}`,
+        type: 'custom_field',
+        label: field.label,
+        customFieldId: field.id,
+        enabled: true,
+        styles: { marginTop: 0, marginBottom: 2, paddingX: 0, paddingY: 0, fontSize: 14 }
+      }));
+      
+      return [...withoutCustomFields, ...customFieldElements];
+    });
+  }, [customFields]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
