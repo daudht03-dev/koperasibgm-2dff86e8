@@ -18,7 +18,7 @@ import { useProducts } from "@/hooks/use-products";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { useHarvests } from "@/hooks/use-harvests";
 import { useNavigate, Link } from "react-router-dom";
-import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode } from "lucide-react";
+import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode, Printer } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { 
   farmerSchema, 
@@ -29,12 +29,13 @@ import {
   imageFileSchema
 } from "@/lib/validation-schemas";
 import { TableSkeleton, StatsSkeleton, CardSkeleton } from "@/components/ui/skeleton-templates";
+import { LabelManagement } from "@/pages/LabelManagement";
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"farmers" | "lands" | "products" | "statistics" | "profile">("farmers");
+  const [activeTab, setActiveTab] = useState<"farmers" | "lands" | "products" | "statistics" | "profile" | "labels">("farmers");
 
   // Hooks for data management
   const { farmers, addFarmer, updateFarmer, deleteFarmer } = useFarmers();
@@ -566,6 +567,7 @@ const AdminDashboard = () => {
               { key: "products", label: "Produk", icon: Package },
               { key: "statistics", label: "Statistik", icon: BarChart3 },
               { key: "profile", label: "Profil", icon: Building },
+              { key: "labels", label: "Label Kemasan", icon: Printer },
             ].map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -1442,6 +1444,11 @@ const AdminDashboard = () => {
               )}
             </CardContent>
           </Card>
+        )}
+
+        {/* Labels Tab */}
+        {activeTab === "labels" && (
+          <LabelManagement />
         )}
 
         {/* Statistics */}
