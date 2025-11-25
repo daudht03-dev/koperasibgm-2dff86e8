@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
-import { Palette, Type, Upload } from "lucide-react";
+import { Palette, Type, Upload, QrCode } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { PackagingLabel } from "./PackagingLabel";
+import { supabase } from "@/integrations/supabase/client";
 
 const FONT_OPTIONS = [
   { value: "Playfair Display", label: "Playfair Display (Klasik)" },
@@ -18,16 +19,28 @@ const FONT_OPTIONS = [
   { value: "Montserrat", label: "Montserrat (Bold)" },
 ];
 
+const ERROR_CORRECTION_OPTIONS = [
+  { value: "L", label: "L - Low (7% koreksi)" },
+  { value: "M", label: "M - Medium (15% koreksi)" },
+  { value: "Q", label: "Q - Quartile (25% koreksi)" },
+  { value: "H", label: "H - High (30% koreksi)" },
+];
+
 export const LabelCustomization = () => {
   const { profile, updateProfile, uploadLogo } = useCompanyProfile();
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>("");
+  const [qrLogoFile, setQrLogoFile] = useState<File | null>(null);
+  const [qrLogoPreview, setQrLogoPreview] = useState<string>("");
   
   const [customSettings, setCustomSettings] = useState({
     label_primary_color: "30 71% 42%",
     label_background_start: "40 100% 97%",
     label_background_end: "33 100% 87%",
     label_font_family: "Playfair Display",
+    qr_size: 200,
+    qr_error_correction: "M",
+    qr_logo_size: 50,
   });
 
   useEffect(() => {
@@ -37,9 +50,15 @@ export const LabelCustomization = () => {
         label_background_start: profile.label_background_start || "40 100% 97%",
         label_background_end: profile.label_background_end || "33 100% 87%",
         label_font_family: profile.label_font_family || "Playfair Display",
+        qr_size: profile.qr_size || 200,
+        qr_error_correction: profile.qr_error_correction || "M",
+        qr_logo_size: profile.qr_logo_size || 50,
       });
       if (profile.logo_url) {
         setLogoPreview(profile.logo_url);
+      }
+      if (profile.qr_logo_url) {
+        setQrLogoPreview(profile.qr_logo_url);
       }
     }
   }, [profile]);
@@ -56,9 +75,60 @@ export const LabelCustomization = () => {
     }
   };
 
+  const handleQrLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setQrLogoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setQrLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadQrLogo = async (file: File): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `qr-logo.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      // Delete existing QR logo if exists
+      if (profile?.qr_logo_url) {
+        const existingPath = profile.qr_logo_url.split('/').pop();
+        if (existingPath) {
+          await supabase.storage
+            .from('profil-perusahaan')
+            .remove([existingPath]);
+        }
+      }
+
+      const { error: uploadError } = await supabase.storage
+        .from('profil-perusahaan')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('profil-perusahaan')
+        .getPublicUrl(filePath);
+
+      return data.publicUrl;
+    } catch (error) {
+      console.error('Error uploading QR logo:', error);
+      toast({
+        title: "Error",
+        description: "Gagal mengunggah logo QR",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
   const handleSaveCustomization = async () => {
     try {
       let logoUrl = profile?.logo_url;
+      let qrLogoUrl = profile?.qr_logo_url;
 
       // Upload logo if changed
       if (logoFile) {
@@ -68,9 +138,18 @@ export const LabelCustomization = () => {
         }
       }
 
+      // Upload QR logo if changed
+      if (qrLogoFile) {
+        const uploadedUrl = await uploadQrLogo(qrLogoFile);
+        if (uploadedUrl) {
+          qrLogoUrl = uploadedUrl;
+        }
+      }
+
       await updateProfile({
         ...customSettings,
         logo_url: logoUrl,
+        qr_logo_url: qrLogoUrl,
       });
 
       toast({
@@ -270,6 +349,119 @@ export const LabelCustomization = () => {
             </div>
           </div>
 
+          {/* QR Code Customization Section */}
+          <div className="pt-6 border-t space-y-6">
+            <div className="flex items-center gap-2">
+              <QrCode className="h-5 w-5" />
+              <h3 className="text-lg font-semibold">Kustomisasi QR Code</h3>
+            </div>
+
+            {/* QR Size */}
+            <div className="space-y-3">
+              <Label>Ukuran QR Code (px)</Label>
+              <div className="flex items-center gap-4">
+                <Input
+                  type="range"
+                  min="150"
+                  max="300"
+                  step="10"
+                  value={customSettings.qr_size}
+                  onChange={(e) =>
+                    setCustomSettings({ ...customSettings, qr_size: parseInt(e.target.value) })
+                  }
+                  className="flex-1"
+                />
+                <Input
+                  type="number"
+                  min="150"
+                  max="300"
+                  value={customSettings.qr_size}
+                  onChange={(e) =>
+                    setCustomSettings({ ...customSettings, qr_size: parseInt(e.target.value) || 200 })
+                  }
+                  className="w-20"
+                />
+              </div>
+            </div>
+
+            {/* Error Correction Level */}
+            <div className="space-y-3">
+              <Label>Level Koreksi Error</Label>
+              <Select
+                value={customSettings.qr_error_correction}
+                onValueChange={(value) =>
+                  setCustomSettings({ ...customSettings, qr_error_correction: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ERROR_CORRECTION_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Level lebih tinggi = QR code lebih toleran terhadap kerusakan, cocok untuk logo tertanam
+              </p>
+            </div>
+
+            {/* QR Logo Upload */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <Upload className="h-4 w-4" />
+                Logo dalam QR Code (Opsional)
+              </Label>
+              <div className="flex items-center gap-4">
+                {qrLogoPreview && (
+                  <div className="w-16 h-16 border rounded-lg overflow-hidden bg-white flex items-center justify-center">
+                    <img src={qrLogoPreview} alt="QR Logo preview" className="max-w-full max-h-full object-contain p-1" />
+                  </div>
+                )}
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleQrLogoChange}
+                  className="max-w-xs"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Logo akan ditampilkan di tengah QR code. Gunakan level koreksi error H untuk hasil terbaik.
+              </p>
+            </div>
+
+            {/* QR Logo Size */}
+            <div className="space-y-3">
+              <Label>Ukuran Logo dalam QR (px)</Label>
+              <div className="flex items-center gap-4">
+                <Input
+                  type="range"
+                  min="30"
+                  max="80"
+                  step="5"
+                  value={customSettings.qr_logo_size}
+                  onChange={(e) =>
+                    setCustomSettings({ ...customSettings, qr_logo_size: parseInt(e.target.value) })
+                  }
+                  className="flex-1"
+                />
+                <Input
+                  type="number"
+                  min="30"
+                  max="80"
+                  value={customSettings.qr_logo_size}
+                  onChange={(e) =>
+                    setCustomSettings({ ...customSettings, qr_logo_size: parseInt(e.target.value) || 50 })
+                  }
+                  className="w-20"
+                />
+              </div>
+            </div>
+          </div>
+
           <Button onClick={handleSaveCustomization} className="w-full">
             Simpan Kustomisasi
           </Button>
@@ -298,6 +490,10 @@ export const LabelCustomization = () => {
             }}
             customFont={customSettings.label_font_family}
             customLogo={logoPreview}
+            qrSize={customSettings.qr_size}
+            qrErrorCorrection={customSettings.qr_error_correction as 'L' | 'M' | 'Q' | 'H'}
+            qrLogo={qrLogoPreview}
+            qrLogoSize={customSettings.qr_logo_size}
             showForPrint={false}
           />
         </CardContent>

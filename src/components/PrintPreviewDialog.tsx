@@ -26,6 +26,10 @@ interface PrintPreviewDialogProps {
   };
   customFont?: string;
   customLogo?: string;
+  qrSize?: number;
+  qrErrorCorrection?: 'L' | 'M' | 'Q' | 'H';
+  qrLogo?: string;
+  qrLogoSize?: number;
 }
 
 export const PrintPreviewDialog = ({
@@ -36,6 +40,10 @@ export const PrintPreviewDialog = ({
   customColors,
   customFont,
   customLogo,
+  qrSize,
+  qrErrorCorrection,
+  qrLogo,
+  qrLogoSize,
 }: PrintPreviewDialogProps) => {
   const [gridLayout, setGridLayout] = useState<"2x2" | "3x3">("2x2");
   const printRef = useRef<HTMLDivElement>(null);
@@ -111,6 +119,10 @@ export const PrintPreviewDialog = ({
                     customColors={customColors}
                     customFont={customFont}
                     customLogo={customLogo}
+                    qrSize={qrSize}
+                    qrErrorCorrection={qrErrorCorrection}
+                    qrLogo={qrLogo}
+                    qrLogoSize={qrLogoSize}
                     showForPrint={true}
                   />
                 </div>
