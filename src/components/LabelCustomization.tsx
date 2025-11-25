@@ -477,6 +477,7 @@ export const LabelCustomization = () => {
         <CardContent className="flex justify-center">
           <PackagingLabel
             farmerName="Contoh Petani"
+            farmerCode="P001"
             farmerId="preview"
             euCertified={true}
             corNopCertified={true}

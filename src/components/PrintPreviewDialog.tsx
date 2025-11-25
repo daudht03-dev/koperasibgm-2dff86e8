@@ -13,6 +13,7 @@ interface PrintPreviewDialogProps {
   farmers: Array<{
     id: string;
     nama: string;
+    kode_petani: string;
     euCertified: boolean;
     corNopCertified: boolean;
     sniCertified: boolean;
@@ -110,6 +111,7 @@ export const PrintPreviewDialog = ({
                 <div key={farmer.id} className={`${labelSize} mx-auto`}>
                   <PackagingLabel
                     farmerName={farmer.nama}
+                    farmerCode={farmer.kode_petani}
                     farmerId={farmer.id}
                     euCertified={farmer.euCertified}
                     corNopCertified={farmer.corNopCertified}

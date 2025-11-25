@@ -226,6 +226,7 @@ export const LabelManagement = () => {
                         <div key={farmer.id} className="flex justify-center">
                           <PackagingLabel
                             farmerName={farmer.nama}
+                            farmerCode={farmer.kode_petani}
                             farmerId={farmer.id}
                             euCertified={settings?.eu_certified || false}
                             corNopCertified={settings?.cor_nop_certified || false}
@@ -469,6 +470,7 @@ export const LabelManagement = () => {
               {selectedFarmer && (
                 <PackagingLabel
                   farmerName={selectedFarmer.nama}
+                  farmerCode={selectedFarmer.kode_petani}
                   farmerId={selectedFarmer.id}
                   euCertified={currentSettings.eu_certified || false}
                   corNopCertified={currentSettings.cor_nop_certified || false}
@@ -509,6 +511,7 @@ export const LabelManagement = () => {
             return {
               id: f.id,
               nama: f.nama,
+              kode_petani: f.kode_petani,
               euCertified: settings?.eu_certified || false,
               corNopCertified: settings?.cor_nop_certified || false,
               sniCertified: settings?.sni_certified || false,

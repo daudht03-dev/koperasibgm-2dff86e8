@@ -5,6 +5,7 @@ import { TemplateElement } from "./TemplateBuilder";
 
 interface PackagingLabelProps {
   farmerName: string;
+  farmerCode?: string;
   farmerId: string;
   euCertified: boolean;
   corNopCertified: boolean;
@@ -28,6 +29,7 @@ interface PackagingLabelProps {
 
 export const PackagingLabel = ({
   farmerName,
+  farmerCode,
   farmerId,
   euCertified,
   corNopCertified,
@@ -140,6 +142,11 @@ export const PackagingLabel = ({
               }}
             >
               {farmerName}
+              {farmerCode && (
+                <span className="font-normal opacity-80" style={{ fontSize: `${(element.styles?.fontSize || 24) * 0.7}px` }}>
+                  {' '}({farmerCode})
+                </span>
+              )}
             </p>
           </div>
         );
@@ -289,6 +296,11 @@ export const PackagingLabel = ({
               style={{ color: `hsl(${primaryColor})` }}
             >
               {farmerName}
+              {farmerCode && (
+                <span className="text-lg font-normal opacity-80">
+                  {' '}({farmerCode})
+                </span>
+              )}
             </p>
           </div>
           <div 
