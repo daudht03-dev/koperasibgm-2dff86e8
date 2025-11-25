@@ -246,6 +246,7 @@ export type Database = {
           label_background_start: string | null
           label_font_family: string | null
           label_primary_color: string | null
+          label_template: string | null
           logo_url: string | null
           nama_perusahaan: string
           qr_error_correction: string | null
@@ -264,6 +265,7 @@ export type Database = {
           label_background_start?: string | null
           label_font_family?: string | null
           label_primary_color?: string | null
+          label_template?: string | null
           logo_url?: string | null
           nama_perusahaan: string
           qr_error_correction?: string | null
@@ -282,6 +284,7 @@ export type Database = {
           label_background_start?: string | null
           label_font_family?: string | null
           label_primary_color?: string | null
+          label_template?: string | null
           logo_url?: string | null
           nama_perusahaan?: string
           qr_error_correction?: string | null
