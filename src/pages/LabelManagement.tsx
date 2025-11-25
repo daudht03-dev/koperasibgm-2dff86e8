@@ -7,10 +7,11 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PackagingLabel } from "@/components/PackagingLabel";
+import { PrintPreviewDialog } from "@/components/PrintPreviewDialog";
 import { useFarmers } from "@/hooks/use-farmers";
 import { useLabelSettings, LabelSettings } from "@/hooks/use-label-settings";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
-import { Printer, Settings, FileDown, Edit } from "lucide-react";
+import { Printer, Settings, FileDown, Edit, LayoutGrid } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useReactToPrint } from "react-to-print";
 
@@ -24,6 +25,7 @@ export const LabelManagement = () => {
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [bulkPrintDialogOpen, setBulkPrintDialogOpen] = useState(false);
   const [bulkEditDialogOpen, setBulkEditDialogOpen] = useState(false);
+  const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   const [currentSettings, setCurrentSettings] = useState<Partial<LabelSettings>>({
@@ -180,6 +182,10 @@ export const LabelManagement = () => {
                   <Button variant="outline" onClick={handleBulkEdit} className="gap-2">
                     <Edit className="h-4 w-4" />
                     Edit {selectedFarmerIds.length} Petani
+                  </Button>
+                  <Button onClick={() => setPrintPreviewOpen(true)} className="gap-2">
+                    <LayoutGrid className="h-4 w-4" />
+                    Preview Grid ({selectedFarmerIds.length})
                   </Button>
                   <Button
                     variant="ghost"
@@ -458,6 +464,26 @@ export const LabelManagement = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Print Preview Dialog with Grid Layout */}
+      <PrintPreviewDialog
+        open={printPreviewOpen}
+        onOpenChange={setPrintPreviewOpen}
+        farmers={farmers
+          .filter((f) => selectedFarmerIds.includes(f.id))
+          .map((f) => {
+            const settings = labelSettings.find((ls) => ls.petani_id === f.id);
+            return {
+              id: f.id,
+              nama: f.nama,
+              euCertified: settings?.eu_certified || false,
+              corNopCertified: settings?.cor_nop_certified || false,
+              sniCertified: settings?.sni_certified || false,
+              isOrganic: settings?.is_organic !== false,
+            };
+          })}
+        companyName={profile?.nama_perusahaan}
+      />
     </div>
   );
 };
