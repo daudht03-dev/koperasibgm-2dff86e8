@@ -14,6 +14,7 @@ export interface CompanyProfile {
   label_background_end?: string;
   label_font_family?: string;
   label_template?: string;
+  template_settings?: any;
   qr_size?: number;
   qr_error_correction?: string;
   qr_logo_url?: string;

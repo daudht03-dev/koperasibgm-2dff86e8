@@ -4,10 +4,12 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
-import { Palette, Type, Upload, QrCode } from "lucide-react";
+import { Palette, Type, Upload, QrCode, Layout } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { PackagingLabel } from "./PackagingLabel";
+import { TemplateEditor } from "./TemplateEditor";
 import { supabase } from "@/integrations/supabase/client";
 
 const TEMPLATE_OPTIONS = [
@@ -218,8 +220,20 @@ export const LabelCustomization = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <Card>
+    <Tabs defaultValue="styling" className="space-y-6">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="styling" className="gap-2">
+          <Palette className="h-4 w-4" />
+          Styling & Warna
+        </TabsTrigger>
+        <TabsTrigger value="layout" className="gap-2">
+          <Layout className="h-4 w-4" />
+          Layout Template
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="styling" className="space-y-6">
+        <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Palette className="h-5 w-5" />
@@ -532,6 +546,11 @@ export const LabelCustomization = () => {
           />
         </CardContent>
       </Card>
-    </div>
+      </TabsContent>
+
+      <TabsContent value="layout">
+        <TemplateEditor />
+      </TabsContent>
+    </Tabs>
   );
 };
