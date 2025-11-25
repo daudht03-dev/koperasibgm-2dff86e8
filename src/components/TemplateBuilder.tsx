@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DndContext, DragEndEvent, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -171,6 +171,21 @@ export const TemplateBuilder = ({ onElementsChange }: TemplateBuilderProps) => {
       },
     })
   );
+
+  // Sync initial elements to parent on mount and when profile changes
+  useEffect(() => {
+    onElementsChange?.(elements);
+  }, []);
+
+  // Update elements when profile template settings change
+  useEffect(() => {
+    if (profile?.template_settings) {
+      const saved = profile.template_settings as { elements?: TemplateElement[] };
+      const newElements = saved.elements || DEFAULT_ELEMENTS;
+      setElements(newElements);
+      onElementsChange?.(newElements);
+    }
+  }, [profile?.template_settings]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;

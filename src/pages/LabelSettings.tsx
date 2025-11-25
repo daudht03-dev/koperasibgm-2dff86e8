@@ -16,7 +16,7 @@ export default function LabelSettings() {
   return (
     <div className="container mx-auto py-6">
       <Button
-        onClick={() => navigate(-1)}
+        onClick={() => navigate("/admin")}
         variant="ghost"
         className="mb-4"
       >
