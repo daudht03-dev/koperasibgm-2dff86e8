@@ -93,20 +93,32 @@ export const PackagingLabel = ({
   const renderElement = (element: TemplateElement) => {
     if (!element.enabled) return null;
 
+    const elementStyles = {
+      marginTop: `${element.styles?.marginTop || 0}px`,
+      marginBottom: `${element.styles?.marginBottom || 0}px`,
+      paddingLeft: `${(element.styles?.paddingX || 0) * 4}px`,
+      paddingRight: `${(element.styles?.paddingX || 0) * 4}px`,
+      paddingTop: `${(element.styles?.paddingY || 0) * 4}px`,
+      paddingBottom: `${(element.styles?.paddingY || 0) * 4}px`,
+    };
+
     switch (element.type) {
       case "company_logo":
         return customLogo ? (
-          <div key={element.id} className="flex justify-center mb-4">
+          <div key={element.id} style={elementStyles} className="flex justify-center">
             <img src={customLogo} alt="Company Logo" className="h-16 w-auto object-contain" />
           </div>
         ) : null;
 
       case "company_name":
         return (
-          <div key={element.id} className="text-center mb-4">
+          <div key={element.id} style={elementStyles} className="text-center">
             <h1 
-              className="text-3xl font-bold tracking-wide"
-              style={{ color: `hsl(${primaryColor})` }}
+              className="font-bold tracking-wide"
+              style={{ 
+                color: `hsl(${primaryColor})`,
+                fontSize: `${element.styles?.fontSize || 30}px`,
+              }}
             >
               {companyName}
             </h1>
@@ -119,10 +131,13 @@ export const PackagingLabel = ({
 
       case "farmer_name":
         return (
-          <div key={element.id} className="mb-4">
+          <div key={element.id} style={elementStyles}>
             <p 
-              className="text-2xl font-semibold text-center"
-              style={{ color: `hsl(${primaryColor})` }}
+              className="font-semibold text-center"
+              style={{ 
+                color: `hsl(${primaryColor})`,
+                fontSize: `${element.styles?.fontSize || 24}px`,
+              }}
             >
               {farmerName}
             </p>
@@ -133,8 +148,9 @@ export const PackagingLabel = ({
         return (
           <div 
             key={element.id}
-            className="mb-4 bg-white/50 rounded-lg p-4"
+            className="bg-white/50 rounded-lg"
             style={{ 
+              ...elementStyles,
               borderWidth: '2px',
               borderColor: `hsl(${primaryColor})`,
             }}
@@ -143,8 +159,11 @@ export const PackagingLabel = ({
               <div className="flex flex-col items-center gap-2">
                 <Checkbox checked={euCertified} disabled className="scale-125" />
                 <span 
-                  className="text-xs font-medium text-center"
-                  style={{ color: `hsl(${primaryColor})` }}
+                  className="font-medium text-center"
+                  style={{ 
+                    color: `hsl(${primaryColor})`,
+                    fontSize: `${element.styles?.fontSize || 12}px`,
+                  }}
                 >
                   EU
                 </span>
@@ -152,8 +171,11 @@ export const PackagingLabel = ({
               <div className="flex flex-col items-center gap-2">
                 <Checkbox checked={corNopCertified} disabled className="scale-125" />
                 <span 
-                  className="text-xs font-medium text-center"
-                  style={{ color: `hsl(${primaryColor})` }}
+                  className="font-medium text-center"
+                  style={{ 
+                    color: `hsl(${primaryColor})`,
+                    fontSize: `${element.styles?.fontSize || 12}px`,
+                  }}
                 >
                   COR-NOP<br/>Equivalent
                 </span>
@@ -161,8 +183,11 @@ export const PackagingLabel = ({
               <div className="flex flex-col items-center gap-2">
                 <Checkbox checked={sniCertified} disabled className="scale-125" />
                 <span 
-                  className="text-xs font-medium text-center"
-                  style={{ color: `hsl(${primaryColor})` }}
+                  className="font-medium text-center"
+                  style={{ 
+                    color: `hsl(${primaryColor})`,
+                    fontSize: `${element.styles?.fontSize || 12}px`,
+                  }}
                 >
                   SNI
                 </span>
@@ -173,12 +198,13 @@ export const PackagingLabel = ({
 
       case "qr_code":
         return (
-          <div key={element.id} className="flex flex-col items-center mb-4">
+          <div key={element.id} style={elementStyles} className="flex flex-col items-center">
             <div 
-              className="bg-white p-3 rounded-lg shadow-md"
+              className="bg-white rounded-lg shadow-md"
               style={{ 
                 borderWidth: '2px',
                 borderColor: `hsl(${primaryColor})`,
+                padding: `${(element.styles?.paddingY || 3) * 4}px`,
               }}
             >
               <canvas
@@ -187,8 +213,11 @@ export const PackagingLabel = ({
               />
             </div>
             <p 
-              className="text-sm mt-2 text-center font-medium"
-              style={{ color: `hsl(${primaryColor})` }}
+              className="mt-2 text-center font-medium"
+              style={{ 
+                color: `hsl(${primaryColor})`,
+                fontSize: `${element.styles?.fontSize || 14}px`,
+              }}
             >
               Scan untuk melihat detail profil
             </p>
@@ -197,13 +226,18 @@ export const PackagingLabel = ({
 
       case "organic_badge":
         return (
-          <div key={element.id} className="mt-auto">
+          <div key={element.id} style={elementStyles} className="mt-auto">
             <div 
-              className={`text-center py-3 rounded-lg font-bold text-xl tracking-widest ${
+              className={`text-center rounded-lg font-bold tracking-widest ${
                 isOrganic 
                   ? 'bg-green-700 text-white' 
                   : 'bg-amber-700 text-white'
               }`}
+              style={{
+                fontSize: `${element.styles?.fontSize || 20}px`,
+                paddingTop: `${(element.styles?.paddingY || 3) * 4}px`,
+                paddingBottom: `${(element.styles?.paddingY || 3) * 4}px`,
+              }}
             >
               {isOrganic ? 'ORGANIK' : 'KONVENSIONAL'}
             </div>
