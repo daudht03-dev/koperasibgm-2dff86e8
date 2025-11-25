@@ -1,6 +1,7 @@
 import { useRef, useEffect } from "react";
 import QRCode from "qrcode";
 import { Checkbox } from "@/components/ui/checkbox";
+import { TemplateElement } from "./TemplateBuilder";
 
 interface PackagingLabelProps {
   farmerName: string;
@@ -22,6 +23,7 @@ interface PackagingLabelProps {
   qrLogo?: string;
   qrLogoSize?: number;
   showForPrint?: boolean;
+  templateElements?: TemplateElement[];
 }
 
 export const PackagingLabel = ({
@@ -40,6 +42,7 @@ export const PackagingLabel = ({
   qrLogo,
   qrLogoSize = 50,
   showForPrint = false,
+  templateElements,
 }: PackagingLabelProps) => {
   const qrCodeRef = useRef<HTMLCanvasElement>(null);
 
@@ -86,6 +89,132 @@ export const PackagingLabel = ({
   const bgStart = customColors?.backgroundStart || "40 100% 97%";
   const bgEnd = customColors?.backgroundEnd || "33 100% 87%";
 
+  // Element renderers
+  const renderElement = (element: TemplateElement) => {
+    if (!element.enabled) return null;
+
+    switch (element.type) {
+      case "company_logo":
+        return customLogo ? (
+          <div key={element.id} className="flex justify-center mb-4">
+            <img src={customLogo} alt="Company Logo" className="h-16 w-auto object-contain" />
+          </div>
+        ) : null;
+
+      case "company_name":
+        return (
+          <div key={element.id} className="text-center mb-4">
+            <h1 
+              className="text-3xl font-bold tracking-wide"
+              style={{ color: `hsl(${primaryColor})` }}
+            >
+              {companyName}
+            </h1>
+            <div 
+              className="h-1 mt-2 mx-auto w-3/4"
+              style={{ backgroundColor: `hsl(${primaryColor})` }}
+            ></div>
+          </div>
+        );
+
+      case "farmer_name":
+        return (
+          <div key={element.id} className="mb-4">
+            <p 
+              className="text-2xl font-semibold text-center"
+              style={{ color: `hsl(${primaryColor})` }}
+            >
+              {farmerName}
+            </p>
+          </div>
+        );
+
+      case "certifications":
+        return (
+          <div 
+            key={element.id}
+            className="mb-4 bg-white/50 rounded-lg p-4"
+            style={{ 
+              borderWidth: '2px',
+              borderColor: `hsl(${primaryColor})`,
+            }}
+          >
+            <div className="grid grid-cols-3 gap-3">
+              <div className="flex flex-col items-center gap-2">
+                <Checkbox checked={euCertified} disabled className="scale-125" />
+                <span 
+                  className="text-xs font-medium text-center"
+                  style={{ color: `hsl(${primaryColor})` }}
+                >
+                  EU
+                </span>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <Checkbox checked={corNopCertified} disabled className="scale-125" />
+                <span 
+                  className="text-xs font-medium text-center"
+                  style={{ color: `hsl(${primaryColor})` }}
+                >
+                  COR-NOP<br/>Equivalent
+                </span>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <Checkbox checked={sniCertified} disabled className="scale-125" />
+                <span 
+                  className="text-xs font-medium text-center"
+                  style={{ color: `hsl(${primaryColor})` }}
+                >
+                  SNI
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+
+      case "qr_code":
+        return (
+          <div key={element.id} className="flex flex-col items-center mb-4">
+            <div 
+              className="bg-white p-3 rounded-lg shadow-md"
+              style={{ 
+                borderWidth: '2px',
+                borderColor: `hsl(${primaryColor})`,
+              }}
+            >
+              <canvas
+                ref={qrCodeRef}
+                className="max-w-full h-auto"
+              />
+            </div>
+            <p 
+              className="text-sm mt-2 text-center font-medium"
+              style={{ color: `hsl(${primaryColor})` }}
+            >
+              Scan untuk melihat detail profil
+            </p>
+          </div>
+        );
+
+      case "organic_badge":
+        return (
+          <div key={element.id} className="mt-auto">
+            <div 
+              className={`text-center py-3 rounded-lg font-bold text-xl tracking-widest ${
+                isOrganic 
+                  ? 'bg-green-700 text-white' 
+                  : 'bg-amber-700 text-white'
+              }`}
+            >
+              {isOrganic ? 'ORGANIK' : 'KONVENSIONAL'}
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <div 
       className={`rounded-lg p-6 ${
@@ -99,108 +228,105 @@ export const PackagingLabel = ({
         fontFamily: customFont,
       }}
     >
-      {/* Company Logo & Name Header */}
-      <div className="text-center mb-6">
-        {customLogo && (
-          <div className="flex justify-center mb-3">
-            <img src={customLogo} alt="Company Logo" className="h-16 w-auto object-contain" />
-          </div>
-        )}
-        <h1 
-          className="text-3xl font-bold tracking-wide"
-          style={{ color: `hsl(${primaryColor})` }}
-        >
-          {companyName}
-        </h1>
-        <div 
-          className="h-1 mt-2 mx-auto w-3/4"
-          style={{ backgroundColor: `hsl(${primaryColor})` }}
-        ></div>
-      </div>
-
-      {/* Farmer Name */}
-      <div className="mb-4">
-        <p 
-          className="text-2xl font-semibold text-center"
-          style={{ color: `hsl(${primaryColor})` }}
-        >
-          {farmerName}
-        </p>
-      </div>
-
-      {/* Certifications */}
-      <div 
-        className="mb-6 bg-white/50 rounded-lg p-4"
-        style={{ 
-          borderWidth: '2px',
-          borderColor: `hsl(${primaryColor})`,
-        }}
-      >
-        <div className="grid grid-cols-3 gap-3">
-          <div className="flex flex-col items-center gap-2">
-            <Checkbox checked={euCertified} disabled className="scale-125" />
-            <span 
-              className="text-xs font-medium text-center"
+      {templateElements ? (
+        templateElements.map(element => renderElement(element))
+      ) : (
+        <>
+          {customLogo && (
+            <div className="flex justify-center mb-3">
+              <img src={customLogo} alt="Company Logo" className="h-16 w-auto object-contain" />
+            </div>
+          )}
+          <div className="text-center mb-6">
+            <h1 
+              className="text-3xl font-bold tracking-wide"
               style={{ color: `hsl(${primaryColor})` }}
             >
-              EU
-            </span>
+              {companyName}
+            </h1>
+            <div 
+              className="h-1 mt-2 mx-auto w-3/4"
+              style={{ backgroundColor: `hsl(${primaryColor})` }}
+            ></div>
           </div>
-          <div className="flex flex-col items-center gap-2">
-            <Checkbox checked={corNopCertified} disabled className="scale-125" />
-            <span 
-              className="text-xs font-medium text-center"
+          <div className="mb-4">
+            <p 
+              className="text-2xl font-semibold text-center"
               style={{ color: `hsl(${primaryColor})` }}
             >
-              COR-NOP<br/>Equivalent
-            </span>
+              {farmerName}
+            </p>
           </div>
-          <div className="flex flex-col items-center gap-2">
-            <Checkbox checked={sniCertified} disabled className="scale-125" />
-            <span 
-              className="text-xs font-medium text-center"
+          <div 
+            className="mb-6 bg-white/50 rounded-lg p-4"
+            style={{ 
+              borderWidth: '2px',
+              borderColor: `hsl(${primaryColor})`,
+            }}
+          >
+            <div className="grid grid-cols-3 gap-3">
+              <div className="flex flex-col items-center gap-2">
+                <Checkbox checked={euCertified} disabled className="scale-125" />
+                <span 
+                  className="text-xs font-medium text-center"
+                  style={{ color: `hsl(${primaryColor})` }}
+                >
+                  EU
+                </span>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <Checkbox checked={corNopCertified} disabled className="scale-125" />
+                <span 
+                  className="text-xs font-medium text-center"
+                  style={{ color: `hsl(${primaryColor})` }}
+                >
+                  COR-NOP<br/>Equivalent
+                </span>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <Checkbox checked={sniCertified} disabled className="scale-125" />
+                <span 
+                  className="text-xs font-medium text-center"
+                  style={{ color: `hsl(${primaryColor})` }}
+                >
+                  SNI
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col items-center mb-6">
+            <div 
+              className="bg-white p-3 rounded-lg shadow-md"
+              style={{ 
+                borderWidth: '2px',
+                borderColor: `hsl(${primaryColor})`,
+              }}
+            >
+              <canvas
+                ref={qrCodeRef}
+                className="max-w-full h-auto"
+              />
+            </div>
+            <p 
+              className="text-sm mt-2 text-center font-medium"
               style={{ color: `hsl(${primaryColor})` }}
             >
-              SNI
-            </span>
+              Scan untuk melihat detail profil
+            </p>
           </div>
-        </div>
-      </div>
-
-      {/* QR Code */}
-      <div className="flex flex-col items-center mb-6">
-        <div 
-          className="bg-white p-3 rounded-lg shadow-md"
-          style={{ 
-            borderWidth: '2px',
-            borderColor: `hsl(${primaryColor})`,
-          }}
-        >
-          <canvas
-            ref={qrCodeRef}
-            className="max-w-full h-auto"
-          />
-        </div>
-        <p 
-          className="text-sm mt-2 text-center font-medium"
-          style={{ color: `hsl(${primaryColor})` }}
-        >
-          Scan untuk melihat detail profil
-        </p>
-      </div>
-
-      {/* Organic/Conventional Badge */}
-      <div className="mt-auto">
-        <div 
-          className={`text-center py-3 rounded-lg font-bold text-xl tracking-widest ${
-            isOrganic 
-              ? 'bg-green-700 text-white' 
-              : 'bg-amber-700 text-white'
-          }`}
-        >
-          {isOrganic ? 'ORGANIK' : 'KONVENSIONAL'}
-        </div>
-      </div>
+          <div className="mt-auto">
+            <div 
+              className={`text-center py-3 rounded-lg font-bold text-xl tracking-widest ${
+                isOrganic 
+                  ? 'bg-green-700 text-white' 
+                  : 'bg-amber-700 text-white'
+              }`}
+            >
+              {isOrganic ? 'ORGANIK' : 'KONVENSIONAL'}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

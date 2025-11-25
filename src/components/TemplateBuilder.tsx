@@ -9,7 +9,7 @@ import { GripVertical, Eye, Save, RotateCcw } from "lucide-react";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { toast } from "@/hooks/use-toast";
 
-interface TemplateElement {
+export interface TemplateElement {
   id: string;
   type: "company_logo" | "company_name" | "farmer_name" | "certifications" | "qr_code" | "organic_badge";
   label: string;
@@ -64,7 +64,11 @@ function SortableItem({ element, onToggle }: SortableItemProps) {
   );
 }
 
-export const TemplateBuilder = () => {
+interface TemplateBuilderProps {
+  onElementsChange?: (elements: TemplateElement[]) => void;
+}
+
+export const TemplateBuilder = ({ onElementsChange }: TemplateBuilderProps) => {
   const { profile, updateProfile } = useCompanyProfile();
   const [elements, setElements] = useState<TemplateElement[]>(() => {
     if (profile?.template_settings) {
@@ -89,17 +93,21 @@ export const TemplateBuilder = () => {
       setElements((items) => {
         const oldIndex = items.findIndex((item) => item.id === active.id);
         const newIndex = items.findIndex((item) => item.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
+        const newItems = arrayMove(items, oldIndex, newIndex);
+        onElementsChange?.(newItems);
+        return newItems;
       });
     }
   };
 
   const handleToggleElement = (id: string) => {
-    setElements((items) =>
-      items.map((item) =>
+    setElements((items) => {
+      const newItems = items.map((item) =>
         item.id === id ? { ...item, enabled: !item.enabled } : item
-      )
-    );
+      );
+      onElementsChange?.(newItems);
+      return newItems;
+    });
   };
 
   const handleSaveTemplate = async () => {
