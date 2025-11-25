@@ -5,7 +5,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 interface PackagingLabelProps {
   farmerName: string;
   farmerId: string;
-  weight: number;
   euCertified: boolean;
   corNopCertified: boolean;
   sniCertified: boolean;
@@ -17,7 +16,6 @@ interface PackagingLabelProps {
 export const PackagingLabel = ({
   farmerName,
   farmerId,
-  weight,
   euCertified,
   corNopCertified,
   sniCertified,
@@ -61,15 +59,6 @@ export const PackagingLabel = ({
         <p className="text-2xl font-semibold text-amber-900 text-center">
           {farmerName}
         </p>
-      </div>
-
-      {/* Weight */}
-      <div className="mb-6 bg-white/50 rounded-lg p-4 border-2 border-amber-600">
-        <div className="flex items-center gap-4">
-          <span className="text-xl font-semibold text-amber-900">Berat :</span>
-          <span className="text-2xl font-bold text-amber-900">{weight}</span>
-          <span className="text-xl font-semibold text-amber-900">Kg</span>
-        </div>
       </div>
 
       {/* Certifications */}

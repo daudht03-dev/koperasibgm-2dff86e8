@@ -46,7 +46,6 @@ export type Database = {
       }
       label_settings: {
         Row: {
-          berat_kg: number | null
           cor_nop_certified: boolean
           created_at: string
           eu_certified: boolean
@@ -57,7 +56,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          berat_kg?: number | null
           cor_nop_certified?: boolean
           created_at?: string
           eu_certified?: boolean
@@ -68,7 +66,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          berat_kg?: number | null
           cor_nop_certified?: boolean
           created_at?: string
           eu_certified?: boolean
