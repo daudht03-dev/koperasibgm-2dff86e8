@@ -10,7 +10,7 @@ import { PackagingLabel } from "@/components/PackagingLabel";
 import { useFarmers } from "@/hooks/use-farmers";
 import { useLabelSettings, LabelSettings } from "@/hooks/use-label-settings";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
-import { Printer, Settings, FileDown } from "lucide-react";
+import { Printer, Settings, FileDown, Edit } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useReactToPrint } from "react-to-print";
 
@@ -19,12 +19,22 @@ export const LabelManagement = () => {
   const { labelSettings, getLabelSettingByFarmerId, upsertLabelSetting } = useLabelSettings();
   const { profile } = useCompanyProfile();
   const [selectedFarmerId, setSelectedFarmerId] = useState<string>("");
+  const [selectedFarmerIds, setSelectedFarmerIds] = useState<string[]>([]);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [bulkPrintDialogOpen, setBulkPrintDialogOpen] = useState(false);
+  const [bulkEditDialogOpen, setBulkEditDialogOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   const [currentSettings, setCurrentSettings] = useState<Partial<LabelSettings>>({
+    eu_certified: false,
+    cor_nop_certified: false,
+    sni_certified: false,
+    is_organic: true,
+    berat_kg: 1,
+  });
+
+  const [bulkSettings, setBulkSettings] = useState<Partial<LabelSettings>>({
     eu_certified: false,
     cor_nop_certified: false,
     sni_certified: false,
@@ -91,6 +101,67 @@ export const LabelManagement = () => {
     documentTitle: 'Label_Semua_Petani',
   });
 
+  const handleSelectFarmer = (farmerId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedFarmerIds(prev => [...prev, farmerId]);
+    } else {
+      setSelectedFarmerIds(prev => prev.filter(id => id !== farmerId));
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedFarmerIds(farmers.map(f => f.id));
+    } else {
+      setSelectedFarmerIds([]);
+    }
+  };
+
+  const handleBulkEdit = () => {
+    if (selectedFarmerIds.length === 0) {
+      toast({
+        title: "Pilih Petani",
+        description: "Silakan pilih minimal satu petani untuk diedit",
+        variant: "destructive",
+      });
+      return;
+    }
+    setBulkEditDialogOpen(true);
+  };
+
+  const handleSaveBulkSettings = async () => {
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const farmerId of selectedFarmerIds) {
+      const success = await upsertLabelSetting({
+        ...bulkSettings,
+        petani_id: farmerId,
+      });
+      
+      if (success) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+    }
+
+    if (failCount === 0) {
+      toast({
+        title: "Berhasil",
+        description: `Pengaturan berhasil disimpan untuk ${successCount} petani`,
+      });
+      setBulkEditDialogOpen(false);
+      setSelectedFarmerIds([]);
+    } else {
+      toast({
+        title: "Sebagian Berhasil",
+        description: `${successCount} berhasil, ${failCount} gagal`,
+        variant: "destructive",
+      });
+    }
+  };
+
   const selectedFarmer = farmers.find(f => f.id === selectedFarmerId);
 
   return (
@@ -106,7 +177,23 @@ export const LabelManagement = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 flex justify-end">
+          <div className="mb-4 flex justify-between items-center">
+            <div className="flex gap-2">
+              {selectedFarmerIds.length > 0 && (
+                <>
+                  <Button variant="outline" onClick={handleBulkEdit} className="gap-2">
+                    <Edit className="h-4 w-4" />
+                    Edit {selectedFarmerIds.length} Petani
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setSelectedFarmerIds([])}
+                  >
+                    Batalkan Pilihan
+                  </Button>
+                </>
+              )}
+            </div>
             <Dialog open={bulkPrintDialogOpen} onOpenChange={setBulkPrintDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="gap-2">
@@ -151,6 +238,12 @@ export const LabelManagement = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={selectedFarmerIds.length === farmers.length && farmers.length > 0}
+                    onCheckedChange={handleSelectAll}
+                  />
+                </TableHead>
                 <TableHead>Nama Petani</TableHead>
                 <TableHead>Kode</TableHead>
                 <TableHead>Status Label</TableHead>
@@ -162,6 +255,12 @@ export const LabelManagement = () => {
                 const hasSettings = labelSettings.some(s => s.petani_id === farmer.id);
                 return (
                   <TableRow key={farmer.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedFarmerIds.includes(farmer.id)}
+                        onCheckedChange={(checked) => handleSelectFarmer(farmer.id, checked as boolean)}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">{farmer.nama}</TableCell>
                     <TableCell>{farmer.kode_petani}</TableCell>
                     <TableCell>
@@ -270,6 +369,79 @@ export const LabelManagement = () => {
 
             <Button onClick={handleSaveSettings} className="w-full">
               Simpan Pengaturan
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Edit Dialog */}
+      <Dialog open={bulkEditDialogOpen} onOpenChange={setBulkEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Massal - {selectedFarmerIds.length} Petani</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="bulk-weight">Berat (Kg)</Label>
+              <Input
+                id="bulk-weight"
+                type="number"
+                step="0.1"
+                value={bulkSettings.berat_kg || 1}
+                onChange={(e) => setBulkSettings({ ...bulkSettings, berat_kg: parseFloat(e.target.value) })}
+              />
+            </div>
+
+            <div className="space-y-3">
+              <Label>Sertifikasi</Label>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="bulk-eu"
+                  checked={bulkSettings.eu_certified}
+                  onCheckedChange={(checked) => 
+                    setBulkSettings({ ...bulkSettings, eu_certified: checked as boolean })
+                  }
+                />
+                <label htmlFor="bulk-eu" className="text-sm font-medium">EU</label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="bulk-cor-nop"
+                  checked={bulkSettings.cor_nop_certified}
+                  onCheckedChange={(checked) => 
+                    setBulkSettings({ ...bulkSettings, cor_nop_certified: checked as boolean })
+                  }
+                />
+                <label htmlFor="bulk-cor-nop" className="text-sm font-medium">COR-NOP Equivalent</label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="bulk-sni"
+                  checked={bulkSettings.sni_certified}
+                  onCheckedChange={(checked) => 
+                    setBulkSettings({ ...bulkSettings, sni_certified: checked as boolean })
+                  }
+                />
+                <label htmlFor="bulk-sni" className="text-sm font-medium">SNI</label>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Label>Status Produk</Label>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="bulk-organic"
+                  checked={bulkSettings.is_organic}
+                  onCheckedChange={(checked) => 
+                    setBulkSettings({ ...bulkSettings, is_organic: checked as boolean })
+                  }
+                />
+                <label htmlFor="bulk-organic" className="text-sm font-medium">Organik</label>
+              </div>
+            </div>
+
+            <Button onClick={handleSaveBulkSettings} className="w-full">
+              Simpan untuk {selectedFarmerIds.length} Petani
             </Button>
           </div>
         </DialogContent>
