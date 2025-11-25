@@ -4,19 +4,11 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
-import { Palette, Type, Upload, QrCode, Layout } from "lucide-react";
+import { Palette, Type, Upload, QrCode } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { PackagingLabel } from "./PackagingLabel";
-import { TemplateEditor } from "./TemplateEditor";
 import { supabase } from "@/integrations/supabase/client";
-
-const TEMPLATE_OPTIONS = [
-  { value: "template_a", label: "Template A - Klasik" },
-  { value: "template_b", label: "Template B - Modern" },
-  { value: "template_c", label: "Template C - Minimalis" },
-];
 
 const FONT_OPTIONS = [
   { value: "Playfair Display", label: "Playfair Display (Klasik)" },
@@ -42,7 +34,6 @@ export const LabelCustomization = () => {
   const [qrLogoPreview, setQrLogoPreview] = useState<string>("");
   
   const [customSettings, setCustomSettings] = useState({
-    label_template: "template_a",
     label_primary_color: "30 71% 42%",
     label_background_start: "40 100% 97%",
     label_background_end: "33 100% 87%",
@@ -55,7 +46,6 @@ export const LabelCustomization = () => {
   useEffect(() => {
     if (profile) {
       setCustomSettings({
-        label_template: profile.label_template || "template_a",
         label_primary_color: profile.label_primary_color || "30 71% 42%",
         label_background_start: profile.label_background_start || "40 100% 97%",
         label_background_end: profile.label_background_end || "33 100% 87%",
@@ -220,20 +210,8 @@ export const LabelCustomization = () => {
   };
 
   return (
-    <Tabs defaultValue="styling" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="styling" className="gap-2">
-          <Palette className="h-4 w-4" />
-          Styling & Warna
-        </TabsTrigger>
-        <TabsTrigger value="layout" className="gap-2">
-          <Layout className="h-4 w-4" />
-          Layout Template
-        </TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="styling" className="space-y-6">
-        <Card>
+    <div className="space-y-6">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Palette className="h-5 w-5" />
@@ -244,31 +222,6 @@ export const LabelCustomization = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Template Selection */}
-          <div className="space-y-3">
-            <Label>Pilih Template Label</Label>
-            <Select
-              value={customSettings.label_template}
-              onValueChange={(value) =>
-                setCustomSettings({ ...customSettings, label_template: value })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TEMPLATE_OPTIONS.map((template) => (
-                  <SelectItem key={template.value} value={template.value}>
-                    {template.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Pilih gaya template yang sesuai dengan brand Anda
-            </p>
-          </div>
-
           {/* Logo Upload */}
           <div className="space-y-3">
             <Label className="flex items-center gap-2">
@@ -530,7 +483,6 @@ export const LabelCustomization = () => {
             sniCertified={true}
             isOrganic={true}
             companyName={profile?.nama_perusahaan}
-            template={customSettings.label_template}
             customColors={{
               primary: customSettings.label_primary_color,
               backgroundStart: customSettings.label_background_start,
@@ -546,11 +498,6 @@ export const LabelCustomization = () => {
           />
         </CardContent>
       </Card>
-      </TabsContent>
-
-      <TabsContent value="layout">
-        <TemplateEditor />
-      </TabsContent>
-    </Tabs>
+    </div>
   );
 };
