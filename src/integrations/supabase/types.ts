@@ -44,6 +44,57 @@ export type Database = {
         }
         Relationships: []
       }
+      label_settings: {
+        Row: {
+          berat_kg: number | null
+          cor_nop_certified: boolean
+          created_at: string
+          eu_certified: boolean
+          id: string
+          is_organic: boolean
+          petani_id: string
+          sni_certified: boolean
+          updated_at: string
+        }
+        Insert: {
+          berat_kg?: number | null
+          cor_nop_certified?: boolean
+          created_at?: string
+          eu_certified?: boolean
+          id?: string
+          is_organic?: boolean
+          petani_id: string
+          sni_certified?: boolean
+          updated_at?: string
+        }
+        Update: {
+          berat_kg?: number | null
+          cor_nop_certified?: boolean
+          created_at?: string
+          eu_certified?: boolean
+          id?: string
+          is_organic?: boolean
+          petani_id?: string
+          sni_certified?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "label_settings_petani_id_fkey"
+            columns: ["petani_id"]
+            isOneToOne: true
+            referencedRelation: "petani"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "label_settings_petani_id_fkey"
+            columns: ["petani_id"]
+            isOneToOne: true
+            referencedRelation: "petani_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lahan: {
         Row: {
           created_at: string
