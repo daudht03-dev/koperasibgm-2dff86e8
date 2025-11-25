@@ -19,6 +19,13 @@ interface PrintPreviewDialogProps {
     isOrganic: boolean;
   }>;
   companyName?: string;
+  customColors?: {
+    primary: string;
+    backgroundStart: string;
+    backgroundEnd: string;
+  };
+  customFont?: string;
+  customLogo?: string;
 }
 
 export const PrintPreviewDialog = ({
@@ -26,6 +33,9 @@ export const PrintPreviewDialog = ({
   onOpenChange,
   farmers,
   companyName,
+  customColors,
+  customFont,
+  customLogo,
 }: PrintPreviewDialogProps) => {
   const [gridLayout, setGridLayout] = useState<"2x2" | "3x3">("2x2");
   const printRef = useRef<HTMLDivElement>(null);
@@ -98,6 +108,9 @@ export const PrintPreviewDialog = ({
                     sniCertified={farmer.sniCertified}
                     isOrganic={farmer.isOrganic}
                     companyName={companyName}
+                    customColors={customColors}
+                    customFont={customFont}
+                    customLogo={customLogo}
                     showForPrint={true}
                   />
                 </div>

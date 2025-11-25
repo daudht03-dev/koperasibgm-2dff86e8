@@ -242,6 +242,10 @@ export type Database = {
           deskripsi: string | null
           id: string
           kontak: string | null
+          label_background_end: string | null
+          label_background_start: string | null
+          label_font_family: string | null
+          label_primary_color: string | null
           logo_url: string | null
           nama_perusahaan: string
           updated_at: string
@@ -252,6 +256,10 @@ export type Database = {
           deskripsi?: string | null
           id?: string
           kontak?: string | null
+          label_background_end?: string | null
+          label_background_start?: string | null
+          label_font_family?: string | null
+          label_primary_color?: string | null
           logo_url?: string | null
           nama_perusahaan: string
           updated_at?: string
@@ -262,6 +270,10 @@ export type Database = {
           deskripsi?: string | null
           id?: string
           kontak?: string | null
+          label_background_end?: string | null
+          label_background_start?: string | null
+          label_font_family?: string | null
+          label_primary_color?: string | null
           logo_url?: string | null
           nama_perusahaan?: string
           updated_at?: string

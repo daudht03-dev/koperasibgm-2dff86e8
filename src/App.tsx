@@ -16,6 +16,7 @@ import QRScanner from "./pages/QRScanner";
 import OfflineFarmers from "./pages/OfflineFarmers";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
+import LabelSettings from "./pages/LabelSettings";
 import NotFound from "./pages/NotFound";
 import Install from "./pages/Install";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -37,6 +38,14 @@ const AppContent = () => {
               element={
                 <ProtectedRoute requireAdmin={true}>
                   <AdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/label-settings" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <LabelSettings />
                 </ProtectedRoute>
               } 
             />
