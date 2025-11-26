@@ -17,6 +17,7 @@ import { Printer, Settings, FileDown, Edit, LayoutGrid, Palette, FileText, Alert
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import JSZip from "jszip";
 import { toast } from "@/hooks/use-toast";
 import { useReactToPrint } from "react-to-print";
 import { Link } from "react-router-dom";
@@ -413,6 +414,141 @@ export const LabelManagement = () => {
     }
   };
 
+  const handleBatchDownloadJPG = async () => {
+    if (selectedFarmerIds.length === 0) {
+      toast({
+        title: "Error",
+        description: "Pilih minimal satu petani",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      toast({
+        title: "Generating JPGs...",
+        description: `Membuat ${selectedFarmerIds.length} label JPG...`,
+      });
+
+      const zip = new JSZip();
+      
+      for (const farmerId of selectedFarmerIds) {
+        const labelElement = singleLabelRefs.current[farmerId];
+        const farmer = farmers.find(f => f.id === farmerId);
+        
+        if (!labelElement || !farmer) continue;
+        
+        const canvas = await html2canvas(labelElement, {
+          scale: 3,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff'
+        });
+        
+        const blob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error('Failed to create blob'));
+          }, 'image/jpeg', 0.95);
+        });
+        
+        const fileName = `label-${farmer.nama.replace(/\s+/g, '-')}-${farmer.kode_petani}.jpg`;
+        zip.file(fileName, blob);
+      }
+      
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `labels-batch-${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Berhasil",
+        description: `${selectedFarmerIds.length} label JPG berhasil didownload`,
+      });
+    } catch (error) {
+      console.error('Error generating batch JPG:', error);
+      toast({
+        title: "Error",
+        description: "Gagal membuat batch JPG",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBatchDownloadPDF = async () => {
+    if (selectedFarmerIds.length === 0) {
+      toast({
+        title: "Error",
+        description: "Pilih minimal satu petani",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      toast({
+        title: "Generating PDF...",
+        description: `Membuat PDF dengan ${selectedFarmerIds.length} label...`,
+      });
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      let isFirstPage = true;
+
+      for (const farmerId of selectedFarmerIds) {
+        const labelElement = singleLabelRefs.current[farmerId];
+        
+        if (!labelElement) continue;
+        
+        if (!isFirstPage) {
+          pdf.addPage();
+        }
+        isFirstPage = false;
+
+        const canvas = await html2canvas(labelElement, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff'
+        });
+        
+        const imgData = canvas.toDataURL('image/png');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = canvas.width;
+        const imgHeight = canvas.height;
+        const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+        const imgX = (pdfWidth - imgWidth * ratio) / 2;
+        const imgY = 10;
+        
+        pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      }
+      
+      pdf.save(`labels-batch-${new Date().toISOString().split('T')[0]}.pdf`);
+      
+      toast({
+        title: "Berhasil",
+        description: `PDF dengan ${selectedFarmerIds.length} label berhasil didownload`,
+      });
+    } catch (error) {
+      console.error('Error generating batch PDF:', error);
+      toast({
+        title: "Error",
+        description: "Gagal membuat batch PDF",
+        variant: "destructive",
+      });
+    }
+  };
+
   const selectedFarmer = farmers.find(f => f.id === selectedFarmerId);
 
   return (
@@ -450,6 +586,25 @@ export const LabelManagement = () => {
                     <LayoutGrid className="h-4 w-4" />
                     Preview Grid ({selectedFarmerIds.length})
                   </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="gap-2">
+                        <Download className="h-4 w-4" />
+                        Batch Download ({selectedFarmerIds.length})
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem onClick={handleBatchDownloadJPG}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download Semua JPG (ZIP)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleBatchDownloadPDF}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download Semua PDF
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button
                     variant="ghost"
                     onClick={() => setSelectedFarmerIds([])}
