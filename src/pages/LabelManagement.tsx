@@ -62,10 +62,14 @@ export const LabelManagement = () => {
     is_organic: true,
   });
 
-  // Helper function to ensure template_settings is an array
+  // Helper function to extract template elements from template_settings
   const getTemplateElements = () => {
     const settings = profile?.template_settings;
-    return Array.isArray(settings) ? settings : undefined;
+    if (settings && typeof settings === 'object' && 'elements' in settings) {
+      const typedSettings = settings as { elements?: any[] };
+      return Array.isArray(typedSettings.elements) ? typedSettings.elements : undefined;
+    }
+    return undefined;
   };
 
   // Real-time subscription to petani table updates
