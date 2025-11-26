@@ -5,7 +5,10 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { PackagingLabel } from "@/components/PackagingLabel";
-import { Printer } from "lucide-react";
+import { Printer, Download } from "lucide-react";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import { toast } from "sonner";
 
 interface PrintPreviewDialogProps {
   open: boolean;
@@ -69,6 +72,44 @@ export const PrintPreviewDialog = ({
     `,
   });
 
+  const handleDownloadPDF = async () => {
+    if (!printRef.current) return;
+    
+    try {
+      toast.info("Generating PDF...");
+      
+      const canvas = await html2canvas(printRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      const imgY = 10;
+      
+      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      pdf.save(`labels-${gridLayout}-${new Date().toISOString().split('T')[0]}.pdf`);
+      
+      toast.success("PDF downloaded successfully!");
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error("Failed to generate PDF");
+    }
+  };
+
   const gridCols = gridLayout === "2x2" ? "grid-cols-2" : "grid-cols-3";
   const labelSize = gridLayout === "2x2" ? "w-[350px] h-[500px]" : "w-[240px] h-[360px]";
 
@@ -99,10 +140,16 @@ export const PrintPreviewDialog = ({
                 </div>
               </RadioGroup>
             </div>
-            <Button onClick={handlePrint} size="lg">
-              <Printer className="mr-2 h-5 w-5" />
-              Cetak {farmers.length} Label
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={handleDownloadPDF} size="lg" variant="outline">
+                <Download className="mr-2 h-5 w-5" />
+                Download PDF
+              </Button>
+              <Button onClick={handlePrint} size="lg">
+                <Printer className="mr-2 h-5 w-5" />
+                Cetak {farmers.length} Label
+              </Button>
+            </div>
           </div>
 
           {/* Print Preview */}
