@@ -115,8 +115,29 @@ const IdentityLabelSettings = () => {
                 </TabsList>
 
                 <TabsContent value="design" className="space-y-6 pt-4">
-                  {/* Color Settings */}
+                  {/* Template Style Selection */}
                   <div className="space-y-3">
+                    <Label>Template Style</Label>
+                    <Select 
+                      value={settings.card_style} 
+                      onValueChange={(value) => setSettings(prev => ({ ...prev, card_style: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="modern">Modern Card - Vertical professional card</SelectItem>
+                        <SelectItem value="badge">Badge - Horizontal lanyard format</SelectItem>
+                        <SelectItem value="sticker">Sticker - Compact circular design</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Pilih format label yang sesuai dengan kebutuhan Anda
+                    </p>
+                  </div>
+
+                  {/* Color Settings */}
+                  <div className="space-y-3 pt-4 border-t">
                     <Label>Warna Utama (HSL Format)</Label>
                     <Input
                       value={primaryColor}
