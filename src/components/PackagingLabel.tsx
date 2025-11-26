@@ -154,8 +154,8 @@ export const PackagingLabel = ({
             >
               {farmerName}
               {farmerCode && (
-                <span className="font-normal opacity-80" style={{ fontSize: `${(element.styles?.fontSize || 24) * 0.7}px` }}>
-                  {' '}({farmerCode})
+                <span className="font-semibold" style={{ fontSize: `${element.styles?.fontSize || 24}px` }}>
+                  {' '}- {farmerCode}
                 </span>
               )}
             </p>
@@ -325,8 +325,8 @@ export const PackagingLabel = ({
             >
               {farmerName}
               {farmerCode && (
-                <span className="text-lg font-normal opacity-80">
-                  {' '}({farmerCode})
+                <span className="text-2xl font-semibold">
+                  {' '}- {farmerCode}
                 </span>
               )}
             </p>
