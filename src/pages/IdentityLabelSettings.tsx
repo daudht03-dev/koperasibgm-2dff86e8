@@ -80,6 +80,34 @@ const IdentityLabelSettings = () => {
     "Raleway",
   ];
 
+  const paperSizes = {
+    A4: { width: 210, height: 297, unit: "mm", name: "A4 (210 x 297 mm)" },
+    A5: { width: 148, height: 210, unit: "mm", name: "A5 (148 x 210 mm)" },
+    Letter: { width: 216, height: 279, unit: "mm", name: "Letter (8.5 x 11 in)" },
+    IDCard: { width: 85.6, height: 54, unit: "mm", name: "ID Card (85.6 x 54 mm)" },
+  };
+
+  const calculateGrid = (paperWidth: number, paperHeight: number, labelWidth: number, labelHeight: number) => {
+    const margin = 10; // 10mm margin
+    const gap = 5; // 5mm gap between labels
+    
+    const usableWidth = paperWidth - (2 * margin);
+    const usableHeight = paperHeight - (2 * margin);
+    
+    const cols = Math.floor((usableWidth + gap) / (labelWidth + gap));
+    const rows = Math.floor((usableHeight + gap) / (labelHeight + gap));
+    
+    return { cols: Math.max(1, cols), rows: Math.max(1, rows), total: Math.max(1, cols * rows) };
+  };
+
+  const getCurrentLabelSize = () => {
+    const currentStyle = settings.card_style as 'modern' | 'badge' | 'sticker';
+    const width = settings.sizes?.[currentStyle]?.width || 350;
+    const height = settings.sizes?.[currentStyle]?.height || 500;
+    // Convert px to mm (assuming 96 DPI: 1px = 0.264583mm)
+    return { width: width * 0.264583, height: height * 0.264583 };
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -351,6 +379,68 @@ const IdentityLabelSettings = () => {
                           </>
                         )}
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Paper Size Presets */}
+                  <div className="space-y-4 pt-4 border-t">
+                    <div>
+                      <h4 className="font-semibold mb-1">Ukuran Kertas Standar</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Hitung otomatis berapa label yang muat di setiap kertas
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {Object.entries(paperSizes).map(([key, paper]) => {
+                        const labelSize = getCurrentLabelSize();
+                        const grid = calculateGrid(paper.width, paper.height, labelSize.width, labelSize.height);
+                        
+                        return (
+                          <div key={key} className="p-3 border rounded-lg bg-muted/30 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-medium text-sm">{paper.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {paper.width} x {paper.height} {paper.unit}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-lg font-bold text-primary">{grid.total}</p>
+                                <p className="text-xs text-muted-foreground">label/sheet</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <div className="w-4 h-4 border-2 border-primary rounded" />
+                                <span>{grid.cols} kolom</span>
+                              </div>
+                              <span>×</span>
+                              <div className="flex items-center gap-1">
+                                <div className="w-4 h-4 border-2 border-primary rounded" />
+                                <span>{grid.rows} baris</span>
+                              </div>
+                            </div>
+                            {/* Visual grid preview */}
+                            <div className="flex justify-center pt-2">
+                              <div 
+                                className="grid gap-0.5 p-2 border-2 border-dashed border-muted-foreground/30 rounded bg-background"
+                                style={{
+                                  gridTemplateColumns: `repeat(${Math.min(grid.cols, 6)}, 1fr)`,
+                                  maxWidth: '200px'
+                                }}
+                              >
+                                {Array.from({ length: Math.min(grid.total, grid.cols * Math.min(grid.rows, 4)) }).map((_, i) => (
+                                  <div 
+                                    key={i} 
+                                    className="w-4 h-6 bg-primary/20 border border-primary/40 rounded-sm"
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
