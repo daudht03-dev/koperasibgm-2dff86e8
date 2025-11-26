@@ -13,7 +13,10 @@ import { PrintPreviewDialog } from "@/components/PrintPreviewDialog";
 import { useFarmers } from "@/hooks/use-farmers";
 import { useLabelSettings, LabelSettings } from "@/hooks/use-label-settings";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
-import { Printer, Settings, FileDown, Edit, LayoutGrid, Palette, FileText, AlertCircle } from "lucide-react";
+import { Printer, Settings, FileDown, Edit, LayoutGrid, Palette, FileText, AlertCircle, Download, ChevronDown } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import { toast } from "@/hooks/use-toast";
 import { useReactToPrint } from "react-to-print";
 import { Link } from "react-router-dom";
@@ -35,6 +38,7 @@ export const LabelManagement = () => {
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const printRef = useRef<HTMLDivElement>(null);
+  const singleLabelRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   const [currentSettings, setCurrentSettings] = useState<Partial<LabelSettings>>({
     eu_certified: false,
@@ -303,6 +307,112 @@ export const LabelManagement = () => {
     }
   };
 
+  const handleDownloadIndividualJPG = async (farmerId: string, farmerName: string) => {
+    const labelElement = singleLabelRefs.current[farmerId];
+    if (!labelElement) {
+      toast({
+        title: "Error",
+        description: "Label tidak ditemukan",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      toast({
+        title: "Generating JPG...",
+        description: "Mohon tunggu sebentar",
+      });
+      
+      const canvas = await html2canvas(labelElement, {
+        scale: 3,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+      
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `label-${farmerName.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.jpg`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          toast({
+            title: "Berhasil",
+            description: "Label JPG berhasil didownload",
+          });
+        }
+      }, 'image/jpeg', 0.95);
+    } catch (error) {
+      console.error('Error generating JPG:', error);
+      toast({
+        title: "Error",
+        description: "Gagal membuat JPG",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDownloadIndividualPDF = async (farmerId: string, farmerName: string) => {
+    const labelElement = singleLabelRefs.current[farmerId];
+    if (!labelElement) {
+      toast({
+        title: "Error",
+        description: "Label tidak ditemukan",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      toast({
+        title: "Generating PDF...",
+        description: "Mohon tunggu sebentar",
+      });
+      
+      const canvas = await html2canvas(labelElement, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      const imgY = 10;
+      
+      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      pdf.save(`label-${farmerName.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`);
+      
+      toast({
+        title: "Berhasil",
+        description: "Label PDF berhasil didownload",
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: "Error",
+        description: "Gagal membuat PDF",
+        variant: "destructive",
+      });
+    }
+  };
+
   const selectedFarmer = farmers.find(f => f.id === selectedFarmerId);
 
   return (
@@ -462,6 +572,24 @@ export const LabelManagement = () => {
                         <Printer className="h-4 w-4 mr-1" />
                         Cetak
                       </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <Download className="h-4 w-4 mr-1" />
+                            <ChevronDown className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleDownloadIndividualJPG(farmer.id, farmer.nama)}>
+                            <Download className="h-4 w-4 mr-2" />
+                            Download JPG
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDownloadIndividualPDF(farmer.id, farmer.nama)}>
+                            <Download className="h-4 w-4 mr-2" />
+                            Download PDF
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                   );
@@ -830,6 +958,46 @@ export const LabelManagement = () => {
         qrLogoSize={profile?.qr_logo_size}
         templateElements={getTemplateElements()}
       />
+
+      {/* Hidden Labels for Individual Download */}
+      <div className="hidden">
+        {farmers.map((farmer) => {
+          const settings = labelSettings.find(s => s.petani_id === farmer.id);
+          return (
+            <div
+              key={farmer.id}
+              ref={(el) => (singleLabelRefs.current[farmer.id] = el)}
+              className="w-[350px] h-[500px]"
+            >
+              <PackagingLabel
+                farmerName={farmer.nama}
+                farmerCode={farmer.kode_petani}
+                farmerLogo={farmer.logo_url}
+                farmerId={farmer.id}
+                euCertified={settings?.eu_certified || false}
+                corNopCertified={settings?.cor_nop_certified || false}
+                sniCertified={settings?.sni_certified || false}
+                isOrganic={settings?.is_organic !== false}
+                companyName={profile?.nama_perusahaan}
+                customColors={profile?.label_primary_color ? {
+                  primary: profile.label_primary_color,
+                  backgroundStart: profile.label_background_start || "40 100% 97%",
+                  backgroundEnd: profile.label_background_end || "33 100% 87%",
+                } : undefined}
+                customFont={profile?.label_font_family}
+                customLogo={profile?.logo_url}
+                qrSize={profile?.qr_size}
+                qrErrorCorrection={profile?.qr_error_correction as 'L' | 'M' | 'Q' | 'H'}
+                qrLogo={profile?.qr_logo_url}
+                qrLogoSize={profile?.qr_logo_size}
+                showForPrint={true}
+                templateElements={getTemplateElements()}
+                customData={farmer.custom_data as Record<string, string>}
+              />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
