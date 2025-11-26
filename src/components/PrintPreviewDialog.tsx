@@ -14,6 +14,8 @@ interface PrintPreviewDialogProps {
     id: string;
     nama: string;
     kode_petani: string;
+    logo_url?: string;
+    custom_data?: Record<string, string>;
     euCertified: boolean;
     corNopCertified: boolean;
     sniCertified: boolean;
@@ -31,6 +33,7 @@ interface PrintPreviewDialogProps {
   qrErrorCorrection?: 'L' | 'M' | 'Q' | 'H';
   qrLogo?: string;
   qrLogoSize?: number;
+  templateElements?: any[];
 }
 
 export const PrintPreviewDialog = ({
@@ -45,6 +48,7 @@ export const PrintPreviewDialog = ({
   qrErrorCorrection,
   qrLogo,
   qrLogoSize,
+  templateElements,
 }: PrintPreviewDialogProps) => {
   const [gridLayout, setGridLayout] = useState<"2x2" | "3x3">("2x2");
   const printRef = useRef<HTMLDivElement>(null);
@@ -112,6 +116,7 @@ export const PrintPreviewDialog = ({
                   <PackagingLabel
                     farmerName={farmer.nama}
                     farmerCode={farmer.kode_petani}
+                    farmerLogo={farmer.logo_url}
                     farmerId={farmer.id}
                     euCertified={farmer.euCertified}
                     corNopCertified={farmer.corNopCertified}
@@ -126,6 +131,8 @@ export const PrintPreviewDialog = ({
                     qrLogo={qrLogo}
                     qrLogoSize={qrLogoSize}
                     showForPrint={true}
+                    templateElements={templateElements}
+                    customData={farmer.custom_data}
                   />
                 </div>
               ))}
