@@ -13,7 +13,7 @@ import { PrintPreviewDialog } from "@/components/PrintPreviewDialog";
 import { useFarmers } from "@/hooks/use-farmers";
 import { useLabelSettings, LabelSettings } from "@/hooks/use-label-settings";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
-import { Printer, Settings, FileDown, Edit, LayoutGrid, Palette, FileText, AlertCircle, Download, ChevronDown } from "lucide-react";
+import { Printer, Settings, FileDown, Edit, LayoutGrid, Palette, FileText, AlertCircle, Download, ChevronDown, Search, Filter } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -38,6 +38,8 @@ export const LabelManagement = () => {
   const [customFieldDialogOpen, setCustomFieldDialogOpen] = useState(false);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "configured" | "not_configured">("all");
   const printRef = useRef<HTMLDivElement>(null);
   const singleLabelRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
@@ -257,7 +259,7 @@ export const LabelManagement = () => {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedFarmerIds(farmers.map(f => f.id));
+      setSelectedFarmerIds(filteredFarmers.map(f => f.id));
     } else {
       setSelectedFarmerIds([]);
     }
@@ -551,6 +553,21 @@ export const LabelManagement = () => {
 
   const selectedFarmer = farmers.find(f => f.id === selectedFarmerId);
 
+  // Filter farmers based on search and status filter
+  const filteredFarmers = farmers.filter((farmer) => {
+    const matchesSearch = 
+      farmer.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      farmer.kode_petani.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const hasSettings = labelSettings.some(s => s.petani_id === farmer.id);
+    const matchesStatus = 
+      statusFilter === "all" ||
+      (statusFilter === "configured" && hasSettings) ||
+      (statusFilter === "not_configured" && !hasSettings);
+    
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <div className="space-y-6">
       <Card>
@@ -574,6 +591,38 @@ export const LabelManagement = () => {
           </div>
         </CardHeader>
         <CardContent>
+          {/* Search and Filter Section */}
+          <div className="mb-4 space-y-3">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Cari nama petani atau kode..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+                <SelectTrigger className="w-full sm:w-[200px]">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Filter Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Status</SelectItem>
+                  <SelectItem value="configured">Sudah Diatur</SelectItem>
+                  <SelectItem value="not_configured">Belum Diatur</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {(searchQuery || statusFilter !== "all") && (
+              <p className="text-sm text-muted-foreground">
+                Menampilkan {filteredFarmers.length} dari {farmers.length} petani
+              </p>
+            )}
+          </div>
+
+          {/* Selection Actions */}
           <div className="mb-4 flex justify-between items-center">
             <div className="flex gap-2">
               {selectedFarmerIds.length > 0 && (
@@ -674,7 +723,7 @@ export const LabelManagement = () => {
               <TableRow>
                 <TableHead className="w-12">
                   <Checkbox
-                    checked={selectedFarmerIds.length === farmers.length && farmers.length > 0}
+                    checked={selectedFarmerIds.length === filteredFarmers.length && filteredFarmers.length > 0}
                     onCheckedChange={handleSelectAll}
                   />
                 </TableHead>
@@ -685,7 +734,7 @@ export const LabelManagement = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {farmers.map((farmer) => {
+              {filteredFarmers.map((farmer) => {
                 const hasSettings = labelSettings.some(s => s.petani_id === farmer.id);
                 return (
                   <TableRow key={farmer.id}>
@@ -749,9 +798,17 @@ export const LabelManagement = () => {
                   </TableRow>
                   );
                 })}
+              {filteredFarmers.length === 0 && farmers.length > 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>Tidak ada petani yang sesuai dengan pencarian</p>
+                  </TableCell>
+                </TableRow>
+              )}
               {farmers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     Belum ada data petani
                   </TableCell>
                 </TableRow>
