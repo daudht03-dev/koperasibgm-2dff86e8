@@ -1,7 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -11,13 +12,14 @@ import { PrintPreviewDialog } from "@/components/PrintPreviewDialog";
 import { useFarmers } from "@/hooks/use-farmers";
 import { useLabelSettings, LabelSettings } from "@/hooks/use-label-settings";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
-import { Printer, Settings, FileDown, Edit, LayoutGrid, Palette } from "lucide-react";
+import { Printer, Settings, FileDown, Edit, LayoutGrid, Palette, FileText } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useReactToPrint } from "react-to-print";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 export const LabelManagement = () => {
-  const { farmers } = useFarmers();
+  const { farmers, updateFarmer, refetch: refetchFarmers } = useFarmers();
   const { labelSettings, getLabelSettingByFarmerId, upsertLabelSetting } = useLabelSettings();
   const { profile } = useCompanyProfile();
   const [selectedFarmerId, setSelectedFarmerId] = useState<string>("");
@@ -27,6 +29,8 @@ export const LabelManagement = () => {
   const [bulkPrintDialogOpen, setBulkPrintDialogOpen] = useState(false);
   const [bulkEditDialogOpen, setBulkEditDialogOpen] = useState(false);
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
+  const [customFieldDialogOpen, setCustomFieldDialogOpen] = useState(false);
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
   const printRef = useRef<HTMLDivElement>(null);
 
   const [currentSettings, setCurrentSettings] = useState<Partial<LabelSettings>>({
@@ -47,6 +51,60 @@ export const LabelManagement = () => {
   const getTemplateElements = () => {
     const settings = profile?.template_settings;
     return Array.isArray(settings) ? settings : undefined;
+  };
+
+  // Real-time subscription to petani table updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('petani-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'petani'
+        },
+        () => {
+          refetchFarmers();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetchFarmers]);
+
+  const handleOpenCustomFields = async (farmerId: string) => {
+    setSelectedFarmerId(farmerId);
+    const farmer = farmers.find(f => f.id === farmerId);
+    if (farmer?.custom_data) {
+      setCustomFieldValues(farmer.custom_data as Record<string, string>);
+    } else {
+      setCustomFieldValues({});
+    }
+    setCustomFieldDialogOpen(true);
+  };
+
+  const handleSaveCustomFields = async () => {
+    const success = await updateFarmer(selectedFarmerId, {
+      custom_data: customFieldValues as any
+    });
+    
+    if (success) {
+      setCustomFieldDialogOpen(false);
+      toast({
+        title: "Berhasil",
+        description: "Data custom field berhasil disimpan dan label akan otomatis terupdate",
+      });
+    }
+  };
+
+  const getCustomFields = () => {
+    if (!profile?.custom_fields || !Array.isArray(profile.custom_fields)) {
+      return [];
+    }
+    return profile.custom_fields;
   };
 
   const handleOpenSettings = async (farmerId: string) => {
@@ -305,6 +363,14 @@ export const LabelManagement = () => {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => handleOpenCustomFields(farmer.id)}
+                      >
+                        <FileText className="h-4 w-4 mr-1" />
+                        Field
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => handleOpenSettings(farmer.id)}
                       >
                         <Settings className="h-4 w-4 mr-1" />
@@ -397,6 +463,50 @@ export const LabelManagement = () => {
             <Button onClick={handleSaveSettings} className="w-full">
               Simpan Pengaturan
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Custom Fields Dialog */}
+      <Dialog open={customFieldDialogOpen} onOpenChange={setCustomFieldDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Custom Fields - {selectedFarmer?.nama}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {getCustomFields().length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>Belum ada custom field yang dikonfigurasi.</p>
+                <p className="text-sm mt-2">
+                  Silakan tambahkan custom field di{" "}
+                  <Link to="/label-settings" className="text-primary hover:underline">
+                    Kustomisasi Label
+                  </Link>
+                </p>
+              </div>
+            ) : (
+              <>
+                {getCustomFields().map((field: any) => (
+                  <div key={field.key} className="space-y-2">
+                    <Label htmlFor={field.key}>{field.label}</Label>
+                    <Input
+                      id={field.key}
+                      value={customFieldValues[field.key] || ""}
+                      onChange={(e) =>
+                        setCustomFieldValues({
+                          ...customFieldValues,
+                          [field.key]: e.target.value,
+                        })
+                      }
+                      placeholder={`Masukkan ${field.label.toLowerCase()}`}
+                    />
+                  </div>
+                ))}
+                <Button onClick={handleSaveCustomFields} className="w-full">
+                  Simpan Custom Fields
+                </Button>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
