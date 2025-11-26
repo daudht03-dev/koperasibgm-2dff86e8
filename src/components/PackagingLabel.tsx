@@ -297,7 +297,7 @@ export const PackagingLabel = ({
         fontFamily: customFont,
       }}
     >
-      {templateElements ? (
+      {templateElements && Array.isArray(templateElements) ? (
         templateElements.map(element => renderElement(element))
       ) : (
         <>
