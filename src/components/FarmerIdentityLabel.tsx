@@ -9,11 +9,6 @@ interface IdentityLabelSettings {
   farmer_code_label?: string;
   qr_text?: string;
   card_style?: string;
-  sizes?: {
-    modern?: { width: number; height: number; unit: string };
-    badge?: { width: number; height: number; unit: string };
-    sticker?: { width: number; height: number; unit: string };
-  };
 }
 
 interface FarmerIdentityLabelProps {
@@ -102,31 +97,17 @@ export const FarmerIdentityLabel = ({
     farmer_code_label: "Farmer Code",
     qr_text: "Scan untuk verifikasi identitas",
     card_style: "modern",
-    sizes: {
-      modern: { width: 350, height: 500, unit: "px" },
-      badge: { width: 400, height: 280, unit: "px" },
-      sticker: { width: 320, height: 320, unit: "px" },
-    },
     ...customSettings,
   };
 
-  // Get size based on current style
-  const currentStyle = settings.card_style as 'modern' | 'badge' | 'sticker';
-  const currentSize = settings.sizes?.[currentStyle] || 
-    (currentStyle === 'modern' ? { width: 350, height: 500, unit: "px" } :
-     currentStyle === 'badge' ? { width: 400, height: 280, unit: "px" } :
-     { width: 320, height: 320, unit: "px" });
-
   // Card Style: Modern professional card (vertical)
   if (settings.card_style === "modern") {
-    const size = settings.sizes?.modern || { width: 350, height: 500, unit: "px" };
     return (
       <div 
-        className="relative overflow-hidden"
+        className={`relative overflow-hidden ${
+          showForPrint ? 'w-[350px] h-[500px]' : 'w-full max-w-sm'
+        }`}
         style={{ 
-          width: showForPrint ? `${size.width}${size.unit}` : '100%',
-          height: showForPrint ? `${size.height}${size.unit}` : 'auto',
-          maxWidth: showForPrint ? 'none' : '28rem',
           pageBreakAfter: 'always',
           fontFamily: customFont,
         }}
@@ -231,14 +212,12 @@ export const FarmerIdentityLabel = ({
 
   // Badge Style: Horizontal badge/lanyard format
   if (settings.card_style === "badge") {
-    const size = settings.sizes?.badge || { width: 400, height: 280, unit: "px" };
     return (
       <div 
-        className="relative"
+        className={`relative ${
+          showForPrint ? 'w-[400px] h-[280px]' : 'w-full max-w-md'
+        }`}
         style={{ 
-          width: showForPrint ? `${size.width}${size.unit}` : '100%',
-          height: showForPrint ? `${size.height}${size.unit}` : 'auto',
-          maxWidth: showForPrint ? 'none' : '28rem',
           pageBreakAfter: 'always',
           fontFamily: customFont,
         }}
@@ -330,14 +309,12 @@ export const FarmerIdentityLabel = ({
 
   // Sticker Style: Compact rounded sticker
   if (settings.card_style === "sticker") {
-    const size = settings.sizes?.sticker || { width: 320, height: 320, unit: "px" };
     return (
       <div 
-        className="relative"
+        className={`relative ${
+          showForPrint ? 'w-[320px] h-[320px]' : 'w-full max-w-xs'
+        }`}
         style={{ 
-          width: showForPrint ? `${size.width}${size.unit}` : '100%',
-          height: showForPrint ? `${size.height}${size.unit}` : 'auto',
-          maxWidth: showForPrint ? 'none' : '20rem',
           pageBreakAfter: 'always',
           fontFamily: customFont,
         }}
