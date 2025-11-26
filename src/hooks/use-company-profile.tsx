@@ -20,6 +20,9 @@ export interface CompanyProfile {
   qr_logo_size?: number;
   template_settings?: any;
   custom_fields?: any;
+  identity_label_primary_color?: string;
+  identity_label_font_family?: string;
+  identity_label_settings?: any;
   created_at: string;
   updated_at: string;
 }

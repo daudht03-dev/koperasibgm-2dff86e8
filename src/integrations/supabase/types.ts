@@ -248,6 +248,9 @@ export type Database = {
           custom_fields: Json | null
           deskripsi: string | null
           id: string
+          identity_label_font_family: string | null
+          identity_label_primary_color: string | null
+          identity_label_settings: Json | null
           kontak: string | null
           label_background_end: string | null
           label_background_start: string | null
@@ -269,6 +272,9 @@ export type Database = {
           custom_fields?: Json | null
           deskripsi?: string | null
           id?: string
+          identity_label_font_family?: string | null
+          identity_label_primary_color?: string | null
+          identity_label_settings?: Json | null
           kontak?: string | null
           label_background_end?: string | null
           label_background_start?: string | null
@@ -290,6 +296,9 @@ export type Database = {
           custom_fields?: Json | null
           deskripsi?: string | null
           id?: string
+          identity_label_font_family?: string | null
+          identity_label_primary_color?: string | null
+          identity_label_settings?: Json | null
           kontak?: string | null
           label_background_end?: string | null
           label_background_start?: string | null

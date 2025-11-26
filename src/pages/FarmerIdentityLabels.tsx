@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Download, Printer, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Download, Printer, Search, ChevronLeft, ChevronRight, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { FarmerIdentityLabel } from "@/components/FarmerIdentityLabel";
 import { useReactToPrint } from "react-to-print";
@@ -172,6 +172,14 @@ const FarmerIdentityLabels = () => {
             <ArrowLeft className="h-4 w-4" />
             Kembali
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => navigate("/identity-label-settings")}
+            className="gap-2"
+          >
+            <Settings className="h-4 w-4" />
+            Pengaturan Label
+          </Button>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
@@ -301,26 +309,36 @@ const FarmerIdentityLabels = () => {
             <CardContent>
               {selectedFarmers.size > 0 ? (
                 <div className="max-h-[600px] overflow-y-auto space-y-4">
-                  {selectedFarmersList.slice(0, 3).map(farmer => (
-                    <FarmerIdentityLabel
-                      key={farmer.id}
-                      farmerName={farmer.nama}
-                      farmerCode={farmer.kode_petani}
-                      farmerId={farmer.id}
-                      companyName={profile?.nama_perusahaan || ""}
-                      companyLogo={profile?.logo_url || undefined}
-                      customColors={{
-                        primary: profile?.label_primary_color || "30 71% 42%",
-                        backgroundStart: profile?.label_background_start || "40 100% 97%",
-                        backgroundEnd: profile?.label_background_end || "33 100% 87%",
-                      }}
-                      customFont={profile?.label_font_family || "Playfair Display"}
-                      qrSize={profile?.qr_size || 180}
-                      qrErrorCorrection={profile?.qr_error_correction as 'L' | 'M' | 'Q' | 'H' || 'M'}
-                      qrLogo={profile?.qr_logo_url || undefined}
-                      qrLogoSize={profile?.qr_logo_size || 50}
-                    />
-                  ))}
+                  {selectedFarmersList.slice(0, 3).map(farmer => {
+                    const identitySettings = profile?.identity_label_settings 
+                      ? (typeof profile.identity_label_settings === 'string' 
+                        ? JSON.parse(profile.identity_label_settings) 
+                        : profile.identity_label_settings)
+                      : undefined;
+                    
+                    return (
+                      <FarmerIdentityLabel
+                        key={farmer.id}
+                        farmerName={farmer.nama}
+                        farmerCode={farmer.kode_petani}
+                        farmerId={farmer.id}
+                        companyName={profile?.nama_perusahaan || ""}
+                        companyLogo={profile?.logo_url || undefined}
+                        farmerLogo={farmer.logo_url || undefined}
+                        customColors={{
+                          primary: profile?.identity_label_primary_color || "30 71% 42%",
+                          backgroundStart: profile?.label_background_start || "40 100% 97%",
+                          backgroundEnd: profile?.label_background_end || "33 100% 87%",
+                        }}
+                        customFont={profile?.identity_label_font_family || "Inter"}
+                        qrSize={profile?.qr_size || 180}
+                        qrErrorCorrection={profile?.qr_error_correction as 'L' | 'M' | 'Q' | 'H' || 'M'}
+                        qrLogo={profile?.qr_logo_url || undefined}
+                        qrLogoSize={profile?.qr_logo_size || 50}
+                        customSettings={identitySettings}
+                      />
+                    );
+                  })}
                   {selectedFarmers.size > 3 && (
                     <p className="text-sm text-muted-foreground text-center py-4">
                       ... dan {selectedFarmers.size - 3} label lainnya
@@ -340,27 +358,37 @@ const FarmerIdentityLabels = () => {
       {/* Hidden print content */}
       <div style={{ display: 'none' }}>
         <div ref={printRef} className="space-y-8 p-8">
-          {selectedFarmersList.map(farmer => (
-            <FarmerIdentityLabel
-              key={farmer.id}
-              farmerName={farmer.nama}
-              farmerCode={farmer.kode_petani}
-              farmerId={farmer.id}
-              companyName={profile?.nama_perusahaan || ""}
-              companyLogo={profile?.logo_url || undefined}
-              customColors={{
-                primary: profile?.label_primary_color || "30 71% 42%",
-                backgroundStart: profile?.label_background_start || "40 100% 97%",
-                backgroundEnd: profile?.label_background_end || "33 100% 87%",
-              }}
-              customFont={profile?.label_font_family || "Playfair Display"}
-              qrSize={profile?.qr_size || 180}
-              qrErrorCorrection={profile?.qr_error_correction as 'L' | 'M' | 'Q' | 'H' || 'M'}
-              qrLogo={profile?.qr_logo_url || undefined}
-              qrLogoSize={profile?.qr_logo_size || 50}
-              showForPrint={true}
-            />
-          ))}
+          {selectedFarmersList.map(farmer => {
+            const identitySettings = profile?.identity_label_settings 
+              ? (typeof profile.identity_label_settings === 'string' 
+                ? JSON.parse(profile.identity_label_settings) 
+                : profile.identity_label_settings)
+              : undefined;
+            
+            return (
+              <FarmerIdentityLabel
+                key={farmer.id}
+                farmerName={farmer.nama}
+                farmerCode={farmer.kode_petani}
+                farmerId={farmer.id}
+                companyName={profile?.nama_perusahaan || ""}
+                companyLogo={profile?.logo_url || undefined}
+                farmerLogo={farmer.logo_url || undefined}
+                customColors={{
+                  primary: profile?.identity_label_primary_color || "30 71% 42%",
+                  backgroundStart: profile?.label_background_start || "40 100% 97%",
+                  backgroundEnd: profile?.label_background_end || "33 100% 87%",
+                }}
+                customFont={profile?.identity_label_font_family || "Inter"}
+                qrSize={profile?.qr_size || 180}
+                qrErrorCorrection={profile?.qr_error_correction as 'L' | 'M' | 'Q' | 'H' || 'M'}
+                qrLogo={profile?.qr_logo_url || undefined}
+                qrLogoSize={profile?.qr_logo_size || 50}
+                customSettings={identitySettings}
+                showForPrint={true}
+              />
+            );
+          })}
         </div>
       </div>
     </div>
