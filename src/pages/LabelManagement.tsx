@@ -13,8 +13,9 @@ import { PrintPreviewDialog } from "@/components/PrintPreviewDialog";
 import { useFarmers } from "@/hooks/use-farmers";
 import { useLabelSettings, LabelSettings } from "@/hooks/use-label-settings";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
-import { Printer, Settings, FileDown, Edit, LayoutGrid, Palette, FileText, AlertCircle, Download, ChevronDown, Search, Filter } from "lucide-react";
+import { Printer, Settings, FileDown, Edit, LayoutGrid, Palette, FileText, AlertCircle, Download, ChevronDown, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import JSZip from "jszip";
@@ -40,6 +41,10 @@ export const LabelManagement = () => {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "configured" | "not_configured">("all");
+  const [sortField, setSortField] = useState<"nama" | "kode_petani" | "status">("nama");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
   const printRef = useRef<HTMLDivElement>(null);
   const singleLabelRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
@@ -259,7 +264,7 @@ export const LabelManagement = () => {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedFarmerIds(filteredFarmers.map(f => f.id));
+      setSelectedFarmerIds(paginatedFarmers.map(f => f.id));
     } else {
       setSelectedFarmerIds([]);
     }
@@ -553,20 +558,71 @@ export const LabelManagement = () => {
 
   const selectedFarmer = farmers.find(f => f.id === selectedFarmerId);
 
-  // Filter farmers based on search and status filter
-  const filteredFarmers = farmers.filter((farmer) => {
-    const matchesSearch = 
-      farmer.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      farmer.kode_petani.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const hasSettings = labelSettings.some(s => s.petani_id === farmer.id);
-    const matchesStatus = 
-      statusFilter === "all" ||
-      (statusFilter === "configured" && hasSettings) ||
-      (statusFilter === "not_configured" && !hasSettings);
-    
-    return matchesSearch && matchesStatus;
-  });
+  // Toggle sort
+  const handleSort = (field: "nama" | "kode_petani" | "status") => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+    setCurrentPage(1);
+  };
+
+  // Filter and sort farmers
+  const filteredAndSortedFarmers = farmers
+    .filter((farmer) => {
+      const matchesSearch = 
+        farmer.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        farmer.kode_petani.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const hasSettings = labelSettings.some(s => s.petani_id === farmer.id);
+      const matchesStatus = 
+        statusFilter === "all" ||
+        (statusFilter === "configured" && hasSettings) ||
+        (statusFilter === "not_configured" && !hasSettings);
+      
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      let compareValue = 0;
+      
+      if (sortField === "nama") {
+        compareValue = a.nama.localeCompare(b.nama);
+      } else if (sortField === "kode_petani") {
+        compareValue = a.kode_petani.localeCompare(b.kode_petani);
+      } else if (sortField === "status") {
+        const aHasSettings = labelSettings.some(s => s.petani_id === a.id);
+        const bHasSettings = labelSettings.some(s => s.petani_id === b.id);
+        compareValue = (aHasSettings === bHasSettings) ? 0 : aHasSettings ? -1 : 1;
+      }
+      
+      return sortDirection === "asc" ? compareValue : -compareValue;
+    });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredAndSortedFarmers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedFarmers = filteredAndSortedFarmers.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search or filter changes
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setCurrentPage(1);
+  };
+
+  const handleFilterChange = (value: "all" | "configured" | "not_configured") => {
+    setStatusFilter(value);
+    setCurrentPage(1);
+  };
+
+  const SortIcon = ({ field }: { field: "nama" | "kode_petani" | "status" }) => {
+    if (sortField !== field) return <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />;
+    return sortDirection === "asc" ? 
+      <ArrowUp className="ml-2 h-4 w-4" /> : 
+      <ArrowDown className="ml-2 h-4 w-4" />;
+  };
 
   return (
     <div className="space-y-6">
@@ -596,14 +652,14 @@ export const LabelManagement = () => {
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Cari nama petani atau kode..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
+              <Input
+                placeholder="Cari nama petani atau kode..."
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="pl-9"
+              />
               </div>
-              <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+              <Select value={statusFilter} onValueChange={handleFilterChange}>
                 <SelectTrigger className="w-full sm:w-[200px]">
                   <Filter className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="Filter Status" />
@@ -617,7 +673,8 @@ export const LabelManagement = () => {
             </div>
             {(searchQuery || statusFilter !== "all") && (
               <p className="text-sm text-muted-foreground">
-                Menampilkan {filteredFarmers.length} dari {farmers.length} petani
+                Menampilkan {filteredAndSortedFarmers.length} dari {farmers.length} petani
+                {totalPages > 1 && ` (Halaman ${currentPage} dari ${totalPages})`}
               </p>
             )}
           </div>
@@ -723,18 +780,48 @@ export const LabelManagement = () => {
               <TableRow>
                 <TableHead className="w-12">
                   <Checkbox
-                    checked={selectedFarmerIds.length === filteredFarmers.length && filteredFarmers.length > 0}
+                    checked={selectedFarmerIds.length === paginatedFarmers.length && paginatedFarmers.length > 0}
                     onCheckedChange={handleSelectAll}
                   />
                 </TableHead>
-                <TableHead>Nama Petani</TableHead>
-                <TableHead>Kode</TableHead>
-                <TableHead>Status Label</TableHead>
+                <TableHead>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 font-medium hover:bg-accent"
+                    onClick={() => handleSort("nama")}
+                  >
+                    Nama Petani
+                    <SortIcon field="nama" />
+                  </Button>
+                </TableHead>
+                <TableHead>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 font-medium hover:bg-accent"
+                    onClick={() => handleSort("kode_petani")}
+                  >
+                    Kode
+                    <SortIcon field="kode_petani" />
+                  </Button>
+                </TableHead>
+                <TableHead>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 font-medium hover:bg-accent"
+                    onClick={() => handleSort("status")}
+                  >
+                    Status Label
+                    <SortIcon field="status" />
+                  </Button>
+                </TableHead>
                 <TableHead className="text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredFarmers.map((farmer) => {
+              {paginatedFarmers.map((farmer) => {
                 const hasSettings = labelSettings.some(s => s.petani_id === farmer.id);
                 return (
                   <TableRow key={farmer.id}>
@@ -798,7 +885,7 @@ export const LabelManagement = () => {
                   </TableRow>
                   );
                 })}
-              {filteredFarmers.length === 0 && farmers.length > 0 && (
+              {paginatedFarmers.length === 0 && farmers.length > 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                     <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -815,6 +902,54 @@ export const LabelManagement = () => {
               )}
             </TableBody>
           </Table>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Menampilkan {startIndex + 1}-{Math.min(endIndex, filteredAndSortedFarmers.length)} dari {filteredAndSortedFarmers.length} petani
+              </p>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    return (
+                      <PaginationItem key={pageNum}>
+                        <PaginationLink
+                          onClick={() => setCurrentPage(pageNum)}
+                          isActive={currentPage === pageNum}
+                          className="cursor-pointer"
+                        >
+                          {pageNum}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  })}
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </CardContent>
       </Card>
 
