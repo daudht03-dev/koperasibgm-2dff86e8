@@ -1,7 +1,7 @@
 import { useRef, useEffect } from "react";
 import QRCode from "qrcode";
 import { Checkbox } from "@/components/ui/checkbox";
-import { TemplateElement } from "./TemplateBuilder";
+import { TemplateElement } from "@/types/label";
 
 interface PackagingLabelProps {
   farmerName: string;

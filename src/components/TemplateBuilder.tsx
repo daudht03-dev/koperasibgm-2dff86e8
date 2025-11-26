@@ -8,21 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { GripVertical, Eye, Save, RotateCcw, Upload } from "lucide-react";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { toast } from "@/hooks/use-toast";
-
-export interface TemplateElement {
-  id: string;
-  type: "company_logo" | "company_name" | "farmer_name" | "farmer_logo" | "certifications" | "qr_code" | "organic_badge" | "custom_field";
-  label: string;
-  enabled: boolean;
-  customFieldId?: string; // For custom_field type
-  styles?: {
-    marginTop?: number;
-    marginBottom?: number;
-    paddingX?: number;
-    paddingY?: number;
-    fontSize?: number;
-  };
-}
+import { TemplateElement } from "@/types/label";
 
 const DEFAULT_ELEMENTS: TemplateElement[] = [
   { id: "company_logo", type: "company_logo", label: "Logo Perusahaan", enabled: true, styles: { marginTop: 0, marginBottom: 4, paddingX: 0, paddingY: 0, fontSize: 16 } },
