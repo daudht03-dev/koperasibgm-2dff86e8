@@ -43,6 +43,12 @@ export const LabelManagement = () => {
     is_organic: true,
   });
 
+  // Helper function to ensure template_settings is an array
+  const getTemplateElements = () => {
+    const settings = profile?.template_settings;
+    return Array.isArray(settings) ? settings : undefined;
+  };
+
   const handleOpenSettings = async (farmerId: string) => {
     setSelectedFarmerId(farmerId);
     const existing = await getLabelSettingByFarmerId(farmerId);
@@ -246,7 +252,7 @@ export const LabelManagement = () => {
                             qrLogo={profile?.qr_logo_url}
                             qrLogoSize={profile?.qr_logo_size}
                             showForPrint={true}
-                            templateElements={profile?.template_settings as any}
+                            templateElements={getTemplateElements()}
                             customData={farmer.custom_data as Record<string, string>}
                           />
                         </div>
@@ -493,7 +499,7 @@ export const LabelManagement = () => {
                   qrLogo={profile?.qr_logo_url}
                   qrLogoSize={profile?.qr_logo_size}
                   showForPrint={true}
-                  templateElements={profile?.template_settings as any}
+                  templateElements={getTemplateElements()}
                   customData={selectedFarmer.custom_data as Record<string, string>}
                 />
               )}
@@ -538,7 +544,7 @@ export const LabelManagement = () => {
         qrErrorCorrection={profile?.qr_error_correction as 'L' | 'M' | 'Q' | 'H'}
         qrLogo={profile?.qr_logo_url}
         qrLogoSize={profile?.qr_logo_size}
-        templateElements={profile?.template_settings as any}
+        templateElements={getTemplateElements()}
       />
     </div>
   );
