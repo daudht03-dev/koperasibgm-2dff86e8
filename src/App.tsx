@@ -17,6 +17,7 @@ import OfflineFarmers from "./pages/OfflineFarmers";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
 import LabelSettings from "./pages/LabelSettings";
+import FarmerIdentityLabels from "./pages/FarmerIdentityLabels";
 import NotFound from "./pages/NotFound";
 import Install from "./pages/Install";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -46,6 +47,14 @@ const AppContent = () => {
               element={
                 <ProtectedRoute requireAdmin={true}>
                   <LabelSettings />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/farmer-identity-labels" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <FarmerIdentityLabels />
                 </ProtectedRoute>
               } 
             />
