@@ -227,6 +227,7 @@ export const LabelManagement = () => {
                           <PackagingLabel
                             farmerName={farmer.nama}
                             farmerCode={farmer.kode_petani}
+                            farmerLogo={farmer.logo_url}
                             farmerId={farmer.id}
                             euCertified={settings?.eu_certified || false}
                             corNopCertified={settings?.cor_nop_certified || false}
@@ -245,6 +246,8 @@ export const LabelManagement = () => {
                             qrLogo={profile?.qr_logo_url}
                             qrLogoSize={profile?.qr_logo_size}
                             showForPrint={true}
+                            templateElements={profile?.template_settings as any}
+                            customData={farmer.custom_data as Record<string, string>}
                           />
                         </div>
                       );
@@ -471,6 +474,7 @@ export const LabelManagement = () => {
                 <PackagingLabel
                   farmerName={selectedFarmer.nama}
                   farmerCode={selectedFarmer.kode_petani}
+                  farmerLogo={selectedFarmer.logo_url}
                   farmerId={selectedFarmer.id}
                   euCertified={currentSettings.eu_certified || false}
                   corNopCertified={currentSettings.cor_nop_certified || false}
@@ -489,6 +493,8 @@ export const LabelManagement = () => {
                   qrLogo={profile?.qr_logo_url}
                   qrLogoSize={profile?.qr_logo_size}
                   showForPrint={true}
+                  templateElements={profile?.template_settings as any}
+                  customData={selectedFarmer.custom_data as Record<string, string>}
                 />
               )}
             </div>
@@ -512,6 +518,8 @@ export const LabelManagement = () => {
               id: f.id,
               nama: f.nama,
               kode_petani: f.kode_petani,
+              logo_url: f.logo_url,
+              custom_data: f.custom_data as Record<string, string>,
               euCertified: settings?.eu_certified || false,
               corNopCertified: settings?.cor_nop_certified || false,
               sniCertified: settings?.sni_certified || false,
@@ -530,6 +538,7 @@ export const LabelManagement = () => {
         qrErrorCorrection={profile?.qr_error_correction as 'L' | 'M' | 'Q' | 'H'}
         qrLogo={profile?.qr_logo_url}
         qrLogoSize={profile?.qr_logo_size}
+        templateElements={profile?.template_settings as any}
       />
     </div>
   );

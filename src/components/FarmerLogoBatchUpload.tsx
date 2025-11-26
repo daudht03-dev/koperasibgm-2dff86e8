@@ -41,6 +41,44 @@ export const FarmerLogoBatchUpload = () => {
     });
   };
 
+  // Function to crop and resize image to square
+  const cropAndResizeImage = (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      img.onload = () => {
+        const size = Math.min(img.width, img.height);
+        const targetSize = 400; // Standard size for logos
+        
+        canvas.width = targetSize;
+        canvas.height = targetSize;
+
+        if (ctx) {
+          // Calculate crop position (center crop)
+          const sx = (img.width - size) / 2;
+          const sy = (img.height - size) / 2;
+          
+          ctx.drawImage(img, sx, sy, size, size, 0, 0, targetSize, targetSize);
+          
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error('Failed to create blob'));
+            }
+          }, 'image/png', 0.95);
+        } else {
+          reject(new Error('Failed to get canvas context'));
+        }
+      };
+
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -93,44 +131,79 @@ export const FarmerLogoBatchUpload = () => {
           continue;
         }
 
-        // Upload to storage
-        const filePath = `${farmerCode}_${Date.now()}_${logoFile.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from('farmer-logos')
-          .upload(filePath, logoFile);
-
-        if (uploadError) {
+        // Validate file type
+        if (!logoFile.type.startsWith('image/')) {
           uploadResults.push({
             farmerCode,
             status: 'error',
-            message: uploadError.message,
+            message: `${logoFilename} bukan file gambar yang valid`,
           });
           continue;
         }
 
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('farmer-logos')
-          .getPublicUrl(filePath);
-
-        // Update farmer record
-        const { error: updateError } = await supabase
-          .from('petani')
-          .update({ logo_url: publicUrl })
-          .eq('id', farmer.id);
-
-        if (updateError) {
+        // Validate file size (max 5MB)
+        if (logoFile.size > 5 * 1024 * 1024) {
           uploadResults.push({
             farmerCode,
             status: 'error',
-            message: updateError.message,
+            message: `${logoFilename} melebihi batas 5MB`,
           });
-        } else {
+          continue;
+        }
+
+        try {
+          // Crop and resize image
+          const croppedBlob = await cropAndResizeImage(logoFile);
+          const filePath = `${farmerCode}_${Date.now()}_${logoFile.name}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('farmer-logos')
+            .upload(filePath, croppedBlob, {
+              cacheControl: '3600',
+              upsert: true,
+              contentType: 'image/png',
+            });
+
+          if (uploadError) {
+            uploadResults.push({
+              farmerCode,
+              status: 'error',
+              message: uploadError.message,
+            });
+            continue;
+          }
+
+          // Get public URL
+          const { data: { publicUrl } } = supabase.storage
+            .from('farmer-logos')
+            .getPublicUrl(filePath);
+
+          // Update farmer record
+          const { error: updateError } = await supabase
+            .from('petani')
+            .update({ logo_url: publicUrl })
+            .eq('id', farmer.id);
+
+          if (updateError) {
+            uploadResults.push({
+              farmerCode,
+              status: 'error',
+              message: updateError.message,
+            });
+          } else {
+            uploadResults.push({
+              farmerCode,
+              status: 'success',
+              message: 'Logo berhasil diupload (400x400px)',
+            });
+          }
+        } catch (error) {
           uploadResults.push({
             farmerCode,
-            status: 'success',
-            message: 'Logo berhasil diupload',
+            status: 'error',
+            message: `Gagal memproses gambar: ${error}`,
           });
+          continue;
         }
       }
 
@@ -187,7 +260,7 @@ export const FarmerLogoBatchUpload = () => {
               className="mt-2"
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Pilih file CSV dan semua file logo sekaligus (Ctrl/Cmd + klik)
+              Pilih file CSV dan semua file logo sekaligus (Ctrl/Cmd + klik). Logo akan otomatis di-crop ke 400x400px (max 5MB)
             </p>
           </div>
         </div>
