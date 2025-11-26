@@ -110,6 +110,38 @@ export const PrintPreviewDialog = ({
     }
   };
 
+  const handleDownloadJPG = async () => {
+    if (!printRef.current) return;
+    
+    try {
+      toast.info("Generating JPG...");
+      
+      const canvas = await html2canvas(printRef.current, {
+        scale: 3,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+      
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `labels-${gridLayout}-${new Date().toISOString().split('T')[0]}.jpg`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          toast.success("JPG downloaded successfully!");
+        }
+      }, 'image/jpeg', 0.95);
+    } catch (error) {
+      console.error('Error generating JPG:', error);
+      toast.error("Failed to generate JPG");
+    }
+  };
+
   const gridCols = gridLayout === "2x2" ? "grid-cols-2" : "grid-cols-3";
   const labelSize = gridLayout === "2x2" ? "w-[350px] h-[500px]" : "w-[240px] h-[360px]";
 
@@ -141,6 +173,10 @@ export const PrintPreviewDialog = ({
               </RadioGroup>
             </div>
             <div className="flex gap-2">
+              <Button onClick={handleDownloadJPG} size="lg" variant="outline">
+                <Download className="mr-2 h-5 w-5" />
+                Download JPG
+              </Button>
               <Button onClick={handleDownloadPDF} size="lg" variant="outline">
                 <Download className="mr-2 h-5 w-5" />
                 Download PDF
