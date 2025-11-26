@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PackagingLabel } from "@/components/PackagingLabel";
@@ -12,11 +13,12 @@ import { PrintPreviewDialog } from "@/components/PrintPreviewDialog";
 import { useFarmers } from "@/hooks/use-farmers";
 import { useLabelSettings, LabelSettings } from "@/hooks/use-label-settings";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
-import { Printer, Settings, FileDown, Edit, LayoutGrid, Palette, FileText } from "lucide-react";
+import { Printer, Settings, FileDown, Edit, LayoutGrid, Palette, FileText, AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useReactToPrint } from "react-to-print";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { CustomField } from "@/components/CustomFieldsManager";
 
 export const LabelManagement = () => {
   const { farmers, updateFarmer, refetch: refetchFarmers } = useFarmers();
@@ -31,6 +33,7 @@ export const LabelManagement = () => {
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
   const [customFieldDialogOpen, setCustomFieldDialogOpen] = useState(false);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const printRef = useRef<HTMLDivElement>(null);
 
   const [currentSettings, setCurrentSettings] = useState<Partial<LabelSettings>>({
@@ -83,16 +86,80 @@ export const LabelManagement = () => {
     } else {
       setCustomFieldValues({});
     }
+    setFieldErrors({});
     setCustomFieldDialogOpen(true);
   };
 
+  const validateField = (field: CustomField, value: string): string | null => {
+    // Check required
+    if (field.required && (!value || value.trim() === '')) {
+      return `${field.label} wajib diisi`;
+    }
+
+    if (!value) return null;
+
+    // Validate by type
+    switch (field.type) {
+      case 'number':
+        const num = Number(value);
+        if (isNaN(num)) {
+          return `${field.label} harus berupa angka`;
+        }
+        if (field.min !== undefined && num < field.min) {
+          return `${field.label} minimal ${field.min}`;
+        }
+        if (field.max !== undefined && num > field.max) {
+          return `${field.label} maksimal ${field.max}`;
+        }
+        break;
+      
+      case 'date':
+        const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+        if (!datePattern.test(value)) {
+          return `${field.label} harus berformat tanggal yang valid`;
+        }
+        break;
+      
+      case 'dropdown':
+        if (field.options && !field.options.includes(value)) {
+          return `${field.label} harus salah satu dari: ${field.options.join(', ')}`;
+        }
+        break;
+    }
+
+    return null;
+  };
+
   const handleSaveCustomFields = async () => {
+    const errors: Record<string, string> = {};
+    const fields = getCustomFields();
+
+    // Validate all fields
+    fields.forEach((field: CustomField) => {
+      const value = customFieldValues[field.id] || '';
+      const error = validateField(field, value);
+      if (error) {
+        errors[field.id] = error;
+      }
+    });
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      toast({
+        title: "Validasi Gagal",
+        description: "Mohon perbaiki error pada form",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const success = await updateFarmer(selectedFarmerId, {
       custom_data: customFieldValues as any
     });
     
     if (success) {
       setCustomFieldDialogOpen(false);
+      setFieldErrors({});
       toast({
         title: "Berhasil",
         description: "Data custom field berhasil disimpan dan label akan otomatis terupdate",
@@ -100,11 +167,22 @@ export const LabelManagement = () => {
     }
   };
 
-  const getCustomFields = () => {
+  const getCustomFields = (): CustomField[] => {
     if (!profile?.custom_fields || !Array.isArray(profile.custom_fields)) {
       return [];
     }
-    return profile.custom_fields;
+    // Migrate old fields to new structure with defaults for backward compatibility
+    return (profile.custom_fields as any[]).map(field => ({
+      id: field.id,
+      label: field.label,
+      enabled: field.enabled ?? true,
+      type: field.type || 'text',
+      defaultValue: field.defaultValue || "",
+      required: field.required || false,
+      options: field.options || [],
+      min: field.min,
+      max: field.max,
+    }));
   };
 
   const handleOpenSettings = async (farmerId: string) => {
@@ -486,22 +564,118 @@ export const LabelManagement = () => {
               </div>
             ) : (
               <>
-                {getCustomFields().map((field: any) => (
-                  <div key={field.key} className="space-y-2">
-                    <Label htmlFor={field.key}>{field.label}</Label>
-                    <Input
-                      id={field.key}
-                      value={customFieldValues[field.key] || ""}
-                      onChange={(e) =>
-                        setCustomFieldValues({
-                          ...customFieldValues,
-                          [field.key]: e.target.value,
-                        })
-                      }
-                      placeholder={`Masukkan ${field.label.toLowerCase()}`}
-                    />
-                  </div>
-                ))}
+                {getCustomFields().map((field: CustomField) => {
+                  const error = fieldErrors[field.id];
+                  return (
+                    <div key={field.id} className="space-y-2">
+                      <Label htmlFor={field.id}>
+                        {field.label}
+                        {field.required && <span className="text-destructive ml-1">*</span>}
+                      </Label>
+                      
+                      {field.type === 'text' && (
+                        <Input
+                          id={field.id}
+                          value={customFieldValues[field.id] || ""}
+                          onChange={(e) => {
+                            setCustomFieldValues({
+                              ...customFieldValues,
+                              [field.id]: e.target.value,
+                            });
+                            // Clear error on change
+                            if (fieldErrors[field.id]) {
+                              setFieldErrors({ ...fieldErrors, [field.id]: '' });
+                            }
+                          }}
+                          placeholder={`Masukkan ${field.label.toLowerCase()}`}
+                          className={error ? "border-destructive" : ""}
+                        />
+                      )}
+                      
+                      {field.type === 'number' && (
+                        <Input
+                          id={field.id}
+                          type="number"
+                          value={customFieldValues[field.id] || ""}
+                          onChange={(e) => {
+                            setCustomFieldValues({
+                              ...customFieldValues,
+                              [field.id]: e.target.value,
+                            });
+                            if (fieldErrors[field.id]) {
+                              setFieldErrors({ ...fieldErrors, [field.id]: '' });
+                            }
+                          }}
+                          placeholder={`Masukkan ${field.label.toLowerCase()}`}
+                          min={field.min}
+                          max={field.max}
+                          className={error ? "border-destructive" : ""}
+                        />
+                      )}
+                      
+                      {field.type === 'date' && (
+                        <Input
+                          id={field.id}
+                          type="date"
+                          value={customFieldValues[field.id] || ""}
+                          onChange={(e) => {
+                            setCustomFieldValues({
+                              ...customFieldValues,
+                              [field.id]: e.target.value,
+                            });
+                            if (fieldErrors[field.id]) {
+                              setFieldErrors({ ...fieldErrors, [field.id]: '' });
+                            }
+                          }}
+                          className={error ? "border-destructive" : ""}
+                        />
+                      )}
+                      
+                      {field.type === 'dropdown' && field.options && (
+                        <Select
+                          value={customFieldValues[field.id] || ""}
+                          onValueChange={(value) => {
+                            setCustomFieldValues({
+                              ...customFieldValues,
+                              [field.id]: value,
+                            });
+                            if (fieldErrors[field.id]) {
+                              setFieldErrors({ ...fieldErrors, [field.id]: '' });
+                            }
+                          }}
+                        >
+                          <SelectTrigger className={error ? "border-destructive" : ""}>
+                            <SelectValue placeholder={`Pilih ${field.label.toLowerCase()}`} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {field.options.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      
+                      {error && (
+                        <div className="flex items-center gap-1 text-destructive text-sm">
+                          <AlertCircle className="h-3 w-3" />
+                          <span>{error}</span>
+                        </div>
+                      )}
+                      
+                      {field.type === 'number' && (field.min !== undefined || field.max !== undefined) && !error && (
+                        <p className="text-xs text-muted-foreground">
+                          {field.min !== undefined && field.max !== undefined
+                            ? `Nilai antara ${field.min} - ${field.max}`
+                            : field.min !== undefined
+                            ? `Minimal ${field.min}`
+                            : `Maksimal ${field.max}`}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
                 <Button onClick={handleSaveCustomFields} className="w-full">
                   Simpan Custom Fields
                 </Button>
