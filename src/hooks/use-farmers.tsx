@@ -57,7 +57,7 @@ export const useFarmers = () => {
           description: "Gagal menambahkan petani",
           variant: "destructive",
         });
-        return false;
+        return null;
       }
 
       setFarmers(prev => [data, ...prev]);
@@ -65,7 +65,7 @@ export const useFarmers = () => {
         title: "Berhasil",
         description: "Petani berhasil ditambahkan",
       });
-      return true;
+      return data;
     } catch (error) {
       console.error("Error adding farmer:", error);
       toast({
@@ -73,7 +73,7 @@ export const useFarmers = () => {
         description: "Gagal menambahkan petani",
         variant: "destructive",
       });
-      return false;
+      return null;
     }
   };
 

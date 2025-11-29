@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
 import { StatisticsChart } from "@/components/StatisticsChart";
+import { QRPreviewDialog } from "@/components/QRPreviewDialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useFarmers } from "@/hooks/use-farmers";
 import { useLands } from "@/hooks/use-lands";
@@ -53,6 +54,14 @@ const AdminDashboard = () => {
   const [farmerErrors, setFarmerErrors] = useState<Record<string, string>>({});
   const [editingFarmer, setEditingFarmer] = useState<string | null>(null);
   const [farmerDialogOpen, setFarmerDialogOpen] = useState(false);
+  
+  // QR Preview Dialog state
+  const [qrPreviewOpen, setQrPreviewOpen] = useState(false);
+  const [qrPreviewFarmer, setQrPreviewFarmer] = useState<{
+    id: string;
+    nama: string;
+    kode_petani: string;
+  } | null>(null);
 
   // Form states for lands
   const [landForm, setLandForm] = useState({
@@ -111,15 +120,23 @@ const AdminDashboard = () => {
       setFarmerErrors({});
       const validated = farmerSchema.parse(farmerForm);
       
-      const success = await addFarmer({
+      const newFarmer = await addFarmer({
         nama: validated.nama,
         kode_petani: validated.kode_petani,
         alamat: validated.alamat,
       });
       
-      if (success) {
+      if (newFarmer) {
         setFarmerForm({ nama: "", kode_petani: "", alamat: "" });
         setFarmerDialogOpen(false);
+        
+        // Auto-show QR preview for new farmer
+        setQrPreviewFarmer({
+          id: newFarmer.id,
+          nama: newFarmer.nama,
+          kode_petani: newFarmer.kode_petani,
+        });
+        setQrPreviewOpen(true);
       }
     } catch (error: any) {
       if (error.errors) {
@@ -717,7 +734,7 @@ const AdminDashboard = () => {
                       <TableCell className="font-medium">{farmer.kode_petani}</TableCell>
                       <TableCell>{farmer.nama}</TableCell>
                       <TableCell className="max-w-xs truncate">{farmer.alamat}</TableCell>
-                      <TableCell>
+                       <TableCell>
                         <div className="flex space-x-2">
                           <Button
                             variant="outline"
@@ -732,11 +749,16 @@ const AdminDashboard = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            asChild
+                            onClick={() => {
+                              setQrPreviewFarmer({
+                                id: farmer.id,
+                                nama: farmer.nama,
+                                kode_petani: farmer.kode_petani,
+                              });
+                              setQrPreviewOpen(true);
+                            }}
                           >
-                            <Link to={`/petani/${farmer.id}/qr`}>
-                              <QrCode className="h-4 w-4" />
-                            </Link>
+                            <QrCode className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="outline"
@@ -1508,6 +1530,17 @@ const AdminDashboard = () => {
       </main>
 
       <Footer />
+      
+      {/* QR Preview Dialog */}
+      {qrPreviewFarmer && (
+        <QRPreviewDialog
+          open={qrPreviewOpen}
+          onOpenChange={setQrPreviewOpen}
+          farmerId={qrPreviewFarmer.id}
+          farmerName={qrPreviewFarmer.nama}
+          farmerCode={qrPreviewFarmer.kode_petani}
+        />
+      )}
     </div>
   );
 };
