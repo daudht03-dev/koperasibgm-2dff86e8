@@ -53,7 +53,7 @@ export const PrintPreviewDialog = ({
   qrLogoSize,
   templateElements,
 }: PrintPreviewDialogProps) => {
-  const [gridLayout, setGridLayout] = useState<"2x2" | "3x3" | "auto">("auto");
+  const [gridLayout, setGridLayout] = useState<"1x1" | "2x2" | "3x3" | "auto">("auto");
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
@@ -156,13 +156,15 @@ export const PrintPreviewDialog = ({
 
   // Calculate grid based on layout selection or auto-calculate for small labels
   const calculateLayout = () => {
-    if (gridLayout === "2x2") {
-      return { cols: 2, rows: 2, width: "85mm", height: "130mm" };
+    if (gridLayout === "1x1") {
+      return { cols: 1, rows: 1, width: "190mm", height: "277mm" };
+    } else if (gridLayout === "2x2") {
+      return { cols: 2, rows: 2, width: "92.5mm", height: "136.25mm" };
     } else if (gridLayout === "3x3") {
-      return { cols: 3, rows: 3, width: "55mm", height: "85mm" };
+      return { cols: 3, rows: 3, width: "60mm", height: "89mm" };
     } else {
-      // Auto layout for small labels (e.g., 2x4cm = 20x40mm)
-      return { cols: 4, rows: 6, width: "40mm", height: "45mm" };
+      // Auto layout for small labels (4x6 grid)
+      return { cols: 4, rows: 6, width: "45mm", height: "44mm" };
     }
   };
 
@@ -183,12 +185,12 @@ export const PrintPreviewDialog = ({
               <Label className="text-base font-semibold mb-2 block">Layout Grid (A4)</Label>
               <RadioGroup
                 value={gridLayout}
-                onValueChange={(value) => setGridLayout(value as "2x2" | "3x3" | "auto")}
-                className="flex gap-4"
+                onValueChange={(value) => setGridLayout(value as "1x1" | "2x2" | "3x3" | "auto")}
+                className="flex gap-4 flex-wrap"
               >
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="auto" id="auto" />
-                  <Label htmlFor="auto" className="cursor-pointer">Auto - 4×6 (24/halaman)</Label>
+                  <RadioGroupItem value="1x1" id="1x1" />
+                  <Label htmlFor="1x1" className="cursor-pointer">1×1 - Full (1/halaman)</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="2x2" id="2x2" />
@@ -197,6 +199,10 @@ export const PrintPreviewDialog = ({
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="3x3" id="3x3" />
                   <Label htmlFor="3x3" className="cursor-pointer">3×3 (9/halaman)</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="auto" id="auto" />
+                  <Label htmlFor="auto" className="cursor-pointer">4×6 (24/halaman)</Label>
                 </div>
               </RadioGroup>
             </div>
@@ -231,15 +237,24 @@ export const PrintPreviewDialog = ({
                 .label-grid {
                   display: grid;
                   grid-template-columns: repeat(${layout.cols}, ${layout.width});
-                  gap: 5mm;
+                  gap: ${layout.cols === 1 ? '0mm' : '5mm'};
                   width: fit-content;
                 }
                 .label-wrapper {
                   width: ${layout.width};
                   height: ${layout.height};
-                  overflow: hidden;
                   border: 1px dashed #ccc;
                   box-sizing: border-box;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  overflow: visible;
+                }
+                .label-wrapper > * {
+                  width: 100%;
+                  height: 100%;
+                  object-fit: contain;
+                  transform-origin: center;
                 }
                 @media print {
                   .label-wrapper {
