@@ -34,6 +34,7 @@ export const LabelCustomization = () => {
   const [qrLogoPreview, setQrLogoPreview] = useState<string>("");
   
   const [customSettings, setCustomSettings] = useState({
+    production_url: "",
     label_primary_color: "30 71% 42%",
     label_background_start: "40 100% 97%",
     label_background_end: "33 100% 87%",
@@ -46,6 +47,7 @@ export const LabelCustomization = () => {
   useEffect(() => {
     if (profile) {
       setCustomSettings({
+        production_url: profile.production_url || "",
         label_primary_color: profile.label_primary_color || "30 71% 42%",
         label_background_start: profile.label_background_start || "40 100% 97%",
         label_background_end: profile.label_background_end || "33 100% 87%",
@@ -222,6 +224,26 @@ export const LabelCustomization = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Production URL */}
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2">
+              <QrCode className="h-4 w-4" />
+              URL Production (untuk QR Code)
+            </Label>
+            <Input
+              type="url"
+              value={customSettings.production_url}
+              onChange={(e) =>
+                setCustomSettings({ ...customSettings, production_url: e.target.value })
+              }
+              placeholder="https://yourdomain.com"
+            />
+            <p className="text-xs text-muted-foreground">
+              Masukkan URL production website Anda. Jika kosong, akan menggunakan URL saat ini. 
+              QR Code akan mengarah ke URL ini + /profil-petani/[id]
+            </p>
+          </div>
+
           {/* Logo Upload */}
           <div className="space-y-3">
             <Label className="flex items-center gap-2">

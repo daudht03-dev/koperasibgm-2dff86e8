@@ -259,6 +259,7 @@ export type Database = {
           label_template: string | null
           logo_url: string | null
           nama_perusahaan: string
+          production_url: string | null
           qr_error_correction: string | null
           qr_logo_size: number | null
           qr_logo_url: string | null
@@ -283,6 +284,7 @@ export type Database = {
           label_template?: string | null
           logo_url?: string | null
           nama_perusahaan: string
+          production_url?: string | null
           qr_error_correction?: string | null
           qr_logo_size?: number | null
           qr_logo_url?: string | null
@@ -307,6 +309,7 @@ export type Database = {
           label_template?: string | null
           logo_url?: string | null
           nama_perusahaan?: string
+          production_url?: string | null
           qr_error_correction?: string | null
           qr_logo_size?: number | null
           qr_logo_url?: string | null
