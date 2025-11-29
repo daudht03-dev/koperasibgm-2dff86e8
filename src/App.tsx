@@ -12,6 +12,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import FarmerDetail from "./pages/FarmerDetail";
 import FarmerProfile from "./pages/FarmerProfile";
 import QRCodePage from "./pages/QRCode";
+import BatchQRCode from "./pages/BatchQRCode";
 import QRScanner from "./pages/QRScanner";
 import OfflineFarmers from "./pages/OfflineFarmers";
 import Products from "./pages/Products";
@@ -76,6 +77,14 @@ const AppContent = () => {
               element={
                 <ProtectedRoute requireAdmin={true}>
                   <QRCodePage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/batch-qr" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <BatchQRCode />
                 </ProtectedRoute>
               } 
             />

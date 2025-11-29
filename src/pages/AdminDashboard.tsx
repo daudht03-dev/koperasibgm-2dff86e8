@@ -611,19 +611,30 @@ const AdminDashboard = () => {
                 <CardTitle className="text-foreground">Daftar Petani</CardTitle>
                 <CardDescription>Kelola data petani yang terdaftar</CardDescription>
               </div>
-              <Dialog open={farmerDialogOpen} onOpenChange={setFarmerDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button 
-                    onClick={() => {
-                      setEditingFarmer(null);
-                      setFarmerForm({ nama: "", kode_petani: "", alamat: "" });
-                    }}
-                    className="bg-gradient-organic shadow-organic hover:shadow-warm"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Tambah Petani
-                  </Button>
-                </DialogTrigger>
+              <div className="flex gap-2">
+                <Button 
+                  asChild
+                  variant="outline"
+                  className="border-organic-green/30"
+                >
+                  <Link to="/batch-qr">
+                    <QrCode className="h-4 w-4 mr-2" />
+                    Batch QR Code
+                  </Link>
+                </Button>
+                <Dialog open={farmerDialogOpen} onOpenChange={setFarmerDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      onClick={() => {
+                        setEditingFarmer(null);
+                        setFarmerForm({ nama: "", kode_petani: "", alamat: "" });
+                      }}
+                      className="bg-gradient-organic shadow-organic hover:shadow-warm"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Tambah Petani
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>{editingFarmer ? "Edit Petani" : "Tambah Petani"}</DialogTitle>
@@ -685,6 +696,7 @@ const AdminDashboard = () => {
                   </div>
                 </DialogContent>
               </Dialog>
+              </div>
             </CardHeader>
             <CardContent>
               {!farmers ? (
