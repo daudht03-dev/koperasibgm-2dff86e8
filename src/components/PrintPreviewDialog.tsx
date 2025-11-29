@@ -53,7 +53,7 @@ export const PrintPreviewDialog = ({
   qrLogoSize,
   templateElements,
 }: PrintPreviewDialogProps) => {
-  const [gridLayout, setGridLayout] = useState<"2x2" | "3x3">("2x2");
+  const [gridLayout, setGridLayout] = useState<"2x2" | "3x3" | "auto">("auto");
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
@@ -67,6 +67,18 @@ export const PrintPreviewDialog = ({
         body {
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
+        }
+        .print-page {
+          page-break-after: always;
+          width: 210mm;
+          height: 297mm;
+          padding: 10mm;
+        }
+        .print-page:last-child {
+          page-break-after: auto;
+        }
+        .label-wrapper {
+          page-break-inside: avoid;
         }
       }
     `,
@@ -142,8 +154,20 @@ export const PrintPreviewDialog = ({
     }
   };
 
-  const gridCols = gridLayout === "2x2" ? "grid-cols-2" : "grid-cols-3";
-  const labelSize = gridLayout === "2x2" ? "w-[350px] h-[500px]" : "w-[240px] h-[360px]";
+  // Calculate grid based on layout selection or auto-calculate for small labels
+  const calculateLayout = () => {
+    if (gridLayout === "2x2") {
+      return { cols: 2, rows: 2, width: "85mm", height: "130mm" };
+    } else if (gridLayout === "3x3") {
+      return { cols: 3, rows: 3, width: "55mm", height: "85mm" };
+    } else {
+      // Auto layout for small labels (e.g., 2x4cm = 20x40mm)
+      return { cols: 4, rows: 6, width: "40mm", height: "45mm" };
+    }
+  };
+
+  const layout = calculateLayout();
+  const labelsPerPage = layout.cols * layout.rows;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -156,19 +180,23 @@ export const PrintPreviewDialog = ({
           {/* Layout Selection */}
           <div className="flex items-center justify-between border-b pb-4">
             <div>
-              <Label className="text-base font-semibold mb-2 block">Layout Grid</Label>
+              <Label className="text-base font-semibold mb-2 block">Layout Grid (A4)</Label>
               <RadioGroup
                 value={gridLayout}
-                onValueChange={(value) => setGridLayout(value as "2x2" | "3x3")}
+                onValueChange={(value) => setGridLayout(value as "2x2" | "3x3" | "auto")}
                 className="flex gap-4"
               >
                 <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="auto" id="auto" />
+                  <Label htmlFor="auto" className="cursor-pointer">Auto - 4×6 (24/halaman)</Label>
+                </div>
+                <div className="flex items-center space-x-2">
                   <RadioGroupItem value="2x2" id="2x2" />
-                  <Label htmlFor="2x2" className="cursor-pointer">2x2 (4 label/halaman)</Label>
+                  <Label htmlFor="2x2" className="cursor-pointer">2×2 (4/halaman)</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="3x3" id="3x3" />
-                  <Label htmlFor="3x3" className="cursor-pointer">3x3 (9 label/halaman)</Label>
+                  <Label htmlFor="3x3" className="cursor-pointer">3×3 (9/halaman)</Label>
                 </div>
               </RadioGroup>
             </div>
@@ -189,37 +217,78 @@ export const PrintPreviewDialog = ({
           </div>
 
           {/* Print Preview */}
-          <div 
-            ref={printRef}
-            className="bg-white p-4"
-          >
-            <div className={`grid ${gridCols} gap-4`}>
-              {farmers.map((farmer) => (
-                <div key={farmer.id} className={`${labelSize} mx-auto`}>
-                  <PackagingLabel
-                    farmerName={farmer.nama}
-                    farmerCode={farmer.kode_petani}
-                    farmerLogo={farmer.logo_url}
-                    farmerId={farmer.id}
-                    euCertified={farmer.euCertified}
-                    corNopCertified={farmer.corNopCertified}
-                    sniCertified={farmer.sniCertified}
-                    isOrganic={farmer.isOrganic}
-                    companyName={companyName}
-                    customColors={customColors}
-                    customFont={customFont}
-                    customLogo={customLogo}
-                    qrSize={qrSize}
-                    qrErrorCorrection={qrErrorCorrection}
-                    qrLogo={qrLogo}
-                    qrLogoSize={qrLogoSize}
-                    showForPrint={true}
-                    templateElements={templateElements}
-                    customData={farmer.custom_data}
-                  />
-                </div>
-              ))}
-            </div>
+          <div ref={printRef}>
+            <style>
+              {`
+                .print-page {
+                  width: 210mm;
+                  min-height: 297mm;
+                  padding: 10mm;
+                  background: white;
+                  margin-bottom: 10mm;
+                  box-sizing: border-box;
+                }
+                .label-grid {
+                  display: grid;
+                  grid-template-columns: repeat(${layout.cols}, ${layout.width});
+                  gap: 5mm;
+                  width: fit-content;
+                }
+                .label-wrapper {
+                  width: ${layout.width};
+                  height: ${layout.height};
+                  overflow: hidden;
+                  border: 1px dashed #ccc;
+                  box-sizing: border-box;
+                }
+                @media print {
+                  .label-wrapper {
+                    border: none;
+                  }
+                }
+              `}
+            </style>
+            {(() => {
+              const totalPages = Math.ceil(farmers.length / labelsPerPage);
+              
+              return Array.from({ length: totalPages }, (_, pageIndex) => {
+                const startIdx = pageIndex * labelsPerPage;
+                const endIdx = Math.min(startIdx + labelsPerPage, farmers.length);
+                const pageFarmers = farmers.slice(startIdx, endIdx);
+                
+                return (
+                  <div key={pageIndex} className="print-page">
+                    <div className="label-grid">
+                      {pageFarmers.map((farmer) => (
+                        <div key={farmer.id} className="label-wrapper">
+                          <PackagingLabel
+                            farmerName={farmer.nama}
+                            farmerCode={farmer.kode_petani}
+                            farmerLogo={farmer.logo_url}
+                            farmerId={farmer.id}
+                            euCertified={farmer.euCertified}
+                            corNopCertified={farmer.corNopCertified}
+                            sniCertified={farmer.sniCertified}
+                            isOrganic={farmer.isOrganic}
+                            companyName={companyName}
+                            customColors={customColors}
+                            customFont={customFont}
+                            customLogo={customLogo}
+                            qrSize={qrSize}
+                            qrErrorCorrection={qrErrorCorrection}
+                            qrLogo={qrLogo}
+                            qrLogoSize={qrLogoSize}
+                            showForPrint={true}
+                            templateElements={templateElements}
+                            customData={farmer.custom_data}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              });
+            })()}
           </div>
         </div>
       </DialogContent>

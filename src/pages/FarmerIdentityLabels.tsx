@@ -357,38 +357,91 @@ const FarmerIdentityLabels = () => {
 
       {/* Hidden print content */}
       <div style={{ display: 'none' }}>
-        <div ref={printRef} className="space-y-8 p-8">
-          {selectedFarmersList.map(farmer => {
+        <div ref={printRef}>
+          <style>
+            {`
+              @page {
+                size: A4;
+                margin: 10mm;
+              }
+              @media print {
+                body {
+                  -webkit-print-color-adjust: exact;
+                  print-color-adjust: exact;
+                }
+                .print-page {
+                  page-break-after: always;
+                  width: 210mm;
+                  height: 297mm;
+                  padding: 10mm;
+                  position: relative;
+                }
+                .print-page:last-child {
+                  page-break-after: auto;
+                }
+                .label-grid {
+                  display: grid;
+                  grid-template-columns: repeat(4, 40mm);
+                  grid-template-rows: repeat(7, 20mm);
+                  gap: 5mm;
+                  width: fit-content;
+                }
+                .label-item {
+                  width: 40mm !important;
+                  height: 20mm !important;
+                  overflow: hidden;
+                  page-break-inside: avoid;
+                }
+              }
+            `}
+          </style>
+          {(() => {
             const identitySettings = profile?.identity_label_settings 
               ? (typeof profile.identity_label_settings === 'string' 
                 ? JSON.parse(profile.identity_label_settings) 
                 : profile.identity_label_settings)
               : undefined;
             
-            return (
-              <FarmerIdentityLabel
-                key={farmer.id}
-                farmerName={farmer.nama}
-                farmerCode={farmer.kode_petani}
-                farmerId={farmer.id}
-                companyName={profile?.nama_perusahaan || ""}
-                companyLogo={profile?.logo_url || undefined}
-                farmerLogo={farmer.logo_url || undefined}
-                customColors={{
-                  primary: profile?.identity_label_primary_color || "30 71% 42%",
-                  backgroundStart: profile?.label_background_start || "40 100% 97%",
-                  backgroundEnd: profile?.label_background_end || "33 100% 87%",
-                }}
-                customFont={profile?.identity_label_font_family || "Inter"}
-                qrSize={profile?.qr_size || 180}
-                qrErrorCorrection={profile?.qr_error_correction as 'L' | 'M' | 'Q' | 'H' || 'M'}
-                qrLogo={profile?.qr_logo_url || undefined}
-                qrLogoSize={profile?.qr_logo_size || 50}
-                customSettings={identitySettings}
-                showForPrint={true}
-              />
-            );
-          })}
+            const labelsPerPage = 28; // 4 cols x 7 rows
+            const totalPages = Math.ceil(selectedFarmersList.length / labelsPerPage);
+            
+            return Array.from({ length: totalPages }, (_, pageIndex) => {
+              const startIdx = pageIndex * labelsPerPage;
+              const endIdx = Math.min(startIdx + labelsPerPage, selectedFarmersList.length);
+              const pageFarmers = selectedFarmersList.slice(startIdx, endIdx);
+              
+              return (
+                <div key={pageIndex} className="print-page">
+                  <div className="label-grid">
+                    {pageFarmers.map(farmer => (
+                      <div key={farmer.id} className="label-item">
+                        <FarmerIdentityLabel
+                          farmerName={farmer.nama}
+                          farmerCode={farmer.kode_petani}
+                          farmerId={farmer.id}
+                          companyName={profile?.nama_perusahaan || ""}
+                          companyLogo={profile?.logo_url || undefined}
+                          farmerLogo={farmer.logo_url || undefined}
+                          customColors={{
+                            primary: profile?.identity_label_primary_color || "30 71% 42%",
+                            backgroundStart: profile?.label_background_start || "40 100% 97%",
+                            backgroundEnd: profile?.label_background_end || "33 100% 87%",
+                          }}
+                          customFont={profile?.identity_label_font_family || "Inter"}
+                          qrSize={profile?.qr_size || 180}
+                          qrErrorCorrection={profile?.qr_error_correction as 'L' | 'M' | 'Q' | 'H' || 'M'}
+                          qrLogo={profile?.qr_logo_url || undefined}
+                          qrLogoSize={profile?.qr_logo_size || 50}
+                          customSettings={identitySettings}
+                          showForPrint={true}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            });
+          })()}
         </div>
       </div>
     </div>
