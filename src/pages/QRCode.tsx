@@ -44,8 +44,16 @@ const QRCodePage = () => {
 
       setPetani(data);
       
+      // Get production URL from company profile
+      let baseUrl = window.location.origin;
+      
+      if (profile?.production_url) {
+        // Use production URL if configured
+        baseUrl = profile.production_url.replace(/\/$/, ''); // Remove trailing slash
+      }
+      
       // Generate QR Code that points to public profile
-      const farmerUrl = `${window.location.origin}/profil-petani/${data.id}`;
+      const farmerUrl = `${baseUrl}/profil-petani/${data.id}`;
       const qrDataURL = await QRCode.toDataURL(farmerUrl, {
         width: 400,
         margin: 2,
@@ -53,7 +61,7 @@ const QRCodePage = () => {
           dark: "#1a5d3a", // organic-green-dark
           light: "#ffffff"
         },
-        errorCorrectionLevel: "M"
+        errorCorrectionLevel: profile?.qr_error_correction as any || "M"
       });
       
       setQrCodeDataURL(qrDataURL);
@@ -124,7 +132,11 @@ const QRCodePage = () => {
   const handleCopyLink = async () => {
     if (!petani) return;
 
-    const farmerUrl = `${window.location.origin}/profil-petani/${petani.id}`;
+    let baseUrl = window.location.origin;
+    if (profile?.production_url) {
+      baseUrl = profile.production_url.replace(/\/$/, '');
+    }
+    const farmerUrl = `${baseUrl}/profil-petani/${petani.id}`;
     
     try {
       await navigator.clipboard.writeText(farmerUrl);
@@ -147,7 +159,11 @@ const QRCodePage = () => {
   const handleShare = async () => {
     if (!petani) return;
 
-    const farmerUrl = `${window.location.origin}/profil-petani/${petani.id}`;
+    let baseUrl = window.location.origin;
+    if (profile?.production_url) {
+      baseUrl = profile.production_url.replace(/\/$/, '');
+    }
+    const farmerUrl = `${baseUrl}/profil-petani/${petani.id}`;
     
     if (navigator.share) {
       try {
