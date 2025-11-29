@@ -2,7 +2,8 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Share, Copy, CheckCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ArrowLeft, Download, Share, Copy, CheckCircle, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import QRCode from "qrcode";
 import { useToast } from "@/hooks/use-toast";
@@ -229,6 +230,35 @@ const QRCodePage = () => {
             </p>
           </div>
         </div>
+
+        {/* Warning if production URL not set */}
+        {!profile?.production_url && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>URL Production Belum Diatur</AlertTitle>
+            <AlertDescription>
+              QR Code ini akan mengarah ke URL preview yang memerlukan login. 
+              Silakan atur <strong>URL Production</strong> di{" "}
+              <Link to="/label-settings" className="underline font-semibold">
+                Pengaturan Label
+              </Link>{" "}
+              agar QR code dapat diakses publik tanpa login.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Info if production URL is set */}
+        {profile?.production_url && (
+          <Alert className="mb-6 border-organic-green/30 bg-organic-green/5">
+            <CheckCircle className="h-4 w-4 text-organic-green" />
+            <AlertTitle className="text-organic-green">QR Code Siap Dipublikasikan</AlertTitle>
+            <AlertDescription>
+              QR code ini akan mengarah ke: <strong>{profile.production_url}/profil-petani/{petani.id}</strong>
+              <br />
+              Halaman ini dapat diakses publik tanpa perlu login.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* QR Code Card */}
         <Card className="shadow-gentle border-border/50 bg-card/90 backdrop-blur">
