@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { ArrowLeft, Download, Printer, Search, ChevronLeft, ChevronRight, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { FarmerIdentityLabel } from "@/components/FarmerIdentityLabel";
@@ -21,6 +23,7 @@ const FarmerIdentityLabels = () => {
   const [selectedFarmers, setSelectedFarmers] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [gridLayout, setGridLayout] = useState<"1x1" | "2x2" | "3x3" | "auto">("auto");
   const itemsPerPage = 20;
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -53,6 +56,23 @@ const FarmerIdentityLabels = () => {
   };
 
   const selectedFarmersList = farmers.filter(f => selectedFarmers.has(f.id));
+
+  // Calculate grid based on layout selection
+  const calculateLayout = () => {
+    if (gridLayout === "1x1") {
+      return { cols: 1, rows: 1, width: "190mm", height: "277mm" };
+    } else if (gridLayout === "2x2") {
+      return { cols: 2, rows: 2, width: "92.5mm", height: "136.25mm" };
+    } else if (gridLayout === "3x3") {
+      return { cols: 3, rows: 3, width: "60mm", height: "89mm" };
+    } else {
+      // Auto layout for small labels (4x6 grid)
+      return { cols: 4, rows: 6, width: "45mm", height: "44mm" };
+    }
+  };
+
+  const layout = calculateLayout();
+  const labelsPerPage = layout.cols * layout.rows;
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -262,6 +282,33 @@ const FarmerIdentityLabels = () => {
                 </div>
               )}
 
+              {/* Layout Selection */}
+              <div className="pt-4 border-t space-y-3">
+                <Label className="text-sm font-semibold">Layout Grid (A4)</Label>
+                <RadioGroup
+                  value={gridLayout}
+                  onValueChange={(value) => setGridLayout(value as "1x1" | "2x2" | "3x3" | "auto")}
+                  className="grid grid-cols-2 gap-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="1x1" id="1x1" />
+                    <Label htmlFor="1x1" className="cursor-pointer text-xs">1×1 Full</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="2x2" id="2x2" />
+                    <Label htmlFor="2x2" className="cursor-pointer text-xs">2×2 (4)</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="3x3" id="3x3" />
+                    <Label htmlFor="3x3" className="cursor-pointer text-xs">3×3 (9)</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="auto" id="auto" />
+                    <Label htmlFor="auto" className="cursor-pointer text-xs">4×6 (24)</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
               {/* Action Buttons */}
               <div className="space-y-2 pt-4 border-t">
                 <Button
@@ -381,16 +428,31 @@ const FarmerIdentityLabels = () => {
                 }
                 .label-grid {
                   display: grid;
-                  grid-template-columns: repeat(4, 40mm);
-                  grid-template-rows: repeat(7, 20mm);
-                  gap: 5mm;
+                  grid-template-columns: repeat(${layout.cols}, ${layout.width});
+                  gap: ${layout.cols === 1 ? '0mm' : '5mm'};
                   width: fit-content;
                 }
                 .label-item {
-                  width: 40mm !important;
-                  height: 20mm !important;
-                  overflow: hidden;
+                  width: ${layout.width};
+                  height: ${layout.height};
+                  border: 1px dashed #ccc;
+                  box-sizing: border-box;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  overflow: visible;
                   page-break-inside: avoid;
+                }
+                .label-item > * {
+                  width: 100%;
+                  height: 100%;
+                  object-fit: contain;
+                  transform-origin: center;
+                }
+              }
+              @media print {
+                .label-item {
+                  border: none;
                 }
               }
             `}
@@ -402,7 +464,6 @@ const FarmerIdentityLabels = () => {
                 : profile.identity_label_settings)
               : undefined;
             
-            const labelsPerPage = 28; // 4 cols x 7 rows
             const totalPages = Math.ceil(selectedFarmersList.length / labelsPerPage);
             
             return Array.from({ length: totalPages }, (_, pageIndex) => {
