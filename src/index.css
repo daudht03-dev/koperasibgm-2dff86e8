@@ -8,74 +8,74 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 60 9% 98%;
-    --foreground: 20 14.3% 4.1%;
+    /* Premium Elegant Green Theme */
+    --background: 150 10% 98%;
+    --foreground: 160 30% 8%;
 
     --card: 0 0% 100%;
-    --card-foreground: 20 14.3% 4.1%;
+    --card-foreground: 160 30% 8%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 20 14.3% 4.1%;
+    --popover-foreground: 160 30% 8%;
 
-    --primary: 142 71% 45%;
-    --primary-foreground: 0 0% 98%;
+    /* Emerald Green - Premium & Elegant */
+    --primary: 158 64% 35%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 60 9% 96%;
-    --secondary-foreground: 24 9.8% 10%;
+    --secondary: 150 15% 94%;
+    --secondary-foreground: 160 30% 12%;
 
-    --muted: 60 4.8% 95.9%;
-    --muted-foreground: 25 5.3% 44.7%;
+    --muted: 150 8% 93%;
+    --muted-foreground: 160 10% 45%;
 
-    --accent: 43 74% 66%;
-    --accent-foreground: 26 83.3% 14.1%;
+    /* Gold accent for premium feel */
+    --accent: 45 85% 55%;
+    --accent-foreground: 35 100% 10%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 20 5.9% 90%;
-    --input: 20 5.9% 90%;
-    --ring: 142 71% 45%;
+    --border: 150 10% 88%;
+    --input: 150 10% 90%;
+    --ring: 158 64% 35%;
 
-    /* Custom organic design tokens */
-    --organic-green: 142 71% 45%;
-    --organic-green-light: 142 76% 73%;
-    --organic-green-dark: 142 86% 28%;
-    --organic-brown: 26 83.3% 14.1%;
-    --organic-brown-light: 30 40% 85%;
-    --organic-amber: 43 74% 66%;
-    --organic-cream: 60 9% 98%;
+    /* Premium organic design tokens */
+    --organic-green: 158 64% 35%;
+    --organic-green-light: 158 55% 55%;
+    --organic-green-dark: 158 75% 22%;
+    --organic-brown: 25 35% 18%;
+    --organic-brown-light: 35 25% 88%;
+    --organic-amber: 45 85% 55%;
+    --organic-cream: 45 30% 97%;
+    --organic-gold: 45 85% 55%;
     
-    /* Gradients */
-    --gradient-organic: linear-gradient(135deg, hsl(var(--organic-green)) 0%, hsl(var(--organic-green-light)) 100%);
-    --gradient-earth: linear-gradient(135deg, hsl(var(--organic-brown)) 0%, hsl(var(--organic-amber)) 100%);
-    --gradient-natural: linear-gradient(180deg, hsl(var(--organic-cream)) 0%, hsl(var(--organic-brown-light)) 100%);
+    /* Premium Gradients */
+    --gradient-organic: linear-gradient(135deg, hsl(158 64% 35%) 0%, hsl(158 55% 45%) 100%);
+    --gradient-earth: linear-gradient(135deg, hsl(25 35% 18%) 0%, hsl(45 85% 55%) 100%);
+    --gradient-natural: linear-gradient(180deg, hsl(45 30% 97%) 0%, hsl(35 25% 92%) 100%);
+    --gradient-premium: linear-gradient(135deg, hsl(158 64% 35%) 0%, hsl(158 75% 22%) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(45 85% 55%) 0%, hsl(38 90% 48%) 100%);
     
-    /* Shadows */
-    --shadow-organic: 0 10px 30px -10px hsl(var(--organic-green) / 0.3);
-    --shadow-warm: 0 8px 25px -8px hsl(var(--organic-amber) / 0.4);
-    --shadow-gentle: 0 4px 20px -4px hsl(var(--organic-brown) / 0.15);
-    --shadow-glow: 0 0 60px hsl(var(--organic-green) / 0.5);
+    /* Premium Shadows */
+    --shadow-organic: 0 10px 40px -12px hsl(158 64% 35% / 0.35);
+    --shadow-warm: 0 8px 30px -8px hsl(45 85% 55% / 0.3);
+    --shadow-gentle: 0 4px 24px -4px hsl(25 35% 18% / 0.12);
+    --shadow-glow: 0 0 60px hsl(158 64% 35% / 0.4);
+    --shadow-premium: 0 20px 50px -15px hsl(158 64% 25% / 0.25);
 
-    /* Transitions */
-    --transition-organic: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Smooth transitions */
+    --transition-organic: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 150 10% 98%;
+    --sidebar-foreground: 160 30% 20%;
+    --sidebar-primary: 158 64% 35%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 150 15% 94%;
+    --sidebar-accent-foreground: 160 30% 12%;
+    --sidebar-border: 150 10% 88%;
+    --sidebar-ring: 158 64% 35%;
   }
 
   .dark {
@@ -123,7 +123,40 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "liga" 1, "calt" 1;
+  }
+
+  /* Premium typography styles */
+  h1, h2, h3 {
+    @apply font-playfair tracking-tight;
+  }
+
+  /* Premium button hover effects */
+  .btn-premium {
+    @apply relative overflow-hidden transition-all duration-300;
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(158 75% 28%) 100%);
+  }
+
+  .btn-premium::before {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+    background: linear-gradient(135deg, hsl(158 75% 28%) 0%, hsl(var(--primary)) 100%);
+  }
+
+  .btn-premium:hover::before {
+    @apply opacity-100;
+  }
+
+  /* Gold accent underline */
+  .gold-underline {
+    @apply relative;
+  }
+
+  .gold-underline::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-full h-0.5;
+    background: linear-gradient(90deg, hsl(var(--organic-gold)) 0%, hsl(38 90% 48%) 100%);
   }
 }
 
