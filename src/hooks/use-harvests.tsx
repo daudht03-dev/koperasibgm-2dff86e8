@@ -1,22 +1,10 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Tables, TablesInsert } from "@/integrations/supabase/types";
 import { toast } from "@/hooks/use-toast";
 
-interface Harvest {
-  id: string;
-  lahan_id: string;
-  tanggal_panen: string;
-  jumlah_kg: number;
-  keterangan: string | null;
-  created_at: string;
-}
-
-interface HarvestInsert {
-  lahan_id: string;
-  tanggal_panen: string;
-  jumlah_kg: number;
-  keterangan?: string | null;
-}
+type Harvest = Tables<"panen">;
+type HarvestInsert = TablesInsert<"panen">;
 
 export const useHarvests = () => {
   const [harvests, setHarvests] = useState<Harvest[]>([]);

@@ -18,13 +18,13 @@ export const farmerSchema = z.object({
 
 // Land validation schema
 export const landSchema = z.object({
-  kode_lahan: z.string()
+  nama_lahan: z.string()
     .trim()
-    .min(1, "Kode lahan harus diisi")
-    .max(50, "Kode lahan maksimal 50 karakter"),
-  keterangan: z.string()
+    .min(1, "Nama lahan harus diisi")
+    .max(100, "Nama lahan maksimal 100 karakter"),
+  lokasi: z.string()
     .trim()
-    .max(500, "Keterangan maksimal 500 karakter")
+    .max(500, "Lokasi maksimal 500 karakter")
     .optional()
     .or(z.literal("")),
   petani_id: z.string().optional().or(z.literal("")),
@@ -48,9 +48,9 @@ export const harvestSchema = z.object({
     .refine((val) => !isNaN(parseFloat(val)), "Jumlah hasil panen harus berupa angka")
     .refine((val) => parseFloat(val) > 0, "Jumlah hasil panen harus lebih dari 0")
     .refine((val) => parseFloat(val) <= 100000, "Jumlah hasil panen maksimal 100,000 kg"),
-  keterangan: z.string()
+  catatan: z.string()
     .trim()
-    .max(500, "Keterangan maksimal 500 karakter")
+    .max(500, "Catatan maksimal 500 karakter")
     .optional()
     .or(z.literal("")),
 });

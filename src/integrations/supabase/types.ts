@@ -237,6 +237,45 @@ export type Database = {
         }
         Relationships: []
       }
+      produk: {
+        Row: {
+          aktif: boolean | null
+          created_at: string
+          deskripsi: string | null
+          gambar_url: string | null
+          harga: number | null
+          id: string
+          kategori: string | null
+          nama: string
+          stok: number | null
+          updated_at: string
+        }
+        Insert: {
+          aktif?: boolean | null
+          created_at?: string
+          deskripsi?: string | null
+          gambar_url?: string | null
+          harga?: number | null
+          id?: string
+          kategori?: string | null
+          nama: string
+          stok?: number | null
+          updated_at?: string
+        }
+        Update: {
+          aktif?: boolean | null
+          created_at?: string
+          deskripsi?: string | null
+          gambar_url?: string | null
+          harga?: number | null
+          id?: string
+          kategori?: string | null
+          nama?: string
+          stok?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profil_perusahaan: {
         Row: {
           alamat: string | null

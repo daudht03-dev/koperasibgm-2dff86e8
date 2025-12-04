@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -28,32 +28,27 @@ export interface CompanyProfile {
   updated_at: string;
 }
 
+const QUERY_KEY = ['company-profile'];
+
+const fetchCompanyProfile = async (): Promise<CompanyProfile | null> => {
+  const { data, error } = await supabase
+    .from('profil_perusahaan')
+    .select('*')
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+};
+
 export const useCompanyProfile = () => {
-  const [profile, setProfile] = useState<CompanyProfile | null>(null);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
 
-  const fetchProfile = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('profil_perusahaan')
-        .select('*')
-        .limit(1)
-        .maybeSingle();
-
-      if (error) throw error;
-      setProfile(data);
-    } catch (error) {
-      console.error('Error fetching company profile:', error);
-      toast({
-        title: "Error",
-        description: "Gagal memuat profil perusahaan",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: profile, isLoading: loading, refetch: fetchProfile } = useQuery({
+    queryKey: QUERY_KEY,
+    queryFn: fetchCompanyProfile,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
 
   const uploadLogo = async (file: File): Promise<string | null> => {
     try {
@@ -93,11 +88,10 @@ export const useCompanyProfile = () => {
     }
   };
 
-  const updateProfile = async (profileData: Partial<Omit<CompanyProfile, 'id' | 'created_at' | 'updated_at'>>) => {
-    setLoading(true);
-    try {
+  const updateProfileMutation = useMutation({
+    mutationFn: async (profileData: Partial<Omit<CompanyProfile, 'id' | 'created_at' | 'updated_at'>>) => {
       if (!profile) {
-        // Create new profile if doesn't exist - ensure nama_perusahaan is provided
+        // Create new profile if doesn't exist
         const createData = {
           nama_perusahaan: profileData.nama_perusahaan || 'Berkah Gendis Mandiri',
           deskripsi: profileData.deskripsi,
@@ -113,7 +107,7 @@ export const useCompanyProfile = () => {
           .single();
 
         if (error) throw error;
-        setProfile(data);
+        return data;
       } else {
         // Update existing profile
         const { data, error } = await supabase
@@ -124,33 +118,34 @@ export const useCompanyProfile = () => {
           .single();
 
         if (error) throw error;
-        setProfile(data);
+        return data;
       }
-
+    },
+    onSuccess: (data) => {
+      // Update cache immediately
+      queryClient.setQueryData(QUERY_KEY, data);
       toast({
         title: "Berhasil",
         description: "Profil perusahaan berhasil diperbarui",
       });
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error('Error updating company profile:', error);
       toast({
         title: "Error",
         description: "Gagal memperbarui profil perusahaan",
         variant: "destructive",
       });
-      throw error;
-    } finally {
-      setLoading(false);
-    }
+    },
+  });
+
+  const updateProfile = async (profileData: Partial<Omit<CompanyProfile, 'id' | 'created_at' | 'updated_at'>>) => {
+    return updateProfileMutation.mutateAsync(profileData);
   };
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
-
   return {
-    profile,
-    loading,
+    profile: profile ?? null,
+    loading: loading || updateProfileMutation.isPending,
     fetchProfile,
     uploadLogo,
     updateProfile,

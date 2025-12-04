@@ -3,27 +3,15 @@ import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, MapPin, TreePine, Calendar, QrCode } from "lucide-react";
+import { ArrowLeft, MapPin, TreePine } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { Tables } from "@/integrations/supabase/types";
 import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
 
-interface Petani {
-  id: string;
-  kode_petani: string;
-  nama: string;
-  alamat: string;
-  created_at: string;
-}
-
-interface Lahan {
-  id: string;
-  kode_lahan: string;
-  keterangan: string | null;
-  created_at: string;
-}
+type Petani = Tables<"petani">;
+type Lahan = Tables<"lahan">;
 
 const FarmerDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -148,7 +136,7 @@ const FarmerDetail = () => {
                     <MapPin className="h-4 w-4" />
                     <span className="text-sm">Alamat</span>
                   </div>
-                  <p className="text-foreground">{petani.alamat}</p>
+                  <p className="text-foreground">{petani.alamat || "-"}</p>
                 </div>
               </CardContent>
             </Card>
@@ -187,22 +175,22 @@ const FarmerDetail = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Kode Lahan</TableHead>
-                      <TableHead>Keterangan</TableHead>
+                      <TableHead>Nama Lahan</TableHead>
+                      <TableHead>Lokasi</TableHead>
                       <TableHead>Terdaftar Sejak</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {lands.map((land) => (
                       <TableRow key={land.id}>
-                        <TableCell className="font-medium">{land.kode_lahan}</TableCell>
-                        <TableCell className="max-w-md">{land.keterangan || "-"}</TableCell>
+                        <TableCell className="font-medium">{land.nama_lahan}</TableCell>
+                        <TableCell className="max-w-md">{land.lokasi || "-"}</TableCell>
                         <TableCell>
-                          {new Date(land.created_at).toLocaleDateString('id-ID', {
+                          {land.created_at ? new Date(land.created_at).toLocaleDateString('id-ID', {
                             year: 'numeric',
                             month: 'short',
                             day: 'numeric'
-                          })}
+                          }) : "-"}
                         </TableCell>
                       </TableRow>
                     ))}
