@@ -61,10 +61,34 @@ const AppContent = () => {
               } 
             />
             <Route 
+              path="/admin/farmer-identity-labels" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <FarmerIdentityLabels />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/identity-label-settings" 
               element={
                 <ProtectedRoute requireAdmin={true}>
                   <IdentityLabelSettings />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/identity-label-settings" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <IdentityLabelSettings />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/label-settings" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <LabelSettings />
                 </ProtectedRoute>
               } 
             />
