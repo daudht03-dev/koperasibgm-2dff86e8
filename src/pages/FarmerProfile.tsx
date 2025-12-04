@@ -5,27 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, MapPin, TreePine, WifiOff, Download } from "lucide-react";
+import { ArrowLeft, MapPin, TreePine, WifiOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { Tables } from "@/integrations/supabase/types";
 import { useOfflineFarmers } from "@/hooks/use-offline-farmers";
 import { toast } from "@/hooks/use-toast";
 import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
 
-interface Petani {
-  id: string;
-  kode_petani: string;
-  nama: string;
-  alamat: string;
-  created_at: string;
-}
-
-interface Lahan {
-  id: string;
-  kode_lahan: string;
-  keterangan: string | null;
-  created_at: string;
-}
+type Petani = Tables<"petani">;
+type Lahan = Tables<"lahan">;
 
 const FarmerProfile = () => {
   const { id } = useParams<{ id: string }>();
@@ -45,8 +34,8 @@ const FarmerProfile = () => {
   const fetchFarmerProfile = async (petaniId: string) => {
     try {
       const { data, error } = await supabase
-        .from("petani_public")
-        .select("id, kode_petani, nama, alamat, created_at")
+        .from("petani")
+        .select("*")
         .eq("id", petaniId)
         .single();
 
@@ -57,7 +46,7 @@ const FarmerProfile = () => {
       // Fetch lands associated with this farmer
       const { data: landsData, error: landsError } = await supabase
         .from("lahan")
-        .select("id, kode_lahan, keterangan, created_at")
+        .select("*")
         .eq("petani_id", petaniId)
         .order("created_at", { ascending: false });
 
@@ -73,8 +62,13 @@ const FarmerProfile = () => {
         kode_petani: data.kode_petani,
         nama: data.nama,
         alamat: data.alamat,
-        created_at: data.created_at,
-        lands: landsData || [],
+        created_at: data.created_at || new Date().toISOString(),
+        lands: (landsData || []).map(l => ({
+          id: l.id,
+          nama_lahan: l.nama_lahan,
+          lokasi: l.lokasi,
+          created_at: l.created_at || new Date().toISOString(),
+        })),
         saved_at: new Date().toISOString(),
       });
 
@@ -91,8 +85,25 @@ const FarmerProfile = () => {
           nama: offlineFarmer.nama,
           alamat: offlineFarmer.alamat,
           created_at: offlineFarmer.created_at,
+          updated_at: null,
+          foto_url: null,
+          logo_url: null,
+          no_telepon: null,
+          status: null,
+          tanggal_bergabung: null,
         });
-        setLands(offlineFarmer.lands);
+        setLands(offlineFarmer.lands.map(l => ({
+          id: l.id,
+          nama_lahan: l.nama_lahan,
+          lokasi: l.lokasi,
+          created_at: l.created_at,
+          updated_at: null,
+          petani_id: petaniId,
+          jenis_tanah: null,
+          koordinat: null,
+          luas: null,
+          status: null,
+        })));
         setIsOffline(true);
         toast({
           title: "Mode Offline",
@@ -195,7 +206,7 @@ const FarmerProfile = () => {
                       <span className="text-sm">Alamat</span>
                     </div>
                     <p className="text-foreground">
-                      {petani.alamat}
+                      {petani.alamat || "-"}
                     </p>
                   </div>
                 </div>
@@ -236,22 +247,22 @@ const FarmerProfile = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Kode Lahan</TableHead>
-                      <TableHead>Keterangan</TableHead>
+                      <TableHead>Nama Lahan</TableHead>
+                      <TableHead>Lokasi</TableHead>
                       <TableHead>Terdaftar Sejak</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {lands.map((land) => (
                       <TableRow key={land.id}>
-                        <TableCell className="font-medium">{land.kode_lahan}</TableCell>
-                        <TableCell className="max-w-md">{land.keterangan || "-"}</TableCell>
+                        <TableCell className="font-medium">{land.nama_lahan}</TableCell>
+                        <TableCell className="max-w-md">{land.lokasi || "-"}</TableCell>
                         <TableCell>
-                          {new Date(land.created_at).toLocaleDateString('id-ID', {
+                          {land.created_at ? new Date(land.created_at).toLocaleDateString('id-ID', {
                             year: 'numeric',
                             month: 'short',
                             day: 'numeric'
-                          })}
+                          }) : "-"}
                         </TableCell>
                       </TableRow>
                     ))}

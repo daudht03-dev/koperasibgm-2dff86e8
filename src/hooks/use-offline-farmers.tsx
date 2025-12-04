@@ -6,12 +6,12 @@ export interface OfflineFarmer {
   id: string;
   kode_petani: string;
   nama: string;
-  alamat: string;
+  alamat: string | null;
   created_at: string;
   lands: Array<{
     id: string;
-    kode_lahan: string;
-    keterangan: string | null;
+    nama_lahan: string;
+    lokasi: string | null;
     created_at: string;
   }>;
   saved_at: string;
@@ -108,9 +108,9 @@ export const useOfflineFarmers = () => {
 
       for (const farmer of farmers) {
         try {
-          // Fetch fresh data from database (using public view)
+          // Fetch fresh data from database
           const { data: petaniData, error: petaniError } = await supabase
-            .from("petani_public")
+            .from("petani")
             .select("id, kode_petani, nama, alamat, created_at")
             .eq("id", farmer.id)
             .single();
@@ -120,7 +120,7 @@ export const useOfflineFarmers = () => {
           // Fetch fresh lands data
           const { data: landsData, error: landsError } = await supabase
             .from("lahan")
-            .select("id, kode_lahan, keterangan, created_at")
+            .select("id, nama_lahan, lokasi, created_at")
             .eq("petani_id", farmer.id)
             .order("created_at", { ascending: false });
 
@@ -132,8 +132,13 @@ export const useOfflineFarmers = () => {
             kode_petani: petaniData.kode_petani,
             nama: petaniData.nama,
             alamat: petaniData.alamat,
-            created_at: petaniData.created_at,
-            lands: landsData || [],
+            created_at: petaniData.created_at || new Date().toISOString(),
+            lands: (landsData || []).map(l => ({
+              id: l.id,
+              nama_lahan: l.nama_lahan,
+              lokasi: l.lokasi,
+              created_at: l.created_at || new Date().toISOString(),
+            })),
             saved_at: new Date().toISOString(),
           });
 

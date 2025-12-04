@@ -1,26 +1,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
+import { Tables } from "@/integrations/supabase/types";
 
-interface Land {
-  id: string;
-  kode_lahan: string;
-  keterangan: string | null;
-  petani_id: string | null;
-}
-
-interface Farmer {
-  id: string;
-  nama: string;
-  kode_petani: string;
-}
-
-interface Harvest {
-  id: string;
-  lahan_id: string;
-  tanggal_panen: string;
-  jumlah_kg: number;
-  keterangan: string | null;
-}
+type Land = Tables<"lahan">;
+type Farmer = Tables<"petani">;
+type Harvest = Tables<"panen">;
 
 interface StatisticsChartProps {
   lands: Land[];
@@ -36,7 +20,7 @@ export const StatisticsChart = ({ lands, farmers, harvests }: StatisticsChartPro
     const farmer = land.petani_id ? farmers.find(f => f.id === land.petani_id) : null;
     
     return {
-      name: land.kode_lahan,
+      name: land.nama_lahan,
       total: totalKg,
       count: landHarvests.length,
       petani: farmer?.nama || "Tidak ada",

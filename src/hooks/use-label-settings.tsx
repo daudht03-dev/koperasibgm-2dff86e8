@@ -1,17 +1,11 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { toast } from "@/hooks/use-toast";
 
-export interface LabelSettings {
-  id: string;
-  petani_id: string;
-  eu_certified: boolean;
-  cor_nop_certified: boolean;
-  sni_certified: boolean;
-  is_organic: boolean;
-  created_at: string;
-  updated_at: string;
-}
+type LabelSettings = Tables<"label_settings">;
+type LabelSettingsInsert = TablesInsert<"label_settings">;
+type LabelSettingsUpdate = TablesUpdate<"label_settings">;
 
 export const useLabelSettings = () => {
   const [labelSettings, setLabelSettings] = useState<LabelSettings[]>([]);
@@ -63,20 +57,11 @@ export const useLabelSettings = () => {
     }
   };
 
-  const upsertLabelSetting = async (settings: Partial<LabelSettings> & { petani_id: string }) => {
+  const upsertLabelSetting = async (settings: LabelSettingsInsert) => {
     try {
       const { data, error } = await supabase
         .from("label_settings")
-        .upsert(
-          {
-            petani_id: settings.petani_id,
-            eu_certified: settings.eu_certified ?? false,
-            cor_nop_certified: settings.cor_nop_certified ?? false,
-            sni_certified: settings.sni_certified ?? false,
-            is_organic: settings.is_organic ?? true,
-          },
-          { onConflict: "petani_id" }
-        )
+        .upsert(settings, { onConflict: "petani_id" })
         .select()
         .single();
 
@@ -144,3 +129,5 @@ export const useLabelSettings = () => {
     refetch: fetchLabelSettings,
   };
 };
+
+export type { LabelSettings };

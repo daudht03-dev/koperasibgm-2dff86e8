@@ -23,9 +23,9 @@ interface Petani {
 
 interface KontenWebsite {
   section: string;
-  judul: string;
-  isi: string;
-  gambar_url?: string;
+  judul: string | null;
+  konten: string | null;
+  gambar_url?: string | null;
 }
 
 const Home = () => {
@@ -94,7 +94,7 @@ const Home = () => {
               {konten.hero?.judul || "Gula Kelapa Organik Berkualitas Tinggi"}
             </h1>
             <p className="text-xl text-primary-foreground/90 mb-8">
-              {konten.hero?.isi || "Dari kebun petani lokal langsung ke meja Anda. Diproduksi dengan standar organik terbaik untuk kesehatan keluarga."}
+              {konten.hero?.konten || "Dari kebun petani lokal langsung ke meja Anda. Diproduksi dengan standar organik terbaik untuk kesehatan keluarga."}
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <Button size="lg" asChild className="bg-gradient-organic shadow-organic hover:shadow-warm transition-all duration-300">
@@ -152,7 +152,7 @@ const Home = () => {
                 {konten.about?.judul || `Tentang ${companyProfile?.nama_perusahaan || "Berkah Gendis Official"}`}
               </h2>
               <p className="text-lg text-muted-foreground mb-8">
-                {konten.about?.isi || companyProfile?.deskripsi || "Berkah Gendis Official adalah perusahaan yang berkomitmen menghasilkan gula kelapa organik berkualitas tinggi."}
+                {konten.about?.konten || companyProfile?.deskripsi || "Berkah Gendis Official adalah perusahaan yang berkomitmen menghasilkan gula kelapa organik berkualitas tinggi."}
               </p>
               <div className="space-y-4">
                 <div className="flex items-center space-x-3">
@@ -201,7 +201,7 @@ const Home = () => {
               {konten.products?.judul || "Produk Kami"}
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              {konten.products?.isi || "Gula kelapa organik premium yang diproses secara tradisional dan higienis."}
+              {konten.products?.konten || "Gula kelapa organik premium yang diproses secara tradisional dan higienis."}
             </p>
           </div>
           
