@@ -14,16 +14,343 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      konten_website: {
+        Row: {
+          aktif: boolean | null
+          created_at: string | null
+          gambar_url: string | null
+          id: string
+          judul: string | null
+          konten: string | null
+          section: string
+          updated_at: string | null
+          urutan: number | null
+        }
+        Insert: {
+          aktif?: boolean | null
+          created_at?: string | null
+          gambar_url?: string | null
+          id?: string
+          judul?: string | null
+          konten?: string | null
+          section: string
+          updated_at?: string | null
+          urutan?: number | null
+        }
+        Update: {
+          aktif?: boolean | null
+          created_at?: string | null
+          gambar_url?: string | null
+          id?: string
+          judul?: string | null
+          konten?: string | null
+          section?: string
+          updated_at?: string | null
+          urutan?: number | null
+        }
+        Relationships: []
+      }
+      label_settings: {
+        Row: {
+          background_end: string | null
+          background_start: string | null
+          created_at: string | null
+          custom_fields: Json | null
+          font_family: string | null
+          id: string
+          petani_id: string | null
+          primary_color: string | null
+          template: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          background_end?: string | null
+          background_start?: string | null
+          created_at?: string | null
+          custom_fields?: Json | null
+          font_family?: string | null
+          id?: string
+          petani_id?: string | null
+          primary_color?: string | null
+          template?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          background_end?: string | null
+          background_start?: string | null
+          created_at?: string | null
+          custom_fields?: Json | null
+          font_family?: string | null
+          id?: string
+          petani_id?: string | null
+          primary_color?: string | null
+          template?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "label_settings_petani_id_fkey"
+            columns: ["petani_id"]
+            isOneToOne: true
+            referencedRelation: "petani"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lahan: {
+        Row: {
+          created_at: string | null
+          id: string
+          jenis_tanah: string | null
+          koordinat: string | null
+          lokasi: string | null
+          luas: number | null
+          nama_lahan: string
+          petani_id: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          jenis_tanah?: string | null
+          koordinat?: string | null
+          lokasi?: string | null
+          luas?: number | null
+          nama_lahan: string
+          petani_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          jenis_tanah?: string | null
+          koordinat?: string | null
+          lokasi?: string | null
+          luas?: number | null
+          nama_lahan?: string
+          petani_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lahan_petani_id_fkey"
+            columns: ["petani_id"]
+            isOneToOne: false
+            referencedRelation: "petani"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      panen: {
+        Row: {
+          catatan: string | null
+          created_at: string | null
+          id: string
+          jumlah_kg: number
+          kualitas: string | null
+          lahan_id: string | null
+          petani_id: string | null
+          tanggal_panen: string
+          updated_at: string | null
+        }
+        Insert: {
+          catatan?: string | null
+          created_at?: string | null
+          id?: string
+          jumlah_kg: number
+          kualitas?: string | null
+          lahan_id?: string | null
+          petani_id?: string | null
+          tanggal_panen: string
+          updated_at?: string | null
+        }
+        Update: {
+          catatan?: string | null
+          created_at?: string | null
+          id?: string
+          jumlah_kg?: number
+          kualitas?: string | null
+          lahan_id?: string | null
+          petani_id?: string | null
+          tanggal_panen?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "panen_lahan_id_fkey"
+            columns: ["lahan_id"]
+            isOneToOne: false
+            referencedRelation: "lahan"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "panen_petani_id_fkey"
+            columns: ["petani_id"]
+            isOneToOne: false
+            referencedRelation: "petani"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      petani: {
+        Row: {
+          alamat: string | null
+          created_at: string | null
+          foto_url: string | null
+          id: string
+          kode_petani: string
+          logo_url: string | null
+          nama: string
+          no_telepon: string | null
+          status: string | null
+          tanggal_bergabung: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          alamat?: string | null
+          created_at?: string | null
+          foto_url?: string | null
+          id?: string
+          kode_petani: string
+          logo_url?: string | null
+          nama: string
+          no_telepon?: string | null
+          status?: string | null
+          tanggal_bergabung?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          alamat?: string | null
+          created_at?: string | null
+          foto_url?: string | null
+          id?: string
+          kode_petani?: string
+          logo_url?: string | null
+          nama?: string
+          no_telepon?: string | null
+          status?: string | null
+          tanggal_bergabung?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      profil_perusahaan: {
+        Row: {
+          alamat: string | null
+          created_at: string | null
+          custom_fields: Json | null
+          deskripsi: string | null
+          id: string
+          identity_label_font_family: string | null
+          identity_label_primary_color: string | null
+          identity_label_settings: Json | null
+          kontak: string | null
+          label_background_end: string | null
+          label_background_start: string | null
+          label_font_family: string | null
+          label_primary_color: string | null
+          label_template: string | null
+          logo_url: string | null
+          nama_perusahaan: string
+          production_url: string | null
+          qr_error_correction: string | null
+          qr_logo_size: number | null
+          qr_logo_url: string | null
+          qr_size: number | null
+          template_settings: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          alamat?: string | null
+          created_at?: string | null
+          custom_fields?: Json | null
+          deskripsi?: string | null
+          id?: string
+          identity_label_font_family?: string | null
+          identity_label_primary_color?: string | null
+          identity_label_settings?: Json | null
+          kontak?: string | null
+          label_background_end?: string | null
+          label_background_start?: string | null
+          label_font_family?: string | null
+          label_primary_color?: string | null
+          label_template?: string | null
+          logo_url?: string | null
+          nama_perusahaan: string
+          production_url?: string | null
+          qr_error_correction?: string | null
+          qr_logo_size?: number | null
+          qr_logo_url?: string | null
+          qr_size?: number | null
+          template_settings?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          alamat?: string | null
+          created_at?: string | null
+          custom_fields?: Json | null
+          deskripsi?: string | null
+          id?: string
+          identity_label_font_family?: string | null
+          identity_label_primary_color?: string | null
+          identity_label_settings?: Json | null
+          kontak?: string | null
+          label_background_end?: string | null
+          label_background_start?: string | null
+          label_font_family?: string | null
+          label_primary_color?: string | null
+          label_template?: string | null
+          logo_url?: string | null
+          nama_perusahaan?: string
+          production_url?: string | null
+          qr_error_correction?: string | null
+          qr_logo_size?: number | null
+          qr_logo_url?: string | null
+          qr_size?: number | null
+          template_settings?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +477,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
