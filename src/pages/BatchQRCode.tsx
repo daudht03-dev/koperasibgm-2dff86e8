@@ -260,7 +260,7 @@ const BatchQRCode = () => {
             <AlertDescription>
               QR Code akan mengarah ke URL preview yang memerlukan login. 
               Silakan atur <strong>URL Production</strong> di{" "}
-              <Link to="/label-settings" className="underline font-semibold">
+              <Link to="/admin/label-settings" className="underline font-semibold">
                 Pengaturan Label
               </Link>{" "}
               agar QR code dapat diakses publik tanpa login.
