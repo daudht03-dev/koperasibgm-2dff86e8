@@ -25,6 +25,8 @@ import { PengepulTab } from "@/components/harvest/PengepulTab";
 import { BarangMasukTab } from "@/components/harvest/BarangMasukTab";
 import { BarangKeluarTab } from "@/components/harvest/BarangKeluarTab";
 import { LaporanPengepulTab } from "@/components/harvest/LaporanPengepulTab";
+import { BatchPenerimaanForm } from "@/components/harvest/BatchPenerimaanForm";
+import { usePengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { TableSkeleton } from "@/components/ui/skeleton-templates";
@@ -62,6 +64,7 @@ const HarvestManagement = () => {
   const { penjualan: penjualanList, loading: penjualanLoading, addPenjualan, updatePenjualan } = usePenjualan();
   const { farmers } = useFarmers();
   const { lands } = useLands();
+  const { updatePengambilan } = usePengambilanKoperasi();
   
   // Harvest Estimation Hook
   const harvestEstimation = useHarvestEstimation();
@@ -175,6 +178,43 @@ const HarvestManagement = () => {
       tanggal_kirim: "",
       catatan: "",
     });
+  };
+
+  // New handler for batch creation from pengambilan koperasi
+  const handleAddBatchFromPengambilan = async (
+    data: {
+      petani_id: string;
+      lahan_id: string | null;
+      tanggal_penerimaan: string;
+      jumlah_kg: number;
+      warna_produk: string | null;
+      kualitas: QualityGrade;
+      harga_per_kg: number | null;
+      kondisi: string | null;
+      pengepul_ids: string[] | null;
+    },
+    pengambilanIds: string[]
+  ) => {
+    // Create batch
+    const newBatch = await addBatch({
+      petani_id: data.petani_id,
+      lahan_id: data.lahan_id,
+      tanggal_penerimaan: data.tanggal_penerimaan,
+      jumlah_kg: data.jumlah_kg,
+      warna_produk: data.warna_produk,
+      kualitas: data.kualitas,
+      harga_per_kg: data.harga_per_kg,
+      kondisi: data.kondisi,
+      pengepul_ids: data.pengepul_ids,
+      status: "penerimaan",
+    });
+
+    // Update pengambilan_koperasi with batch_id
+    if (newBatch) {
+      for (const pengambilanId of pengambilanIds) {
+        await updatePengambilan(pengambilanId, { batch_id: newBatch.id });
+      }
+    }
   };
 
   const handleAddBatch = async () => {
@@ -461,136 +501,13 @@ const HarvestManagement = () => {
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle>Penerimaan Hasil Panen</CardTitle>
-                  <CardDescription>Catat penerimaan hasil panen dari petani</CardDescription>
+                  <CardDescription>Catat penerimaan hasil panen dari data pengambilan koperasi</CardDescription>
                 </div>
-                <Dialog open={dialogOpen && activeTab === "penerimaan"} onOpenChange={(open) => {
-                  setDialogOpen(open);
-                  if (!open) resetForms();
-                }}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-gradient-organic">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Tambah Batch
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Tambah Batch Penerimaan</DialogTitle>
-                      <DialogDescription>Catat data penerimaan hasil panen dari petani</DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label>Petani *</Label>
-                          <Select
-                            value={batchForm.petani_id}
-                            onValueChange={(value) => setBatchForm(prev => ({ ...prev, petani_id: value, lahan_id: "" }))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih petani" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {farmers.map((farmer) => (
-                                <SelectItem key={farmer.id} value={farmer.id}>
-                                  {farmer.kode_petani} - {farmer.nama}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label>Lahan</Label>
-                          <Select
-                            value={batchForm.lahan_id}
-                            onValueChange={(value) => setBatchForm(prev => ({ ...prev, lahan_id: value }))}
-                            disabled={!batchForm.petani_id}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Pilih lahan" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {filteredLands.map((land) => (
-                                <SelectItem key={land.id} value={land.id}>
-                                  {land.nama_lahan}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label>Tanggal Penerimaan *</Label>
-                          <Input
-                            type="date"
-                            value={batchForm.tanggal_penerimaan}
-                            onChange={(e) => setBatchForm(prev => ({ ...prev, tanggal_penerimaan: e.target.value }))}
-                          />
-                        </div>
-                        <div>
-                          <Label>Jumlah (Kg) *</Label>
-                          <Input
-                            type="number"
-                            step="0.1"
-                            value={batchForm.jumlah_kg}
-                            onChange={(e) => setBatchForm(prev => ({ ...prev, jumlah_kg: e.target.value }))}
-                            placeholder="0.0"
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label>Warna Produk</Label>
-                          <Input
-                            value={batchForm.warna_produk}
-                            onChange={(e) => setBatchForm(prev => ({ ...prev, warna_produk: e.target.value }))}
-                            placeholder="Warna produk"
-                          />
-                        </div>
-                        <div>
-                          <Label>Kualitas</Label>
-                          <Select
-                            value={batchForm.kualitas}
-                            onValueChange={(value: QualityGrade) => setBatchForm(prev => ({ ...prev, kualitas: value }))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="premium">Premium</SelectItem>
-                              <SelectItem value="grade_a">Grade A</SelectItem>
-                              <SelectItem value="grade_b">Grade B</SelectItem>
-                              <SelectItem value="grade_c">Grade C</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label>Harga per Kg (Rp)</Label>
-                          <Input
-                            type="number"
-                            value={batchForm.harga_per_kg}
-                            onChange={(e) => setBatchForm(prev => ({ ...prev, harga_per_kg: e.target.value }))}
-                            placeholder="0"
-                          />
-                        </div>
-                        <div>
-                          <Label>Kondisi</Label>
-                          <Input
-                            value={batchForm.kondisi}
-                            onChange={(e) => setBatchForm(prev => ({ ...prev, kondisi: e.target.value }))}
-                            placeholder="Kondisi hasil panen"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => setDialogOpen(false)}>Batal</Button>
-                        <Button onClick={handleAddBatch} className="bg-gradient-organic">Simpan</Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                <BatchPenerimaanForm
+                  onSubmit={handleAddBatchFromPengambilan}
+                  dialogOpen={dialogOpen && activeTab === "penerimaan"}
+                  setDialogOpen={setDialogOpen}
+                />
               </CardHeader>
               <CardContent>
                 {batchLoading ? (
