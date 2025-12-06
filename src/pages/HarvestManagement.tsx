@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
-import { useBatchPanen, useProsesPengeringan, useGudangStok, usePengolahanDokumen, usePenjualan, BatchStatus, QualityGrade, CertificationType } from "@/hooks/use-batch-panen";
+import { useBatchPanen, useProsesPengeringan, useGudangStok, usePengolahanDokumen, usePenjualan, BatchStatus, QualityGrade } from "@/hooks/use-batch-panen";
 import { useFarmers } from "@/hooks/use-farmers";
 import { useLands } from "@/hooks/use-lands";
 import { Link } from "react-router-dom";
@@ -71,12 +71,10 @@ const HarvestManagement = () => {
     lahan_id: "",
     tanggal_penerimaan: format(new Date(), "yyyy-MM-dd"),
     jumlah_kg: "",
-    kadar_air: "",
+    warna_produk: "",
     kualitas: "grade_a" as QualityGrade,
-    sertifikasi: "organik" as CertificationType,
     harga_per_kg: "",
     kondisi: "",
-    catatan: "",
   });
 
   // Form states for pengeringan
@@ -130,12 +128,10 @@ const HarvestManagement = () => {
       lahan_id: "",
       tanggal_penerimaan: format(new Date(), "yyyy-MM-dd"),
       jumlah_kg: "",
-      kadar_air: "",
+      warna_produk: "",
       kualitas: "grade_a",
-      sertifikasi: "organik",
       harga_per_kg: "",
       kondisi: "",
-      catatan: "",
     });
     setPengeringanForm({
       batch_id: "",
@@ -184,12 +180,11 @@ const HarvestManagement = () => {
       lahan_id: batchForm.lahan_id || null,
       tanggal_penerimaan: batchForm.tanggal_penerimaan,
       jumlah_kg: parseFloat(batchForm.jumlah_kg),
-      kadar_air: batchForm.kadar_air ? parseFloat(batchForm.kadar_air) : null,
+      warna_produk: batchForm.warna_produk || null,
       kualitas: batchForm.kualitas,
-      sertifikasi: batchForm.sertifikasi,
       harga_per_kg: batchForm.harga_per_kg ? parseFloat(batchForm.harga_per_kg) : null,
       kondisi: batchForm.kondisi || null,
-      catatan: batchForm.catatan || null,
+      pengepul_ids: null,
       status: "penerimaan",
     });
 
@@ -499,15 +494,13 @@ const HarvestManagement = () => {
                           />
                         </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label>Kadar Air (%)</Label>
+                          <Label>Warna Produk</Label>
                           <Input
-                            type="number"
-                            step="0.1"
-                            value={batchForm.kadar_air}
-                            onChange={(e) => setBatchForm(prev => ({ ...prev, kadar_air: e.target.value }))}
-                            placeholder="0.0"
+                            value={batchForm.warna_produk}
+                            onChange={(e) => setBatchForm(prev => ({ ...prev, warna_produk: e.target.value }))}
+                            placeholder="Warna produk"
                           />
                         </div>
                         <div>
@@ -524,21 +517,6 @@ const HarvestManagement = () => {
                               <SelectItem value="grade_a">Grade A</SelectItem>
                               <SelectItem value="grade_b">Grade B</SelectItem>
                               <SelectItem value="grade_c">Grade C</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label>Sertifikasi</Label>
-                          <Select
-                            value={batchForm.sertifikasi}
-                            onValueChange={(value: CertificationType) => setBatchForm(prev => ({ ...prev, sertifikasi: value }))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="organik">Organik</SelectItem>
-                              <SelectItem value="konvensional">Konvensional</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -561,14 +539,6 @@ const HarvestManagement = () => {
                             placeholder="Kondisi hasil panen"
                           />
                         </div>
-                      </div>
-                      <div>
-                        <Label>Catatan</Label>
-                        <Textarea
-                          value={batchForm.catatan}
-                          onChange={(e) => setBatchForm(prev => ({ ...prev, catatan: e.target.value }))}
-                          placeholder="Catatan tambahan..."
-                        />
                       </div>
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" onClick={() => setDialogOpen(false)}>Batal</Button>
@@ -699,7 +669,7 @@ const HarvestManagement = () => {
                               ...prev,
                               batch_id: value,
                               jumlah_kg_sebelum: batch ? String(batch.jumlah_kg) : "",
-                              kadar_air_awal: batch?.kadar_air ? String(batch.kadar_air) : "",
+                              kadar_air_awal: "",
                             }));
                           }}
                         >

@@ -5,7 +5,6 @@ import { toast } from "@/hooks/use-toast";
 // Types based on database schema
 export type BatchStatus = 'penerimaan' | 'pengeringan' | 'penyimpanan' | 'pengolahan' | 'penjualan' | 'selesai';
 export type QualityGrade = 'premium' | 'grade_a' | 'grade_b' | 'grade_c';
-export type CertificationType = 'organik' | 'konvensional';
 
 export interface BatchPanen {
   id: string;
@@ -14,14 +13,13 @@ export interface BatchPanen {
   lahan_id: string | null;
   tanggal_penerimaan: string;
   jumlah_kg: number;
-  kadar_air: number | null;
+  warna_produk: string | null;
   kualitas: QualityGrade;
-  sertifikasi: CertificationType;
   harga_per_kg: number | null;
   total_harga: number | null;
   kondisi: string | null;
-  catatan: string | null;
   status: BatchStatus;
+  pengepul_ids: string[] | null;
   created_at: string;
   updated_at: string;
   // Joined data
