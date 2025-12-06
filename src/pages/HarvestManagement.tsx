@@ -10,16 +10,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
 import { useBatchPanen, useProsesPengeringan, useGudangStok, usePengolahanDokumen, usePenjualan, BatchStatus, QualityGrade } from "@/hooks/use-batch-panen";
 import { useFarmers } from "@/hooks/use-farmers";
 import { useLands } from "@/hooks/use-lands";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Plus, Package, Flame, Warehouse, FileText, ShoppingCart, Eye, Edit, Trash2, RefreshCw, TrendingUp, Calendar, Scale, Droplets, Calculator } from "lucide-react";
+import { ArrowLeft, Plus, Package, Flame, Warehouse, FileText, ShoppingCart, Eye, Edit, Trash2, RefreshCw, TrendingUp, Calendar, Scale, Droplets, Calculator, Users, ArrowDownToLine, ArrowUpFromLine, FileBarChart } from "lucide-react";
 import { useHarvestEstimation } from "@/hooks/use-harvest-estimation";
 import { HarvestEstimationForm } from "@/components/HarvestEstimationForm";
 import { HarvestEstimationTable } from "@/components/HarvestEstimationTable";
+import { PengepulTab } from "@/components/harvest/PengepulTab";
+import { BarangMasukTab } from "@/components/harvest/BarangMasukTab";
+import { BarangKeluarTab } from "@/components/harvest/BarangKeluarTab";
+import { LaporanPengepulTab } from "@/components/harvest/LaporanPengepulTab";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { TableSkeleton } from "@/components/ui/skeleton-templates";
@@ -61,7 +66,7 @@ const HarvestManagement = () => {
   // Harvest Estimation Hook
   const harvestEstimation = useHarvestEstimation();
 
-  const [activeTab, setActiveTab] = useState("penerimaan");
+  const [activeTab, setActiveTab] = useState("pengepul");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState<string | null>(null);
 
@@ -384,32 +389,71 @@ const HarvestManagement = () => {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid grid-cols-6 w-full max-w-4xl">
-            <TabsTrigger value="penerimaan" className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              <span className="hidden sm:inline">Penerimaan</span>
-            </TabsTrigger>
-            <TabsTrigger value="pengeringan" className="flex items-center gap-2">
-              <Flame className="h-4 w-4" />
-              <span className="hidden sm:inline">Pengeringan</span>
-            </TabsTrigger>
-            <TabsTrigger value="penyimpanan" className="flex items-center gap-2">
-              <Warehouse className="h-4 w-4" />
-              <span className="hidden sm:inline">Gudang</span>
-            </TabsTrigger>
-            <TabsTrigger value="dokumen" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Dokumen</span>
-            </TabsTrigger>
-            <TabsTrigger value="penjualan" className="flex items-center gap-2">
-              <ShoppingCart className="h-4 w-4" />
-              <span className="hidden sm:inline">Penjualan</span>
-            </TabsTrigger>
-            <TabsTrigger value="estimasi" className="flex items-center gap-2">
-              <Calculator className="h-4 w-4" />
-              <span className="hidden sm:inline">Estimasi</span>
-            </TabsTrigger>
-          </TabsList>
+          <ScrollArea className="w-full">
+            <TabsList className="inline-flex w-max min-w-full">
+              <TabsTrigger value="pengepul" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                <span className="hidden sm:inline">Pengepul</span>
+              </TabsTrigger>
+              <TabsTrigger value="barang-masuk" className="flex items-center gap-2">
+                <ArrowDownToLine className="h-4 w-4" />
+                <span className="hidden sm:inline">Barang Masuk</span>
+              </TabsTrigger>
+              <TabsTrigger value="barang-keluar" className="flex items-center gap-2">
+                <ArrowUpFromLine className="h-4 w-4" />
+                <span className="hidden sm:inline">Barang Keluar</span>
+              </TabsTrigger>
+              <TabsTrigger value="laporan" className="flex items-center gap-2">
+                <FileBarChart className="h-4 w-4" />
+                <span className="hidden sm:inline">Laporan</span>
+              </TabsTrigger>
+              <TabsTrigger value="penerimaan" className="flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                <span className="hidden sm:inline">Penerimaan</span>
+              </TabsTrigger>
+              <TabsTrigger value="pengeringan" className="flex items-center gap-2">
+                <Flame className="h-4 w-4" />
+                <span className="hidden sm:inline">Pengeringan</span>
+              </TabsTrigger>
+              <TabsTrigger value="penyimpanan" className="flex items-center gap-2">
+                <Warehouse className="h-4 w-4" />
+                <span className="hidden sm:inline">Gudang</span>
+              </TabsTrigger>
+              <TabsTrigger value="dokumen" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                <span className="hidden sm:inline">Dokumen</span>
+              </TabsTrigger>
+              <TabsTrigger value="penjualan" className="flex items-center gap-2">
+                <ShoppingCart className="h-4 w-4" />
+                <span className="hidden sm:inline">Penjualan</span>
+              </TabsTrigger>
+              <TabsTrigger value="estimasi" className="flex items-center gap-2">
+                <Calculator className="h-4 w-4" />
+                <span className="hidden sm:inline">Estimasi</span>
+              </TabsTrigger>
+            </TabsList>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+
+          {/* Pengepul Tab */}
+          <TabsContent value="pengepul">
+            <PengepulTab />
+          </TabsContent>
+
+          {/* Barang Masuk Tab */}
+          <TabsContent value="barang-masuk">
+            <BarangMasukTab />
+          </TabsContent>
+
+          {/* Barang Keluar Tab */}
+          <TabsContent value="barang-keluar">
+            <BarangKeluarTab />
+          </TabsContent>
+
+          {/* Laporan Tab */}
+          <TabsContent value="laporan">
+            <LaporanPengepulTab />
+          </TabsContent>
 
           {/* Penerimaan Tab */}
           <TabsContent value="penerimaan">
