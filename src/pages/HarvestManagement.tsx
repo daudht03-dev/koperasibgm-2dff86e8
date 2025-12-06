@@ -16,7 +16,10 @@ import { useBatchPanen, useProsesPengeringan, useGudangStok, usePengolahanDokume
 import { useFarmers } from "@/hooks/use-farmers";
 import { useLands } from "@/hooks/use-lands";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Plus, Package, Flame, Warehouse, FileText, ShoppingCart, Eye, Edit, Trash2, RefreshCw, TrendingUp, Calendar, Scale, Droplets } from "lucide-react";
+import { ArrowLeft, Plus, Package, Flame, Warehouse, FileText, ShoppingCart, Eye, Edit, Trash2, RefreshCw, TrendingUp, Calendar, Scale, Droplets, Calculator } from "lucide-react";
+import { useHarvestEstimation } from "@/hooks/use-harvest-estimation";
+import { HarvestEstimationForm } from "@/components/HarvestEstimationForm";
+import { HarvestEstimationTable } from "@/components/HarvestEstimationTable";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { TableSkeleton } from "@/components/ui/skeleton-templates";
@@ -54,6 +57,9 @@ const HarvestManagement = () => {
   const { penjualan: penjualanList, loading: penjualanLoading, addPenjualan, updatePenjualan } = usePenjualan();
   const { farmers } = useFarmers();
   const { lands } = useLands();
+  
+  // Harvest Estimation Hook
+  const harvestEstimation = useHarvestEstimation();
 
   const [activeTab, setActiveTab] = useState("penerimaan");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -383,7 +389,7 @@ const HarvestManagement = () => {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid grid-cols-5 w-full max-w-3xl">
+          <TabsList className="grid grid-cols-6 w-full max-w-4xl">
             <TabsTrigger value="penerimaan" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
               <span className="hidden sm:inline">Penerimaan</span>
@@ -403,6 +409,10 @@ const HarvestManagement = () => {
             <TabsTrigger value="penjualan" className="flex items-center gap-2">
               <ShoppingCart className="h-4 w-4" />
               <span className="hidden sm:inline">Penjualan</span>
+            </TabsTrigger>
+            <TabsTrigger value="estimasi" className="flex items-center gap-2">
+              <Calculator className="h-4 w-4" />
+              <span className="hidden sm:inline">Estimasi</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1347,6 +1357,44 @@ const HarvestManagement = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Estimasi Tab */}
+          <TabsContent value="estimasi">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Form Section */}
+              <div className="lg:col-span-1">
+                <HarvestEstimationForm
+                  farmers={farmers}
+                  selectedFarmers={harvestEstimation.selectedFarmers}
+                  setSelectedFarmers={harvestEstimation.setSelectedFarmers}
+                  startDate={harvestEstimation.startDate}
+                  setStartDate={harvestEstimation.setStartDate}
+                  autoHoliday={harvestEstimation.autoHoliday}
+                  setAutoHoliday={harvestEstimation.setAutoHoliday}
+                  manualHolidays={harvestEstimation.manualHolidays}
+                  setManualHolidays={harvestEstimation.setManualHolidays}
+                  batchAverage={harvestEstimation.batchAverage}
+                  setBatchAverage={harvestEstimation.setBatchAverage}
+                  onGenerate={harvestEstimation.generateEstimation}
+                  applyBatchAverage={harvestEstimation.applyBatchAverage}
+                  updateFarmerAverage={harvestEstimation.updateFarmerAverage}
+                />
+              </div>
+
+              {/* Table Section */}
+              <div className="lg:col-span-2">
+                <HarvestEstimationTable
+                  weeklyData={harvestEstimation.weeklyData}
+                  onRefreshAll={harvestEstimation.refreshAll}
+                  onRefreshHarvest={harvestEstimation.refreshHarvest}
+                  onRefreshSales={harvestEstimation.refreshSales}
+                  onAddNextWeek={harvestEstimation.addNextWeek}
+                  onRefreshWeek={harvestEstimation.refreshWeek}
+                  onRemoveWeek={harvestEstimation.removeWeek}
+                />
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </main>
