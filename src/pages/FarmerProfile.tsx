@@ -1,17 +1,16 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, MapPin, TreePine, WifiOff } from "lucide-react";
+import { MapPin, TreePine, WifiOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 import { useOfflineFarmers } from "@/hooks/use-offline-farmers";
 import { toast } from "@/hooks/use-toast";
-import Navbar from "@/components/ui/navbar";
-import Footer from "@/components/ui/footer";
+import PublicNavbar from "@/components/ui/public-navbar";
+import PublicFooter from "@/components/ui/public-footer";
 
 type Petani = Tables<"petani">;
 type Lahan = Tables<"lahan">;
@@ -120,7 +119,7 @@ const FarmerProfile = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
+        <PublicNavbar />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center">
             <div className="text-muted-foreground">Memuat data petani...</div>
@@ -133,36 +132,25 @@ const FarmerProfile = () => {
   if (error || !petani) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
+        <PublicNavbar />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-foreground mb-4">Petani Tidak Ditemukan</h1>
             <p className="text-muted-foreground mb-8">{error || "Data petani tidak tersedia"}</p>
-            <Button asChild variant="outline">
-              <Link to="/">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Kembali ke Beranda
-              </Link>
-            </Button>
           </div>
         </div>
+        <PublicFooter />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
+      <PublicNavbar />
       
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <Button variant="ghost" asChild className="mb-4">
-            <Link to="/">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Kembali ke Beranda
-            </Link>
-          </Button>
 
           {isOffline && (
             <Alert className="mb-4 border-organic-green/20 bg-organic-green/5">
@@ -279,7 +267,7 @@ const FarmerProfile = () => {
         </div>
       </div>
       
-      <Footer />
+      <PublicFooter />
     </div>
   );
 };
