@@ -579,6 +579,24 @@ const AdminDashboard = () => {
             asChild
             className="justify-start h-auto p-4 border-organic-green/20 hover:bg-organic-green/5"
           >
+            <Link to="/admin/harvest-management">
+              <div className="flex items-center space-x-3">
+                <div className="bg-gradient-organic p-3 rounded-lg">
+                  <Package className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-foreground">Manajemen Panen</p>
+                  <p className="text-sm text-muted-foreground">Kelola hasil panen petani</p>
+                </div>
+              </div>
+            </Link>
+          </Button>
+
+          <Button
+            variant="outline"
+            asChild
+            className="justify-start h-auto p-4 border-organic-green/20 hover:bg-organic-green/5"
+          >
             <Link to="/farmer-identity-labels">
               <div className="flex items-center space-x-3">
                 <div className="bg-gradient-organic p-3 rounded-lg">

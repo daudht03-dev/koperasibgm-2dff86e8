@@ -21,6 +21,7 @@ import LabelSettings from "./pages/LabelSettings";
 import PackagingLabels from "./pages/PackagingLabels";
 import FarmerIdentityLabels from "./pages/FarmerIdentityLabels";
 import IdentityLabelSettings from "./pages/IdentityLabelSettings";
+import HarvestManagement from "./pages/HarvestManagement";
 import NotFound from "./pages/NotFound";
 import Install from "./pages/Install";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -118,6 +119,14 @@ const AppContent = () => {
               element={
                 <ProtectedRoute requireAdmin={true}>
                   <BatchQRCode />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/harvest-management" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <HarvestManagement />
                 </ProtectedRoute>
               } 
             />
