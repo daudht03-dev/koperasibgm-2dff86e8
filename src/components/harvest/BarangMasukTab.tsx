@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, ArrowDownToLine, Trash2, Sparkles, Check, FileText, Calendar } from "lucide-react";
+import { Plus, ArrowDownToLine, Trash2, Sparkles, Check, FileText, Calendar, AlertTriangle } from "lucide-react";
 import { usePenjualanPetani } from "@/hooks/use-penjualan-petani";
 import { usePengepul } from "@/hooks/use-pengepul";
 import { useFarmers } from "@/hooks/use-farmers";
@@ -30,6 +31,14 @@ interface SalesEntry {
   estimationName: string;
 }
 
+interface EstimationGroup {
+  estimationName: string;
+  count: number;
+  totalKg: number;
+  totalValue: number;
+  ids: string[];
+}
+
 export const BarangMasukTab = () => {
   const { penjualanList, loading, addPenjualan, deletePenjualan, refetch } = usePenjualanPetani();
   const { pengepulList } = usePengepul();
@@ -43,6 +52,9 @@ export const BarangMasukTab = () => {
   const [savedEstimations, setSavedEstimations] = useState<SavedEstimation[]>([]);
   const [selectedEstimation, setSelectedEstimation] = useState<string>("all");
   const [isLoadingEstimations, setIsLoadingEstimations] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingEstimation, setDeletingEstimation] = useState<EstimationGroup | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const [form, setForm] = useState({
     pengepul_id: "",
@@ -269,6 +281,71 @@ export const BarangMasukTab = () => {
     ? penjualanList 
     : penjualanList.filter(p => p.pengepul_id === filterPengepul);
 
+  // Group processed entries by estimation name
+  const estimationGroups = useMemo((): EstimationGroup[] => {
+    const groups: { [key: string]: EstimationGroup } = {};
+    
+    penjualanList.forEach(item => {
+      if (item.catatan && item.catatan.includes("Auto-generated dari estimasi:")) {
+        const match = item.catatan.match(/Auto-generated dari estimasi: (.+)/);
+        if (match) {
+          const estimationName = match[1];
+          if (!groups[estimationName]) {
+            groups[estimationName] = {
+              estimationName,
+              count: 0,
+              totalKg: 0,
+              totalValue: 0,
+              ids: [],
+            };
+          }
+          groups[estimationName].count++;
+          groups[estimationName].totalKg += Number(item.jumlah_kg);
+          groups[estimationName].totalValue += Number(item.total_harga);
+          groups[estimationName].ids.push(item.id);
+        }
+      }
+    });
+
+    return Object.values(groups).sort((a, b) => b.count - a.count);
+  }, [penjualanList]);
+
+  const handleDeleteEstimationGroup = async () => {
+    if (!deletingEstimation) return;
+
+    setIsDeleting(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const id of deletingEstimation.ids) {
+      const success = await deletePenjualan(id);
+      if (success) {
+        successCount++;
+      } else {
+        errorCount++;
+      }
+    }
+
+    setIsDeleting(false);
+    setDeleteDialogOpen(false);
+    setDeletingEstimation(null);
+    refetch();
+
+    if (successCount > 0) {
+      toast({
+        title: "Berhasil Dihapus",
+        description: `${successCount} data dari estimasi "${deletingEstimation.estimationName}" berhasil dihapus`,
+      });
+    }
+    if (errorCount > 0) {
+      toast({
+        title: "Sebagian Gagal",
+        description: `${errorCount} data gagal dihapus`,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -451,6 +528,98 @@ export const BarangMasukTab = () => {
                     </Button>
                   </div>
                 </>
+              )}
+            </DialogContent>
+          </Dialog>
+
+          {/* Delete by Estimation Dialog */}
+          <Dialog open={deleteDialogOpen} onOpenChange={(open) => {
+            setDeleteDialogOpen(open);
+            if (!open) setDeletingEstimation(null);
+          }}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="border-destructive text-destructive hover:bg-destructive/10" disabled={estimationGroups.length === 0}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Hapus per Estimasi
+                {estimationGroups.length > 0 && (
+                  <span className="ml-2 bg-destructive text-destructive-foreground px-2 py-0.5 rounded-full text-xs">
+                    {estimationGroups.length}
+                  </span>
+                )}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Trash2 className="h-5 w-5 text-destructive" />
+                  Hapus Data per Estimasi
+                </DialogTitle>
+                <DialogDescription>
+                  Pilih estimasi yang datanya ingin dihapus. Semua data barang masuk yang dihasilkan dari estimasi tersebut akan dihapus.
+                </DialogDescription>
+              </DialogHeader>
+
+              {estimationGroups.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Check className="h-12 w-12 mx-auto mb-3 text-green-500" />
+                  <p className="font-medium">Tidak ada data dari estimasi</p>
+                  <p className="text-sm">Semua data barang masuk diinput secara manual</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {estimationGroups.map((group) => (
+                    <div 
+                      key={group.estimationName}
+                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50"
+                    >
+                      <div>
+                        <p className="font-medium">{group.estimationName}</p>
+                        <div className="flex gap-4 text-sm text-muted-foreground mt-1">
+                          <span>{group.count} data</span>
+                          <span>{group.totalKg.toLocaleString()} Kg</span>
+                          <span>Rp {group.totalValue.toLocaleString()}</span>
+                        </div>
+                      </div>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={() => setDeletingEstimation(group)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Hapus
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center gap-2">
+                              <AlertTriangle className="h-5 w-5 text-destructive" />
+                              Konfirmasi Hapus
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Anda akan menghapus <strong>{group.count} data</strong> barang masuk dari estimasi <strong>"{group.estimationName}"</strong>.
+                              <br /><br />
+                              Total: <strong>{group.totalKg.toLocaleString()} Kg</strong> senilai <strong>Rp {group.totalValue.toLocaleString()}</strong>
+                              <br /><br />
+                              Tindakan ini tidak dapat dibatalkan.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Batal</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={handleDeleteEstimationGroup}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              disabled={isDeleting}
+                            >
+                              {isDeleting ? "Menghapus..." : "Ya, Hapus Semua"}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  ))}
+                </div>
               )}
             </DialogContent>
           </Dialog>
