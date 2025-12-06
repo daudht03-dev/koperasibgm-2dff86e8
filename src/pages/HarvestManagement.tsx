@@ -608,8 +608,10 @@ const HarvestManagement = () => {
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-2">
-                              <Button variant="outline" size="sm">
-                                <Eye className="h-4 w-4" />
+                              <Button variant="outline" size="sm" asChild>
+                                <Link to={`/admin/batch/${batch.id}`}>
+                                  <Eye className="h-4 w-4" />
+                                </Link>
                               </Button>
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>

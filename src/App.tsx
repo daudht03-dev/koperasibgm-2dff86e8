@@ -26,6 +26,7 @@ const PackagingLabels = lazy(() => import("./pages/PackagingLabels"));
 const FarmerIdentityLabels = lazy(() => import("./pages/FarmerIdentityLabels"));
 const IdentityLabelSettings = lazy(() => import("./pages/IdentityLabelSettings"));
 const HarvestManagement = lazy(() => import("./pages/HarvestManagement"));
+const BatchDetail = lazy(() => import("./pages/BatchDetail"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Install = lazy(() => import("./pages/Install"));
 
@@ -146,6 +147,14 @@ const AppContent = () => {
           element={
             <ProtectedRoute requireAdmin={true}>
               <HarvestManagement />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/batch/:id" 
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <BatchDetail />
             </ProtectedRoute>
           } 
         />
