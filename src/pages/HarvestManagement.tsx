@@ -1386,12 +1386,20 @@ const HarvestManagement = () => {
               <div className="lg:col-span-2">
                 <HarvestEstimationTable
                   weeklyData={harvestEstimation.weeklyData}
+                  savedEstimations={harvestEstimation.savedEstimations}
+                  isSaving={harvestEstimation.isSaving}
+                  isLoading={harvestEstimation.isLoading}
                   onRefreshAll={harvestEstimation.refreshAll}
                   onRefreshHarvest={harvestEstimation.refreshHarvest}
                   onRefreshSales={harvestEstimation.refreshSales}
                   onAddNextWeek={harvestEstimation.addNextWeek}
                   onRefreshWeek={harvestEstimation.refreshWeek}
                   onRemoveWeek={harvestEstimation.removeWeek}
+                  onExportCSV={harvestEstimation.exportToCSV}
+                  onSave={harvestEstimation.saveToDatabase}
+                  onLoadSaved={harvestEstimation.loadSavedEstimations}
+                  onLoadEstimation={harvestEstimation.loadEstimation}
+                  onDeleteEstimation={harvestEstimation.deleteEstimation}
                 />
               </div>
             </div>

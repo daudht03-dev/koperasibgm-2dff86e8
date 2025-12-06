@@ -1,5 +1,7 @@
 import { useState, useCallback } from "react";
 import { format, addDays } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 export interface FarmerEstimation {
   farmerId: string;
@@ -31,13 +33,30 @@ export interface WeekData {
   holidays: number[]; // 0-6 representing day index within week
 }
 
+export interface SavedEstimation {
+  id: string;
+  nama_estimasi: string;
+  tanggal_mulai: string;
+  tanggal_selesai: string;
+  data_petani: FarmerEstimation[];
+  data_panen: WeekData[];
+  data_penjualan: WeekData[];
+  catatan: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export const useHarvestEstimation = () => {
+  const { toast } = useToast();
   const [selectedFarmers, setSelectedFarmers] = useState<FarmerEstimation[]>([]);
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [autoHoliday, setAutoHoliday] = useState(true);
   const [manualHolidays, setManualHolidays] = useState<number[]>([]);
   const [weeklyData, setWeeklyData] = useState<WeekData[]>([]);
   const [batchAverage, setBatchAverage] = useState<number>(5);
+  const [savedEstimations, setSavedEstimations] = useState<SavedEstimation[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Generate random number within range
   const randomInRange = (min: number, max: number): number => {
@@ -251,6 +270,244 @@ export const useHarvestEstimation = () => {
     })));
   }, [batchAverage]);
 
+  // Export to CSV
+  const exportToCSV = useCallback(() => {
+    if (weeklyData.length === 0) {
+      toast({
+        title: "Tidak ada data",
+        description: "Generate estimasi terlebih dahulu sebelum export.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const rows: string[] = [];
+    
+    weeklyData.forEach((week) => {
+      // Add week header
+      rows.push(`Minggu ${week.weekIndex + 1}: ${format(week.startDate, "dd/MM/yyyy")} - ${format(week.endDate, "dd/MM/yyyy")}`);
+      rows.push("");
+      
+      // Harvest table header
+      const harvestHeader = ["Nama Petani", "Kode"];
+      for (let i = 0; i < 7; i++) {
+        harvestHeader.push(format(addDays(week.startDate, i), "dd/MM"));
+      }
+      harvestHeader.push("Total Panen");
+      rows.push("ESTIMASI PANEN");
+      rows.push(harvestHeader.join(","));
+      
+      // Harvest data
+      week.farmersData.forEach(farmer => {
+        const row = [
+          `"${farmer.farmerName}"`,
+          farmer.farmerCode,
+          ...farmer.dailyHarvest.map(d => d.value.toFixed(1)),
+          farmer.totalHarvest.toFixed(1),
+        ];
+        rows.push(row.join(","));
+      });
+      
+      // Harvest total row
+      const harvestTotals = ["TOTAL", ""];
+      for (let i = 0; i < 7; i++) {
+        const dayTotal = week.farmersData.reduce((sum, f) => sum + (f.dailyHarvest[i]?.value || 0), 0);
+        harvestTotals.push(dayTotal.toFixed(1));
+      }
+      harvestTotals.push(week.farmersData.reduce((sum, f) => sum + f.totalHarvest, 0).toFixed(1));
+      rows.push(harvestTotals.join(","));
+      rows.push("");
+      
+      // Sales table header
+      const salesHeader = ["Nama Petani", "Kode"];
+      for (let i = 0; i < 7; i++) {
+        salesHeader.push(format(addDays(week.startDate, i), "dd/MM"));
+      }
+      salesHeader.push("Total Penjualan");
+      rows.push("ESTIMASI PENJUALAN");
+      rows.push(salesHeader.join(","));
+      
+      // Sales data
+      week.farmersData.forEach(farmer => {
+        const row = [
+          `"${farmer.farmerName}"`,
+          farmer.farmerCode,
+          ...farmer.dailySales.map(d => d.value.toFixed(1)),
+          farmer.totalSales.toFixed(1),
+        ];
+        rows.push(row.join(","));
+      });
+      
+      // Sales total row
+      const salesTotals = ["TOTAL", ""];
+      for (let i = 0; i < 7; i++) {
+        const dayTotal = week.farmersData.reduce((sum, f) => sum + (f.dailySales[i]?.value || 0), 0);
+        salesTotals.push(dayTotal.toFixed(1));
+      }
+      salesTotals.push(week.farmersData.reduce((sum, f) => sum + f.totalSales, 0).toFixed(1));
+      rows.push(salesTotals.join(","));
+      rows.push("");
+      rows.push("");
+    });
+
+    const csvContent = rows.join("\n");
+    const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `estimasi-panen-${format(new Date(), "yyyy-MM-dd-HHmmss")}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Export berhasil",
+      description: "Data estimasi telah diunduh sebagai CSV.",
+    });
+  }, [weeklyData, toast]);
+
+  // Save to database
+  const saveToDatabase = useCallback(async (name: string, notes?: string) => {
+    if (weeklyData.length === 0) {
+      toast({
+        title: "Tidak ada data",
+        description: "Generate estimasi terlebih dahulu sebelum menyimpan.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    setIsSaving(true);
+    try {
+      const firstWeek = weeklyData[0];
+      const lastWeek = weeklyData[weeklyData.length - 1];
+
+      // Convert Date objects to ISO strings for JSON storage
+      const serializableWeeklyData = weeklyData.map(week => ({
+        ...week,
+        startDate: week.startDate.toISOString(),
+        endDate: week.endDate.toISOString(),
+      }));
+
+      const insertData = {
+        nama_estimasi: name,
+        tanggal_mulai: format(firstWeek.startDate, "yyyy-MM-dd"),
+        tanggal_selesai: format(lastWeek.endDate, "yyyy-MM-dd"),
+        data_petani: selectedFarmers as unknown as Record<string, unknown>,
+        data_panen: serializableWeeklyData as unknown as Record<string, unknown>,
+        data_penjualan: serializableWeeklyData as unknown as Record<string, unknown>,
+        catatan: notes || null,
+      };
+
+      const { error } = await supabase.from("estimasi_panen").insert(insertData as never);
+      if (error) throw error;
+
+      toast({
+        title: "Berhasil disimpan",
+        description: `Estimasi "${name}" telah disimpan ke database.`,
+      });
+      
+      return true;
+    } catch (error) {
+      console.error("Error saving estimation:", error);
+      toast({
+        title: "Gagal menyimpan",
+        description: "Terjadi kesalahan saat menyimpan data.",
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  }, [weeklyData, selectedFarmers, toast]);
+
+  // Load saved estimations
+  const loadSavedEstimations = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("estimasi_panen")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      setSavedEstimations(data as unknown as SavedEstimation[]);
+    } catch (error) {
+      console.error("Error loading estimations:", error);
+      toast({
+        title: "Gagal memuat",
+        description: "Terjadi kesalahan saat memuat data tersimpan.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
+  // Load specific estimation
+  const loadEstimation = useCallback((estimation: SavedEstimation) => {
+    try {
+      const farmers = estimation.data_petani as FarmerEstimation[];
+      setSelectedFarmers(farmers);
+      
+      // Parse the weekly data and convert date strings back to Date objects
+      const panenData = estimation.data_panen as unknown as Array<{
+        weekIndex: number;
+        startDate: string;
+        endDate: string;
+        farmersData: FarmerWeeklyData[];
+        holidays: number[];
+      }>;
+      
+      const parsedWeeklyData: WeekData[] = panenData.map(week => ({
+        ...week,
+        startDate: new Date(week.startDate),
+        endDate: new Date(week.endDate),
+      }));
+      
+      setWeeklyData(parsedWeeklyData);
+      
+      if (parsedWeeklyData.length > 0) {
+        setStartDate(parsedWeeklyData[0].startDate);
+      }
+
+      toast({
+        title: "Data dimuat",
+        description: `Estimasi "${estimation.nama_estimasi}" telah dimuat.`,
+      });
+    } catch (error) {
+      console.error("Error parsing estimation:", error);
+      toast({
+        title: "Gagal memuat",
+        description: "Format data tidak valid.",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
+  // Delete estimation
+  const deleteEstimation = useCallback(async (id: string) => {
+    try {
+      const { error } = await supabase.from("estimasi_panen").delete().eq("id", id);
+      if (error) throw error;
+
+      setSavedEstimations(prev => prev.filter(e => e.id !== id));
+      toast({
+        title: "Berhasil dihapus",
+        description: "Data estimasi telah dihapus.",
+      });
+    } catch (error) {
+      console.error("Error deleting estimation:", error);
+      toast({
+        title: "Gagal menghapus",
+        description: "Terjadi kesalahan saat menghapus data.",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
   return {
     // State
     selectedFarmers,
@@ -264,6 +521,9 @@ export const useHarvestEstimation = () => {
     weeklyData,
     batchAverage,
     setBatchAverage,
+    savedEstimations,
+    isSaving,
+    isLoading,
 
     // Actions
     generateEstimation,
@@ -276,5 +536,10 @@ export const useHarvestEstimation = () => {
     clearAll,
     updateFarmerAverage,
     applyBatchAverage,
+    exportToCSV,
+    saveToDatabase,
+    loadSavedEstimations,
+    loadEstimation,
+    deleteEstimation,
   };
 };

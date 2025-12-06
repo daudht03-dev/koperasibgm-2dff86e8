@@ -1,44 +1,156 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { RefreshCw, Plus, Trash2, TrendingUp, Leaf } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { RefreshCw, Plus, Trash2, TrendingUp, Leaf, Download, Save, FolderOpen, Loader2 } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { id as localeId } from "date-fns/locale";
-import { WeekData } from "@/hooks/use-harvest-estimation";
+import { WeekData, SavedEstimation } from "@/hooks/use-harvest-estimation";
 
 interface HarvestEstimationTableProps {
   weeklyData: WeekData[];
+  savedEstimations: SavedEstimation[];
+  isSaving: boolean;
+  isLoading: boolean;
   onRefreshAll: () => void;
   onRefreshHarvest: () => void;
   onRefreshSales: () => void;
   onAddNextWeek: () => void;
   onRefreshWeek: (weekIndex: number, type: 'all' | 'harvest' | 'sales') => void;
   onRemoveWeek: (weekIndex: number) => void;
+  onExportCSV: () => void;
+  onSave: (name: string, notes?: string) => Promise<boolean>;
+  onLoadSaved: () => void;
+  onLoadEstimation: (estimation: SavedEstimation) => void;
+  onDeleteEstimation: (id: string) => void;
 }
 
 export const HarvestEstimationTable = ({
   weeklyData,
+  savedEstimations,
+  isSaving,
+  isLoading,
   onRefreshAll,
   onRefreshHarvest,
   onRefreshSales,
   onAddNextWeek,
   onRefreshWeek,
   onRemoveWeek,
+  onExportCSV,
+  onSave,
+  onLoadSaved,
+  onLoadEstimation,
+  onDeleteEstimation,
 }: HarvestEstimationTableProps) => {
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [loadDialogOpen, setLoadDialogOpen] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [saveNotes, setSaveNotes] = useState("");
+
+  const handleSave = async () => {
+    if (!saveName.trim()) return;
+    const success = await onSave(saveName, saveNotes);
+    if (success) {
+      setSaveDialogOpen(false);
+      setSaveName("");
+      setSaveNotes("");
+    }
+  };
+
+  const handleOpenLoadDialog = () => {
+    onLoadSaved();
+    setLoadDialogOpen(true);
+  };
+
   if (weeklyData.length === 0) {
     return (
-      <Card className="border-dashed border-2 border-muted-foreground/30">
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <TrendingUp className="h-12 w-12 text-muted-foreground/50 mb-4" />
-          <p className="text-muted-foreground text-center">
-            Belum ada data estimasi.
-            <br />
-            Pilih petani dan klik "Generate" untuk memulai.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        {/* Load Saved Button */}
+        <div className="flex justify-end">
+          <Dialog open={loadDialogOpen} onOpenChange={setLoadDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" onClick={handleOpenLoadDialog}>
+                <FolderOpen className="h-4 w-4 mr-2" />
+                Muat Data Tersimpan
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[80vh]">
+              <DialogHeader>
+                <DialogTitle>Data Estimasi Tersimpan</DialogTitle>
+                <DialogDescription>
+                  Pilih estimasi yang ingin dimuat
+                </DialogDescription>
+              </DialogHeader>
+              <ScrollArea className="max-h-[50vh]">
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : savedEstimations.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    Belum ada data tersimpan
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {savedEstimations.map((est) => (
+                      <Card key={est.id} className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-medium">{est.nama_estimasi}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {format(new Date(est.tanggal_mulai), "dd MMM yyyy", { locale: localeId })} - {format(new Date(est.tanggal_selesai), "dd MMM yyyy", { locale: localeId })}
+                            </p>
+                            {est.catatan && (
+                              <p className="text-sm text-muted-foreground mt-1">{est.catatan}</p>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Disimpan: {format(new Date(est.created_at), "dd MMM yyyy HH:mm", { locale: localeId })}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                onLoadEstimation(est);
+                                setLoadDialogOpen(false);
+                              }}
+                            >
+                              Muat
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => onDeleteEstimation(est.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <Card className="border-dashed border-2 border-muted-foreground/30">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <TrendingUp className="h-12 w-12 text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground text-center">
+              Belum ada data estimasi.
+              <br />
+              Pilih petani dan klik "Generate" untuk memulai.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
@@ -70,6 +182,125 @@ export const HarvestEstimationTable = ({
           <Plus className="h-4 w-4 mr-2" />
           Tambah Minggu Berikutnya
         </Button>
+        <div className="flex-1" />
+        <Button variant="outline" onClick={onExportCSV}>
+          <Download className="h-4 w-4 mr-2" />
+          Export CSV
+        </Button>
+        
+        {/* Save Dialog */}
+        <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline">
+              <Save className="h-4 w-4 mr-2" />
+              Simpan
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Simpan Estimasi</DialogTitle>
+              <DialogDescription>
+                Simpan data estimasi untuk dilihat kembali nanti
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Nama Estimasi *</label>
+                <Input
+                  value={saveName}
+                  onChange={(e) => setSaveName(e.target.value)}
+                  placeholder="Contoh: Estimasi Desember 2024"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Catatan (opsional)</label>
+                <Textarea
+                  value={saveNotes}
+                  onChange={(e) => setSaveNotes(e.target.value)}
+                  placeholder="Catatan tambahan..."
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
+                Batal
+              </Button>
+              <Button onClick={handleSave} disabled={!saveName.trim() || isSaving}>
+                {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Simpan
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Load Dialog */}
+        <Dialog open={loadDialogOpen} onOpenChange={setLoadDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" onClick={handleOpenLoadDialog}>
+              <FolderOpen className="h-4 w-4 mr-2" />
+              Muat
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[80vh]">
+            <DialogHeader>
+              <DialogTitle>Data Estimasi Tersimpan</DialogTitle>
+              <DialogDescription>
+                Pilih estimasi yang ingin dimuat
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="max-h-[50vh]">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+              ) : savedEstimations.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  Belum ada data tersimpan
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {savedEstimations.map((est) => (
+                    <Card key={est.id} className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-medium">{est.nama_estimasi}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {format(new Date(est.tanggal_mulai), "dd MMM yyyy", { locale: localeId })} - {format(new Date(est.tanggal_selesai), "dd MMM yyyy", { locale: localeId })}
+                          </p>
+                          {est.catatan && (
+                            <p className="text-sm text-muted-foreground mt-1">{est.catatan}</p>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Disimpan: {format(new Date(est.created_at), "dd MMM yyyy HH:mm", { locale: localeId })}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              onLoadEstimation(est);
+                              setLoadDialogOpen(false);
+                            }}
+                          >
+                            Muat
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => onDeleteEstimation(est.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Weekly Tables */}

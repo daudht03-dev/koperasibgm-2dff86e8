@@ -86,6 +86,45 @@ export type Database = {
           },
         ]
       }
+      estimasi_panen: {
+        Row: {
+          catatan: string | null
+          created_at: string
+          data_panen: Json
+          data_penjualan: Json
+          data_petani: Json
+          id: string
+          nama_estimasi: string
+          tanggal_mulai: string
+          tanggal_selesai: string
+          updated_at: string
+        }
+        Insert: {
+          catatan?: string | null
+          created_at?: string
+          data_panen: Json
+          data_penjualan: Json
+          data_petani: Json
+          id?: string
+          nama_estimasi: string
+          tanggal_mulai: string
+          tanggal_selesai: string
+          updated_at?: string
+        }
+        Update: {
+          catatan?: string | null
+          created_at?: string
+          data_panen?: Json
+          data_penjualan?: Json
+          data_petani?: Json
+          id?: string
+          nama_estimasi?: string
+          tanggal_mulai?: string
+          tanggal_selesai?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       gudang_stok: {
         Row: {
           batch_id: string
