@@ -14,6 +14,137 @@ export type Database = {
   }
   public: {
     Tables: {
+      batch_panen: {
+        Row: {
+          batch_number: string
+          catatan: string | null
+          created_at: string | null
+          harga_per_kg: number | null
+          id: string
+          jumlah_kg: number
+          kadar_air: number | null
+          kondisi: string | null
+          kualitas: Database["public"]["Enums"]["quality_grade"] | null
+          lahan_id: string | null
+          petani_id: string
+          sertifikasi: Database["public"]["Enums"]["certification_type"] | null
+          status: Database["public"]["Enums"]["batch_status"] | null
+          tanggal_penerimaan: string
+          total_harga: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          batch_number: string
+          catatan?: string | null
+          created_at?: string | null
+          harga_per_kg?: number | null
+          id?: string
+          jumlah_kg: number
+          kadar_air?: number | null
+          kondisi?: string | null
+          kualitas?: Database["public"]["Enums"]["quality_grade"] | null
+          lahan_id?: string | null
+          petani_id: string
+          sertifikasi?: Database["public"]["Enums"]["certification_type"] | null
+          status?: Database["public"]["Enums"]["batch_status"] | null
+          tanggal_penerimaan?: string
+          total_harga?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          batch_number?: string
+          catatan?: string | null
+          created_at?: string | null
+          harga_per_kg?: number | null
+          id?: string
+          jumlah_kg?: number
+          kadar_air?: number | null
+          kondisi?: string | null
+          kualitas?: Database["public"]["Enums"]["quality_grade"] | null
+          lahan_id?: string | null
+          petani_id?: string
+          sertifikasi?: Database["public"]["Enums"]["certification_type"] | null
+          status?: Database["public"]["Enums"]["batch_status"] | null
+          tanggal_penerimaan?: string
+          total_harga?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_panen_lahan_id_fkey"
+            columns: ["lahan_id"]
+            isOneToOne: false
+            referencedRelation: "lahan"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_panen_petani_id_fkey"
+            columns: ["petani_id"]
+            isOneToOne: false
+            referencedRelation: "petani"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gudang_stok: {
+        Row: {
+          batch_id: string
+          catatan: string | null
+          created_at: string | null
+          id: string
+          jumlah_kg: number
+          kelembaban: number | null
+          kondisi_penyimpanan: string | null
+          lokasi_gudang: string
+          rak_posisi: string | null
+          status: string | null
+          suhu_gudang: number | null
+          tanggal_keluar: string | null
+          tanggal_masuk: string
+          updated_at: string | null
+        }
+        Insert: {
+          batch_id: string
+          catatan?: string | null
+          created_at?: string | null
+          id?: string
+          jumlah_kg: number
+          kelembaban?: number | null
+          kondisi_penyimpanan?: string | null
+          lokasi_gudang?: string
+          rak_posisi?: string | null
+          status?: string | null
+          suhu_gudang?: number | null
+          tanggal_keluar?: string | null
+          tanggal_masuk?: string
+          updated_at?: string | null
+        }
+        Update: {
+          batch_id?: string
+          catatan?: string | null
+          created_at?: string | null
+          id?: string
+          jumlah_kg?: number
+          kelembaban?: number | null
+          kondisi_penyimpanan?: string | null
+          lokasi_gudang?: string
+          rak_posisi?: string | null
+          status?: string | null
+          suhu_gudang?: number | null
+          tanggal_keluar?: string | null
+          tanggal_masuk?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gudang_stok_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_panen"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       konten_website: {
         Row: {
           aktif: boolean | null
@@ -195,6 +326,121 @@ export type Database = {
           },
         ]
       }
+      pengolahan_dokumen: {
+        Row: {
+          batch_id: string
+          catatan: string | null
+          created_at: string | null
+          file_url: string | null
+          id: string
+          jenis_dokumen: string
+          masa_berlaku: string | null
+          nomor_dokumen: string
+          penerbit: string | null
+          status: string | null
+          tanggal_dokumen: string
+          updated_at: string | null
+        }
+        Insert: {
+          batch_id: string
+          catatan?: string | null
+          created_at?: string | null
+          file_url?: string | null
+          id?: string
+          jenis_dokumen: string
+          masa_berlaku?: string | null
+          nomor_dokumen: string
+          penerbit?: string | null
+          status?: string | null
+          tanggal_dokumen?: string
+          updated_at?: string | null
+        }
+        Update: {
+          batch_id?: string
+          catatan?: string | null
+          created_at?: string | null
+          file_url?: string | null
+          id?: string
+          jenis_dokumen?: string
+          masa_berlaku?: string | null
+          nomor_dokumen?: string
+          penerbit?: string | null
+          status?: string | null
+          tanggal_dokumen?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pengolahan_dokumen_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_panen"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      penjualan: {
+        Row: {
+          alamat_pembeli: string | null
+          batch_id: string
+          catatan: string | null
+          created_at: string | null
+          harga_per_kg: number
+          id: string
+          jumlah_kg: number
+          metode_pembayaran: string | null
+          nomor_invoice: string
+          pembeli: string
+          status_pembayaran: string | null
+          tanggal_kirim: string | null
+          tanggal_penjualan: string
+          total_harga: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          alamat_pembeli?: string | null
+          batch_id: string
+          catatan?: string | null
+          created_at?: string | null
+          harga_per_kg: number
+          id?: string
+          jumlah_kg: number
+          metode_pembayaran?: string | null
+          nomor_invoice: string
+          pembeli: string
+          status_pembayaran?: string | null
+          tanggal_kirim?: string | null
+          tanggal_penjualan?: string
+          total_harga?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          alamat_pembeli?: string | null
+          batch_id?: string
+          catatan?: string | null
+          created_at?: string | null
+          harga_per_kg?: number
+          id?: string
+          jumlah_kg?: number
+          metode_pembayaran?: string | null
+          nomor_invoice?: string
+          pembeli?: string
+          status_pembayaran?: string | null
+          tanggal_kirim?: string | null
+          tanggal_penjualan?: string
+          total_harga?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "penjualan_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_panen"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       petani: {
         Row: {
           alamat: string | null
@@ -354,6 +600,71 @@ export type Database = {
         }
         Relationships: []
       }
+      proses_pengeringan: {
+        Row: {
+          batch_id: string
+          catatan: string | null
+          created_at: string | null
+          durasi_jam: number | null
+          id: string
+          jumlah_kg_sebelum: number
+          jumlah_kg_sesudah: number | null
+          kadar_air_akhir: number | null
+          kadar_air_awal: number | null
+          operator: string | null
+          penyusutan_kg: number | null
+          status: string | null
+          suhu_oven: number | null
+          tanggal_mulai: string
+          tanggal_selesai: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          batch_id: string
+          catatan?: string | null
+          created_at?: string | null
+          durasi_jam?: number | null
+          id?: string
+          jumlah_kg_sebelum: number
+          jumlah_kg_sesudah?: number | null
+          kadar_air_akhir?: number | null
+          kadar_air_awal?: number | null
+          operator?: string | null
+          penyusutan_kg?: number | null
+          status?: string | null
+          suhu_oven?: number | null
+          tanggal_mulai?: string
+          tanggal_selesai?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          batch_id?: string
+          catatan?: string | null
+          created_at?: string | null
+          durasi_jam?: number | null
+          id?: string
+          jumlah_kg_sebelum?: number
+          jumlah_kg_sesudah?: number | null
+          kadar_air_akhir?: number | null
+          kadar_air_awal?: number | null
+          operator?: string | null
+          penyusutan_kg?: number | null
+          status?: string | null
+          suhu_oven?: number | null
+          tanggal_mulai?: string
+          tanggal_selesai?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proses_pengeringan_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_panen"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -380,6 +691,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_batch_number: { Args: never; Returns: string }
+      generate_invoice_number: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -390,6 +703,15 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      batch_status:
+        | "penerimaan"
+        | "pengeringan"
+        | "penyimpanan"
+        | "pengolahan"
+        | "penjualan"
+        | "selesai"
+      certification_type: "organik" | "konvensional"
+      quality_grade: "premium" | "grade_a" | "grade_b" | "grade_c"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -518,6 +840,16 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      batch_status: [
+        "penerimaan",
+        "pengeringan",
+        "penyimpanan",
+        "pengolahan",
+        "penjualan",
+        "selesai",
+      ],
+      certification_type: ["organik", "konvensional"],
+      quality_grade: ["premium", "grade_a", "grade_b", "grade_c"],
     },
   },
 } as const
