@@ -122,7 +122,14 @@ const AppContent = () => {
             </ProtectedRoute>
           } 
         />
-        <Route path="/petani/:id" element={<FarmerDetail />} />
+        <Route 
+          path="/petani/:id" 
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <FarmerDetail />
+            </ProtectedRoute>
+          } 
+        />
         <Route path="/profil-petani/:id" element={<FarmerProfile />} />
         <Route path="/scan" element={<QRScanner />} />
         <Route path="/offline-farmers" element={<OfflineFarmers />} />
