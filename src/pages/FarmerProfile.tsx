@@ -90,6 +90,7 @@ const FarmerProfile = () => {
           no_telepon: null,
           status: null,
           tanggal_bergabung: null,
+          pengepul_id: null,
         });
         setLands(offlineFarmer.lands.map(l => ({
           id: l.id,

@@ -17,57 +17,54 @@ export type Database = {
       batch_panen: {
         Row: {
           batch_number: string
-          catatan: string | null
           created_at: string | null
           harga_per_kg: number | null
           id: string
           jumlah_kg: number
-          kadar_air: number | null
           kondisi: string | null
           kualitas: Database["public"]["Enums"]["quality_grade"] | null
           lahan_id: string | null
+          pengepul_ids: string[] | null
           petani_id: string
-          sertifikasi: Database["public"]["Enums"]["certification_type"] | null
           status: Database["public"]["Enums"]["batch_status"] | null
           tanggal_penerimaan: string
           total_harga: number | null
           updated_at: string | null
+          warna_produk: string | null
         }
         Insert: {
           batch_number: string
-          catatan?: string | null
           created_at?: string | null
           harga_per_kg?: number | null
           id?: string
           jumlah_kg: number
-          kadar_air?: number | null
           kondisi?: string | null
           kualitas?: Database["public"]["Enums"]["quality_grade"] | null
           lahan_id?: string | null
+          pengepul_ids?: string[] | null
           petani_id: string
-          sertifikasi?: Database["public"]["Enums"]["certification_type"] | null
           status?: Database["public"]["Enums"]["batch_status"] | null
           tanggal_penerimaan?: string
           total_harga?: number | null
           updated_at?: string | null
+          warna_produk?: string | null
         }
         Update: {
           batch_number?: string
-          catatan?: string | null
           created_at?: string | null
           harga_per_kg?: number | null
           id?: string
           jumlah_kg?: number
-          kadar_air?: number | null
           kondisi?: string | null
           kualitas?: Database["public"]["Enums"]["quality_grade"] | null
           lahan_id?: string | null
+          pengepul_ids?: string[] | null
           petani_id?: string
-          sertifikasi?: Database["public"]["Enums"]["certification_type"] | null
           status?: Database["public"]["Enums"]["batch_status"] | null
           tanggal_penerimaan?: string
           total_harga?: number | null
           updated_at?: string | null
+          warna_produk?: string | null
         }
         Relationships: [
           {
@@ -365,6 +362,90 @@ export type Database = {
           },
         ]
       }
+      pengambilan_koperasi: {
+        Row: {
+          batch_id: string | null
+          catatan: string | null
+          created_at: string | null
+          id: string
+          jumlah_kg: number
+          pengepul_id: string
+          tanggal_ambil: string
+          updated_at: string | null
+        }
+        Insert: {
+          batch_id?: string | null
+          catatan?: string | null
+          created_at?: string | null
+          id?: string
+          jumlah_kg: number
+          pengepul_id: string
+          tanggal_ambil?: string
+          updated_at?: string | null
+        }
+        Update: {
+          batch_id?: string | null
+          catatan?: string | null
+          created_at?: string | null
+          id?: string
+          jumlah_kg?: number
+          pengepul_id?: string
+          tanggal_ambil?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pengambilan_koperasi_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_panen"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pengambilan_koperasi_pengepul_id_fkey"
+            columns: ["pengepul_id"]
+            isOneToOne: false
+            referencedRelation: "pengepul"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pengepul: {
+        Row: {
+          alamat: string | null
+          created_at: string | null
+          harga_beli: number
+          id: string
+          kode_pengepul: string
+          nama: string
+          no_telepon: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          alamat?: string | null
+          created_at?: string | null
+          harga_beli?: number
+          id?: string
+          kode_pengepul: string
+          nama: string
+          no_telepon?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          alamat?: string | null
+          created_at?: string | null
+          harga_beli?: number
+          id?: string
+          kode_pengepul?: string
+          nama?: string
+          no_telepon?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       pengolahan_dokumen: {
         Row: {
           batch_id: string
@@ -480,6 +561,66 @@ export type Database = {
           },
         ]
       }
+      penjualan_petani: {
+        Row: {
+          catatan: string | null
+          created_at: string | null
+          harga_per_kg: number
+          id: string
+          jumlah_kg: number
+          kualitas: string | null
+          pengepul_id: string
+          petani_id: string
+          tanggal_jual: string
+          total_harga: number | null
+          updated_at: string | null
+          warna_produk: string | null
+        }
+        Insert: {
+          catatan?: string | null
+          created_at?: string | null
+          harga_per_kg: number
+          id?: string
+          jumlah_kg: number
+          kualitas?: string | null
+          pengepul_id: string
+          petani_id: string
+          tanggal_jual?: string
+          total_harga?: number | null
+          updated_at?: string | null
+          warna_produk?: string | null
+        }
+        Update: {
+          catatan?: string | null
+          created_at?: string | null
+          harga_per_kg?: number
+          id?: string
+          jumlah_kg?: number
+          kualitas?: string | null
+          pengepul_id?: string
+          petani_id?: string
+          tanggal_jual?: string
+          total_harga?: number | null
+          updated_at?: string | null
+          warna_produk?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "penjualan_petani_pengepul_id_fkey"
+            columns: ["pengepul_id"]
+            isOneToOne: false
+            referencedRelation: "pengepul"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "penjualan_petani_petani_id_fkey"
+            columns: ["petani_id"]
+            isOneToOne: false
+            referencedRelation: "petani"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       petani: {
         Row: {
           alamat: string | null
@@ -490,6 +631,7 @@ export type Database = {
           logo_url: string | null
           nama: string
           no_telepon: string | null
+          pengepul_id: string | null
           status: string | null
           tanggal_bergabung: string | null
           updated_at: string | null
@@ -503,6 +645,7 @@ export type Database = {
           logo_url?: string | null
           nama: string
           no_telepon?: string | null
+          pengepul_id?: string | null
           status?: string | null
           tanggal_bergabung?: string | null
           updated_at?: string | null
@@ -516,11 +659,20 @@ export type Database = {
           logo_url?: string | null
           nama?: string
           no_telepon?: string | null
+          pengepul_id?: string | null
           status?: string | null
           tanggal_bergabung?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "petani_pengepul_id_fkey"
+            columns: ["pengepul_id"]
+            isOneToOne: false
+            referencedRelation: "pengepul"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       produk: {
         Row: {
@@ -732,6 +884,7 @@ export type Database = {
     Functions: {
       generate_batch_number: { Args: never; Returns: string }
       generate_invoice_number: { Args: never; Returns: string }
+      generate_kode_pengepul: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

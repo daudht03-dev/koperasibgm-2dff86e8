@@ -325,12 +325,12 @@ const BatchDetail = () => {
                 </div>
               </div>
               
-              {batch.kadar_air && (
+{batch.warna_produk && (
                 <div className="flex items-center gap-3">
                   <Droplets className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <p className="text-sm text-muted-foreground">Kadar Air</p>
-                    <p className="font-medium">{batch.kadar_air}%</p>
+                    <p className="text-sm text-muted-foreground">Warna Produk</p>
+                    <p className="font-medium">{batch.warna_produk}</p>
                   </div>
                 </div>
               )}
@@ -339,9 +339,6 @@ const BatchDetail = () => {
               
               <div className="flex flex-wrap gap-2">
                 <Badge variant="outline">{qualityLabels[batch.kualitas]}</Badge>
-                <Badge variant={batch.sertifikasi === 'organik' ? 'default' : 'secondary'}>
-                  {batch.sertifikasi === 'organik' ? 'Organik' : 'Konvensional'}
-                </Badge>
               </div>
               
               {batch.harga_per_kg && (
@@ -355,16 +352,6 @@ const BatchDetail = () => {
                     </p>
                   </div>
                 </div>
-              )}
-              
-              {batch.catatan && (
-                <>
-                  <Separator />
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Catatan</p>
-                    <p className="text-sm">{batch.catatan}</p>
-                  </div>
-                </>
               )}
             </CardContent>
           </Card>
