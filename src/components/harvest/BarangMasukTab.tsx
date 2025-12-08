@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, ArrowDownToLine, Trash2, Sparkles, Check, FileText, Calendar, AlertTriangle } from "lucide-react";
+import { Plus, ArrowDownToLine, Trash2, Sparkles, Check, FileText, Calendar, AlertTriangle, Leaf, Factory } from "lucide-react";
 import { usePenjualanPetani } from "@/hooks/use-penjualan-petani";
 import { usePengepul } from "@/hooks/use-pengepul";
 import { useFarmers } from "@/hooks/use-farmers";
@@ -29,6 +29,7 @@ interface SalesEntry {
   value: number;
   estimationId: string;
   estimationName: string;
+  isOrganic: boolean;
 }
 
 interface EstimationGroup {
@@ -65,6 +66,7 @@ export const BarangMasukTab = () => {
     warna_produk: "",
     kualitas: "grade_a",
     catatan: "",
+    is_organic: true,
   });
 
   // Load saved estimations
@@ -98,6 +100,7 @@ export const BarangMasukTab = () => {
       warna_produk: "",
       kualitas: "grade_a",
       catatan: "",
+      is_organic: true,
     });
   };
 
@@ -127,7 +130,8 @@ export const BarangMasukTab = () => {
       warna_produk: form.warna_produk || null,
       kualitas: form.kualitas,
       catatan: form.catatan || null,
-    });
+      is_organic: form.is_organic,
+    } as any);
 
     resetForm();
     setDialogOpen(false);
@@ -156,15 +160,12 @@ export const BarangMasukTab = () => {
 
       panenData.forEach(week => {
         week.farmersData.forEach(farmerData => {
-          // Get farmer from database to check pengepul assignment
           const farmer = farmers.find(f => f.id === farmerData.farmerId);
           if (!farmer || !farmer.pengepul_id) return;
 
-          // Process daily sales data
           farmerData.dailySales.forEach((sale: DailyData, dayIndex: number) => {
             if (sale.value <= 0) return;
 
-            // Check if this entry already exists in penjualan_petani
             const exists = penjualanList.some(p => 
               p.petani_id === farmerData.farmerId && 
               p.tanggal_jual === sale.date &&
@@ -181,6 +182,7 @@ export const BarangMasukTab = () => {
                 value: sale.value,
                 estimationId: estimation.id,
                 estimationName: estimation.nama_estimasi,
+                isOrganic: farmerData.isOrganic !== false,
               });
             }
           });
@@ -193,7 +195,6 @@ export const BarangMasukTab = () => {
 
   const unprocessedEntries = getUnprocessedSalesEntries();
 
-  // Filter by estimation
   const filteredUnprocessedEntries = selectedEstimation === "all"
     ? unprocessedEntries
     : unprocessedEntries.filter(e => e.estimationId === selectedEstimation);
@@ -247,7 +248,8 @@ export const BarangMasukTab = () => {
         warna_produk: null,
         kualitas: "grade_a",
         catatan: `Auto-generated dari estimasi: ${entry.estimationName}`,
-      });
+        is_organic: entry.isOrganic,
+      } as any);
 
       if (result) {
         successCount++;
@@ -280,6 +282,10 @@ export const BarangMasukTab = () => {
   const filteredList = filterPengepul === "all" 
     ? penjualanList 
     : penjualanList.filter(p => p.pengepul_id === filterPengepul);
+
+  // Separate organic and conventional
+  const organicList = filteredList.filter(p => (p as any).is_organic !== false);
+  const conventionalList = filteredList.filter(p => (p as any).is_organic === false);
 
   // Group processed entries by estimation name
   const estimationGroups = useMemo((): EstimationGroup[] => {
@@ -346,457 +352,546 @@ export const BarangMasukTab = () => {
     }
   };
 
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle className="flex items-center gap-2">
-            <ArrowDownToLine className="h-5 w-5" />
-            Barang Masuk
-          </CardTitle>
-          <CardDescription>Penjualan petani ke pengepul dari data estimasi</CardDescription>
-        </div>
-        <div className="flex items-center gap-4">
-          <Select value={filterPengepul} onValueChange={setFilterPengepul}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Filter Pengepul" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Pengepul</SelectItem>
-              {pengepulList.map((p) => (
-                <SelectItem key={p.id} value={p.id}>{p.nama}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          {/* Auto Generate Dialog */}
-          <Dialog open={autoGenerateDialogOpen} onOpenChange={(open) => {
-            setAutoGenerateDialogOpen(open);
-            if (!open) {
-              setSelectedEntries([]);
-              setSelectedEstimation("all");
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="border-primary text-primary hover:bg-primary/10">
-                <Sparkles className="h-4 w-4 mr-2" />
-                Auto Generate
-                {unprocessedEntries.length > 0 && (
-                  <span className="ml-2 bg-primary text-primary-foreground px-2 py-0.5 rounded-full text-xs">
-                    {unprocessedEntries.length}
-                  </span>
-                )}
+  // Render table for a list
+  const renderTable = (list: typeof penjualanList, type: 'organic' | 'conventional') => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Tanggal</TableHead>
+          <TableHead>Pengepul</TableHead>
+          <TableHead>Petani</TableHead>
+          <TableHead>Jumlah</TableHead>
+          <TableHead>Harga/Kg</TableHead>
+          <TableHead>Total</TableHead>
+          <TableHead className="text-right">Aksi</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {list.map((item) => (
+          <TableRow key={item.id}>
+            <TableCell>
+              {format(new Date(item.tanggal_jual), "dd MMM", { locale: localeId })}
+            </TableCell>
+            <TableCell>
+              <div>
+                <p className="font-medium text-sm">{item.pengepul?.nama}</p>
+                <p className="text-xs text-muted-foreground">{item.pengepul?.kode_pengepul}</p>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div>
+                <p className="font-medium text-sm">{item.petani?.nama}</p>
+                <p className="text-xs text-muted-foreground">{item.petani?.kode_petani}</p>
+              </div>
+            </TableCell>
+            <TableCell className="font-medium">{Number(item.jumlah_kg).toLocaleString()} Kg</TableCell>
+            <TableCell>Rp {Number(item.harga_per_kg).toLocaleString()}</TableCell>
+            <TableCell className="font-medium">Rp {Number(item.total_harga).toLocaleString()}</TableCell>
+            <TableCell className="text-right">
+              <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)}>
+                <Trash2 className="h-4 w-4 text-destructive" />
               </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                  Auto Generate dari Data Estimasi Penjualan
-                </DialogTitle>
-                <DialogDescription>
-                  Pilih data penjualan petani dari estimasi yang tersimpan untuk dikonversi menjadi barang masuk pengepul.
-                  Harga akan otomatis menggunakan harga beli pengepul.
-                </DialogDescription>
-              </DialogHeader>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
 
-              {isLoadingEstimations ? (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">Memuat data estimasi...</p>
-                </div>
-              ) : savedEstimations.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p className="font-medium">Belum ada data estimasi tersimpan</p>
-                  <p className="text-sm">Buat dan simpan estimasi penjualan di tab Estimasi terlebih dahulu</p>
-                </div>
-              ) : unprocessedEntries.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Check className="h-12 w-12 mx-auto mb-3 text-green-500" />
-                  <p className="font-medium">Semua data estimasi sudah diproses</p>
-                  <p className="text-sm">Tidak ada data penjualan baru yang perlu dikonversi</p>
-                </div>
-              ) : (
-                <>
-                  {/* Filter by Estimation */}
-                  <div className="flex items-center gap-4 py-2 border-b">
-                    <Label className="text-sm font-medium">Filter Estimasi:</Label>
-                    <Select value={selectedEstimation} onValueChange={setSelectedEstimation}>
-                      <SelectTrigger className="w-64">
-                        <SelectValue placeholder="Pilih estimasi" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Semua Estimasi ({unprocessedEntries.length} data)</SelectItem>
-                        {savedEstimations.map((est) => {
-                          const count = unprocessedEntries.filter(e => e.estimationId === est.id).length;
-                          if (count === 0) return null;
+  return (
+    <div className="space-y-6">
+      {/* Header Card */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <ArrowDownToLine className="h-5 w-5" />
+              Barang Masuk
+            </CardTitle>
+            <CardDescription>Penjualan petani ke pengepul dari data estimasi</CardDescription>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select value={filterPengepul} onValueChange={setFilterPengepul}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter Pengepul" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Pengepul</SelectItem>
+                {pengepulList.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.nama}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            {/* Auto Generate Dialog */}
+            <Dialog open={autoGenerateDialogOpen} onOpenChange={(open) => {
+              setAutoGenerateDialogOpen(open);
+              if (!open) {
+                setSelectedEntries([]);
+                setSelectedEstimation("all");
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="border-primary text-primary hover:bg-primary/10">
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Auto Generate
+                  {unprocessedEntries.length > 0 && (
+                    <span className="ml-2 bg-primary text-primary-foreground px-2 py-0.5 rounded-full text-xs">
+                      {unprocessedEntries.length}
+                    </span>
+                  )}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                    Auto Generate dari Data Estimasi Penjualan
+                  </DialogTitle>
+                  <DialogDescription>
+                    Pilih data penjualan petani dari estimasi yang tersimpan untuk dikonversi menjadi barang masuk pengepul.
+                  </DialogDescription>
+                </DialogHeader>
+
+                {isLoadingEstimations ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Memuat data estimasi...</p>
+                  </div>
+                ) : savedEstimations.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p className="font-medium">Belum ada data estimasi tersimpan</p>
+                    <p className="text-sm">Buat dan simpan estimasi penjualan di tab Estimasi terlebih dahulu</p>
+                  </div>
+                ) : unprocessedEntries.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Check className="h-12 w-12 mx-auto mb-3 text-green-500" />
+                    <p className="font-medium">Semua data estimasi sudah diproses</p>
+                    <p className="text-sm">Tidak ada data penjualan baru yang perlu dikonversi</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Summary by type */}
+                    <div className="grid grid-cols-2 gap-4 py-2">
+                      <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Leaf className="h-4 w-4 text-green-600" />
+                          <span className="font-medium">Organik</span>
+                        </div>
+                        <p className="text-xl font-bold">{filteredUnprocessedEntries.filter(e => e.isOrganic).reduce((sum, e) => sum + e.value, 0).toLocaleString()} Kg</p>
+                        <p className="text-sm text-muted-foreground">{filteredUnprocessedEntries.filter(e => e.isOrganic).length} data</p>
+                      </div>
+                      <div className="p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg border border-orange-200 dark:border-orange-800">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Factory className="h-4 w-4 text-orange-500" />
+                          <span className="font-medium">Konvensional</span>
+                        </div>
+                        <p className="text-xl font-bold">{filteredUnprocessedEntries.filter(e => !e.isOrganic).reduce((sum, e) => sum + e.value, 0).toLocaleString()} Kg</p>
+                        <p className="text-sm text-muted-foreground">{filteredUnprocessedEntries.filter(e => !e.isOrganic).length} data</p>
+                      </div>
+                    </div>
+
+                    {/* Filter by Estimation */}
+                    <div className="flex items-center gap-4 py-2 border-b">
+                      <Label className="text-sm font-medium">Filter Estimasi:</Label>
+                      <Select value={selectedEstimation} onValueChange={setSelectedEstimation}>
+                        <SelectTrigger className="w-64">
+                          <SelectValue placeholder="Pilih estimasi" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Semua Estimasi ({unprocessedEntries.length} data)</SelectItem>
+                          {savedEstimations.map((est) => {
+                            const count = unprocessedEntries.filter(e => e.estimationId === est.id).length;
+                            if (count === 0) return null;
+                            return (
+                              <SelectItem key={est.id} value={est.id}>
+                                {est.nama_estimasi} ({count} data)
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex items-center justify-between py-2 border-b">
+                      <div className="flex items-center gap-2">
+                        <Checkbox 
+                          checked={selectedEntries.length === filteredUnprocessedEntries.length && filteredUnprocessedEntries.length > 0}
+                          onCheckedChange={handleSelectAll}
+                        />
+                        <span className="text-sm font-medium">Pilih Semua ({filteredUnprocessedEntries.length} data)</span>
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {selectedEntries.length} dipilih
+                      </span>
+                    </div>
+                    
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12"></TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Tanggal</TableHead>
+                          <TableHead>Petani</TableHead>
+                          <TableHead>Pengepul</TableHead>
+                          <TableHead>Jumlah</TableHead>
+                          <TableHead>Sumber</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredUnprocessedEntries.map((entry) => {
+                          const farmer = farmers.find(f => f.id === entry.farmerId);
+                          const pengepul = pengepulList.find(p => p.id === farmer?.pengepul_id);
+                          
                           return (
-                            <SelectItem key={est.id} value={est.id}>
-                              {est.nama_estimasi} ({count} data)
-                            </SelectItem>
+                            <TableRow key={entry.id} className="cursor-pointer hover:bg-muted/50"
+                              onClick={() => handleToggleEntry(entry.id)}>
+                              <TableCell>
+                                <Checkbox 
+                                  checked={selectedEntries.includes(entry.id)}
+                                  onCheckedChange={() => handleToggleEntry(entry.id)}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={entry.isOrganic ? 'bg-green-600' : 'bg-orange-500'}>
+                                  {entry.isOrganic ? <Leaf className="h-3 w-3 mr-1" /> : <Factory className="h-3 w-3 mr-1" />}
+                                  {entry.isOrganic ? 'O' : 'K'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                                  {format(new Date(entry.date), "dd MMM", { locale: localeId })}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">{entry.farmerName}</p>
+                                  <p className="text-xs text-muted-foreground">{entry.farmerCode}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">{pengepul?.nama || "-"}</p>
+                                  <p className="text-xs text-muted-foreground">{pengepul?.kode_pengepul}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell className="font-medium">{entry.value.toLocaleString()} Kg</TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="text-xs">
+                                  {entry.estimationName}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
                           );
                         })}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-center justify-between py-2 border-b">
-                    <div className="flex items-center gap-2">
-                      <Checkbox 
-                        checked={selectedEntries.length === filteredUnprocessedEntries.length && filteredUnprocessedEntries.length > 0}
-                        onCheckedChange={handleSelectAll}
-                      />
-                      <span className="text-sm font-medium">Pilih Semua ({filteredUnprocessedEntries.length} data)</span>
+                      </TableBody>
+                    </Table>
+                    
+                    <div className="flex justify-end gap-2 pt-4 border-t">
+                      <Button variant="outline" onClick={() => { 
+                        setAutoGenerateDialogOpen(false); 
+                        setSelectedEntries([]); 
+                      }}>
+                        Batal
+                      </Button>
+                      <Button 
+                        onClick={handleAutoGenerate} 
+                        disabled={selectedEntries.length === 0 || autoGenerateLoading}
+                        className="bg-gradient-organic"
+                      >
+                        {autoGenerateLoading ? "Memproses..." : `Generate ${selectedEntries.length} Data`}
+                      </Button>
                     </div>
-                    <span className="text-sm text-muted-foreground">
-                      {selectedEntries.length} dipilih
-                    </span>
-                  </div>
-                  
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12"></TableHead>
-                        <TableHead>Tanggal</TableHead>
-                        <TableHead>Petani</TableHead>
-                        <TableHead>Pengepul</TableHead>
-                        <TableHead>Jumlah (Kg)</TableHead>
-                        <TableHead>Harga/Kg</TableHead>
-                        <TableHead>Sumber Estimasi</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredUnprocessedEntries.map((entry) => {
-                        const farmer = farmers.find(f => f.id === entry.farmerId);
-                        const pengepul = pengepulList.find(p => p.id === farmer?.pengepul_id);
-                        
-                        return (
-                          <TableRow key={entry.id} className="cursor-pointer hover:bg-muted/50"
-                            onClick={() => handleToggleEntry(entry.id)}>
-                            <TableCell>
-                              <Checkbox 
-                                checked={selectedEntries.includes(entry.id)}
-                                onCheckedChange={() => handleToggleEntry(entry.id)}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4 text-muted-foreground" />
-                                {format(new Date(entry.date), "dd MMM yyyy", { locale: localeId })}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div>
-                                <p className="font-medium">{entry.farmerName}</p>
-                                <p className="text-xs text-muted-foreground">{entry.farmerCode}</p>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div>
-                                <p className="font-medium">{pengepul?.nama || "-"}</p>
-                                <p className="text-xs text-muted-foreground">{pengepul?.kode_pengepul}</p>
-                              </div>
-                            </TableCell>
-                            <TableCell className="font-medium">{entry.value.toLocaleString()} Kg</TableCell>
-                            <TableCell>
-                              {pengepul ? `Rp ${Number(pengepul.harga_beli).toLocaleString()}` : "-"}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="text-xs">
-                                {entry.estimationName}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                  
-                  <div className="flex justify-end gap-2 pt-4 border-t">
-                    <Button variant="outline" onClick={() => { 
-                      setAutoGenerateDialogOpen(false); 
-                      setSelectedEntries([]); 
-                    }}>
-                      Batal
-                    </Button>
-                    <Button 
-                      onClick={handleAutoGenerate} 
-                      disabled={selectedEntries.length === 0 || autoGenerateLoading}
-                      className="bg-gradient-organic"
-                    >
-                      {autoGenerateLoading ? "Memproses..." : `Generate ${selectedEntries.length} Data`}
-                    </Button>
-                  </div>
-                </>
-              )}
-            </DialogContent>
-          </Dialog>
-
-          {/* Delete by Estimation Dialog */}
-          <Dialog open={deleteDialogOpen} onOpenChange={(open) => {
-            setDeleteDialogOpen(open);
-            if (!open) setDeletingEstimation(null);
-          }}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="border-destructive text-destructive hover:bg-destructive/10" disabled={estimationGroups.length === 0}>
-                <Trash2 className="h-4 w-4 mr-2" />
-                Hapus per Estimasi
-                {estimationGroups.length > 0 && (
-                  <span className="ml-2 bg-destructive text-destructive-foreground px-2 py-0.5 rounded-full text-xs">
-                    {estimationGroups.length}
-                  </span>
+                  </>
                 )}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Trash2 className="h-5 w-5 text-destructive" />
-                  Hapus Data per Estimasi
-                </DialogTitle>
-                <DialogDescription>
-                  Pilih estimasi yang datanya ingin dihapus. Semua data barang masuk yang dihasilkan dari estimasi tersebut akan dihapus.
-                </DialogDescription>
-              </DialogHeader>
+              </DialogContent>
+            </Dialog>
 
-              {estimationGroups.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Check className="h-12 w-12 mx-auto mb-3 text-green-500" />
-                  <p className="font-medium">Tidak ada data dari estimasi</p>
-                  <p className="text-sm">Semua data barang masuk diinput secara manual</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {estimationGroups.map((group) => (
-                    <div 
-                      key={group.estimationName}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50"
-                    >
-                      <div>
-                        <p className="font-medium">{group.estimationName}</p>
-                        <div className="flex gap-4 text-sm text-muted-foreground mt-1">
-                          <span>{group.count} data</span>
-                          <span>{group.totalKg.toLocaleString()} Kg</span>
-                          <span>Rp {group.totalValue.toLocaleString()}</span>
+            {/* Delete by Estimation Dialog */}
+            <Dialog open={deleteDialogOpen} onOpenChange={(open) => {
+              setDeleteDialogOpen(open);
+              if (!open) setDeletingEstimation(null);
+            }}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="border-destructive text-destructive hover:bg-destructive/10" disabled={estimationGroups.length === 0}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Hapus per Estimasi
+                  {estimationGroups.length > 0 && (
+                    <span className="ml-2 bg-destructive text-destructive-foreground px-2 py-0.5 rounded-full text-xs">
+                      {estimationGroups.length}
+                    </span>
+                  )}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Trash2 className="h-5 w-5 text-destructive" />
+                    Hapus Data per Estimasi
+                  </DialogTitle>
+                  <DialogDescription>
+                    Pilih estimasi yang datanya ingin dihapus.
+                  </DialogDescription>
+                </DialogHeader>
+
+                {estimationGroups.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Check className="h-12 w-12 mx-auto mb-3 text-green-500" />
+                    <p className="font-medium">Tidak ada data dari estimasi</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {estimationGroups.map((group) => (
+                      <div 
+                        key={group.estimationName}
+                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50"
+                      >
+                        <div>
+                          <p className="font-medium">{group.estimationName}</p>
+                          <div className="flex gap-4 text-sm text-muted-foreground mt-1">
+                            <span>{group.count} data</span>
+                            <span>{group.totalKg.toLocaleString()} Kg</span>
+                            <span>Rp {group.totalValue.toLocaleString()}</span>
+                          </div>
                         </div>
-                      </div>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="destructive" 
-                            size="sm"
-                            onClick={() => setDeletingEstimation(group)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Hapus
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle className="flex items-center gap-2">
-                              <AlertTriangle className="h-5 w-5 text-destructive" />
-                              Konfirmasi Hapus
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Anda akan menghapus <strong>{group.count} data</strong> barang masuk dari estimasi <strong>"{group.estimationName}"</strong>.
-                              <br /><br />
-                              Total: <strong>{group.totalKg.toLocaleString()} Kg</strong> senilai <strong>Rp {group.totalValue.toLocaleString()}</strong>
-                              <br /><br />
-                              Tindakan ini tidak dapat dibatalkan.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Batal</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={handleDeleteEstimationGroup}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              disabled={isDeleting}
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={() => setDeletingEstimation(group)}
                             >
-                              {isDeleting ? "Menghapus..." : "Ya, Hapus Semua"}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              Hapus
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle className="flex items-center gap-2">
+                                <AlertTriangle className="h-5 w-5 text-destructive" />
+                                Konfirmasi Hapus
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Anda akan menghapus <strong>{group.count}</strong> data barang masuk dari estimasi "<strong>{group.estimationName}</strong>".
+                                Total: {group.totalKg.toLocaleString()} Kg senilai Rp {group.totalValue.toLocaleString()}.
+                                Tindakan ini tidak dapat dibatalkan.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Batal</AlertDialogCancel>
+                              <AlertDialogAction onClick={handleDeleteEstimationGroup} disabled={isDeleting}>
+                                {isDeleting ? "Menghapus..." : "Ya, Hapus Semua"}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
+            
+            <Dialog open={dialogOpen} onOpenChange={(open) => {
+              setDialogOpen(open);
+              if (!open) resetForm();
+            }}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-organic">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Tambah Manual
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Tambah Barang Masuk</DialogTitle>
+                  <DialogDescription>Catat penjualan petani ke pengepul secara manual</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="flex items-center gap-4">
+                    <Label>Status Produk:</Label>
+                    <div className="flex gap-2">
+                      <Button 
+                        type="button"
+                        variant={form.is_organic ? "default" : "outline"}
+                        size="sm"
+                        className={form.is_organic ? "bg-green-600 hover:bg-green-700" : ""}
+                        onClick={() => setForm(prev => ({ ...prev, is_organic: true }))}
+                      >
+                        <Leaf className="h-4 w-4 mr-1" />
+                        Organik
+                      </Button>
+                      <Button 
+                        type="button"
+                        variant={!form.is_organic ? "default" : "outline"}
+                        size="sm"
+                        className={!form.is_organic ? "bg-orange-500 hover:bg-orange-600" : ""}
+                        onClick={() => setForm(prev => ({ ...prev, is_organic: false }))}
+                      >
+                        <Factory className="h-4 w-4 mr-1" />
+                        Konvensional
+                      </Button>
                     </div>
-                  ))}
-                </div>
-              )}
-            </DialogContent>
-          </Dialog>
-
-          {/* Manual Add Dialog */}
-          <Dialog open={dialogOpen} onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) resetForm();
-          }}>
-            <DialogTrigger asChild>
-              <Button className="bg-gradient-organic">
-                <Plus className="h-4 w-4 mr-2" />
-                Tambah Manual
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Tambah Barang Masuk</DialogTitle>
-                <DialogDescription>Catat penjualan petani ke pengepul secara manual</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div>
-                  <Label>Pengepul *</Label>
-                  <Select value={form.pengepul_id} onValueChange={handlePengepulChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih pengepul" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {pengepulList.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.kode_pengepul} - {p.nama}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Petani *</Label>
-                  <Select 
-                    value={form.petani_id} 
-                    onValueChange={(value) => setForm(prev => ({ ...prev, petani_id: value }))}
-                    disabled={!form.pengepul_id}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={form.pengepul_id ? "Pilih petani" : "Pilih pengepul dulu"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredFarmers.length === 0 ? (
-                        <SelectItem value="none" disabled>Tidak ada petani terdaftar</SelectItem>
-                      ) : (
-                        filteredFarmers.map((f) => (
-                          <SelectItem key={f.id} value={f.id}>
-                            {f.kode_petani} - {f.nama}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Tanggal Jual *</Label>
-                  <Input
-                    type="date"
-                    value={form.tanggal_jual}
-                    onChange={(e) => setForm(prev => ({ ...prev, tanggal_jual: e.target.value }))}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Jumlah (Kg) *</Label>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      value={form.jumlah_kg}
-                      onChange={(e) => setForm(prev => ({ ...prev, jumlah_kg: e.target.value }))}
-                      placeholder="0"
-                    />
                   </div>
                   <div>
-                    <Label>Harga per Kg (Rp) *</Label>
-                    <Input
-                      type="number"
-                      value={form.harga_per_kg}
-                      onChange={(e) => setForm(prev => ({ ...prev, harga_per_kg: e.target.value }))}
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Warna Produk</Label>
-                    <Input
-                      value={form.warna_produk}
-                      onChange={(e) => setForm(prev => ({ ...prev, warna_produk: e.target.value }))}
-                      placeholder="Warna produk"
-                    />
-                  </div>
-                  <div>
-                    <Label>Kualitas</Label>
-                    <Select value={form.kualitas} onValueChange={(value) => setForm(prev => ({ ...prev, kualitas: value }))}>
+                    <Label>Pengepul *</Label>
+                    <Select value={form.pengepul_id} onValueChange={handlePengepulChange}>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Pilih pengepul" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="premium">Premium</SelectItem>
-                        <SelectItem value="grade_a">Grade A</SelectItem>
-                        <SelectItem value="grade_b">Grade B</SelectItem>
-                        <SelectItem value="grade_c">Grade C</SelectItem>
+                        {pengepulList.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.kode_pengepul} - {p.nama}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
+                  <div>
+                    <Label>Petani *</Label>
+                    <Select 
+                      value={form.petani_id} 
+                      onValueChange={(value) => setForm(prev => ({ ...prev, petani_id: value }))}
+                      disabled={!form.pengepul_id}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={form.pengepul_id ? "Pilih petani" : "Pilih pengepul dulu"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredFarmers.length === 0 ? (
+                          <SelectItem value="none" disabled>Tidak ada petani terdaftar</SelectItem>
+                        ) : (
+                          filteredFarmers.map((f) => (
+                            <SelectItem key={f.id} value={f.id}>
+                              {f.kode_petani} - {f.nama}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Tanggal Jual *</Label>
+                    <Input
+                      type="date"
+                      value={form.tanggal_jual}
+                      onChange={(e) => setForm(prev => ({ ...prev, tanggal_jual: e.target.value }))}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Jumlah (Kg) *</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={form.jumlah_kg}
+                        onChange={(e) => setForm(prev => ({ ...prev, jumlah_kg: e.target.value }))}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <Label>Harga per Kg (Rp) *</Label>
+                      <Input
+                        type="number"
+                        value={form.harga_per_kg}
+                        onChange={(e) => setForm(prev => ({ ...prev, harga_per_kg: e.target.value }))}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Warna Produk</Label>
+                      <Input
+                        value={form.warna_produk}
+                        onChange={(e) => setForm(prev => ({ ...prev, warna_produk: e.target.value }))}
+                        placeholder="Warna produk"
+                      />
+                    </div>
+                    <div>
+                      <Label>Kualitas</Label>
+                      <Select value={form.kualitas} onValueChange={(value) => setForm(prev => ({ ...prev, kualitas: value }))}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="premium">Premium</SelectItem>
+                          <SelectItem value="grade_a">Grade A</SelectItem>
+                          <SelectItem value="grade_b">Grade B</SelectItem>
+                          <SelectItem value="grade_c">Grade C</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>Batal</Button>
+                    <Button onClick={handleSubmit} className="bg-gradient-organic">Simpan</Button>
+                  </div>
                 </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>Batal</Button>
-                  <Button onClick={handleSubmit} className="bg-gradient-organic">Simpan</Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <TableSkeleton rows={5} columns={7} />
-        ) : filteredList.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <ArrowDownToLine className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p>Belum ada data barang masuk</p>
-            <p className="text-sm mt-2">Gunakan "Auto Generate" untuk mengambil dari data estimasi penjualan</p>
+              </DialogContent>
+            </Dialog>
           </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tanggal</TableHead>
-                <TableHead>Pengepul</TableHead>
-                <TableHead>Petani</TableHead>
-                <TableHead>Jumlah (Kg)</TableHead>
-                <TableHead>Harga/Kg</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Warna</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredList.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    {format(new Date(item.tanggal_jual), "dd MMM yyyy", { locale: localeId })}
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{item.pengepul?.nama}</p>
-                      <p className="text-xs text-muted-foreground">{item.pengepul?.kode_pengepul}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{item.petani?.nama}</p>
-                      <p className="text-xs text-muted-foreground">{item.petani?.kode_petani}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>{Number(item.jumlah_kg).toLocaleString()}</TableCell>
-                  <TableCell>Rp {Number(item.harga_per_kg).toLocaleString()}</TableCell>
-                  <TableCell className="font-medium">Rp {Number(item.total_harga).toLocaleString()}</TableCell>
-                  <TableCell>{item.warna_produk || "-"}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+        </CardHeader>
+      </Card>
+
+      {/* Side-by-side tables */}
+      {loading ? (
+        <TableSkeleton rows={5} columns={7} />
+      ) : filteredList.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <ArrowDownToLine className="h-12 w-12 text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground">Belum ada data barang masuk</p>
+            <p className="text-sm text-muted-foreground mt-2">Gunakan "Auto Generate" untuk mengambil dari data estimasi penjualan</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {/* Organic Table */}
+          <Card className="border-l-4 border-l-green-500">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Leaf className="h-5 w-5 text-green-600" />
+                Produk Organik
+                <Badge className="bg-green-600">{organicList.length}</Badge>
+              </CardTitle>
+              <CardDescription>
+                Total: {organicList.reduce((sum, p) => sum + Number(p.jumlah_kg), 0).toLocaleString()} Kg
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {organicList.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">Tidak ada data organik</p>
+              ) : (
+                renderTable(organicList, 'organic')
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Conventional Table */}
+          <Card className="border-l-4 border-l-orange-500">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Factory className="h-5 w-5 text-orange-500" />
+                Produk Konvensional
+                <Badge className="bg-orange-500">{conventionalList.length}</Badge>
+              </CardTitle>
+              <CardDescription>
+                Total: {conventionalList.reduce((sum, p) => sum + Number(p.jumlah_kg), 0).toLocaleString()} Kg
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {conventionalList.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">Tidak ada data konvensional</p>
+              ) : (
+                renderTable(conventionalList, 'conventional')
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
   );
 };
