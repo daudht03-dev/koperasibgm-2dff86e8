@@ -20,6 +20,7 @@ export type Database = {
           created_at: string | null
           harga_per_kg: number | null
           id: string
+          is_organic: boolean | null
           jumlah_kg: number
           kondisi: string | null
           kualitas: Database["public"]["Enums"]["quality_grade"] | null
@@ -37,6 +38,7 @@ export type Database = {
           created_at?: string | null
           harga_per_kg?: number | null
           id?: string
+          is_organic?: boolean | null
           jumlah_kg: number
           kondisi?: string | null
           kualitas?: Database["public"]["Enums"]["quality_grade"] | null
@@ -54,6 +56,7 @@ export type Database = {
           created_at?: string | null
           harga_per_kg?: number | null
           id?: string
+          is_organic?: boolean | null
           jumlah_kg?: number
           kondisi?: string | null
           kualitas?: Database["public"]["Enums"]["quality_grade"] | null
@@ -92,6 +95,7 @@ export type Database = {
           data_petani: Json
           id: string
           nama_estimasi: string
+          pengaturan_petani: Json | null
           tanggal_mulai: string
           tanggal_selesai: string
           updated_at: string
@@ -104,6 +108,7 @@ export type Database = {
           data_petani: Json
           id?: string
           nama_estimasi: string
+          pengaturan_petani?: Json | null
           tanggal_mulai: string
           tanggal_selesai: string
           updated_at?: string
@@ -116,6 +121,7 @@ export type Database = {
           data_petani?: Json
           id?: string
           nama_estimasi?: string
+          pengaturan_petani?: Json | null
           tanggal_mulai?: string
           tanggal_selesai?: string
           updated_at?: string
@@ -128,6 +134,7 @@ export type Database = {
           catatan: string | null
           created_at: string | null
           id: string
+          is_organic: boolean | null
           jumlah_kg: number
           kelembaban: number | null
           kondisi_penyimpanan: string | null
@@ -137,6 +144,7 @@ export type Database = {
           suhu_gudang: number | null
           tanggal_keluar: string | null
           tanggal_masuk: string
+          tipe_stok: string | null
           updated_at: string | null
         }
         Insert: {
@@ -144,6 +152,7 @@ export type Database = {
           catatan?: string | null
           created_at?: string | null
           id?: string
+          is_organic?: boolean | null
           jumlah_kg: number
           kelembaban?: number | null
           kondisi_penyimpanan?: string | null
@@ -153,6 +162,7 @@ export type Database = {
           suhu_gudang?: number | null
           tanggal_keluar?: string | null
           tanggal_masuk?: string
+          tipe_stok?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -160,6 +170,7 @@ export type Database = {
           catatan?: string | null
           created_at?: string | null
           id?: string
+          is_organic?: boolean | null
           jumlah_kg?: number
           kelembaban?: number | null
           kondisi_penyimpanan?: string | null
@@ -169,6 +180,7 @@ export type Database = {
           suhu_gudang?: number | null
           tanggal_keluar?: string | null
           tanggal_masuk?: string
+          tipe_stok?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -367,8 +379,11 @@ export type Database = {
           batch_id: string | null
           catatan: string | null
           created_at: string | null
+          detail_petani: Json | null
           id: string
+          is_organic: boolean | null
           jumlah_kg: number
+          lot_number: string | null
           pengepul_id: string
           tanggal_ambil: string
           updated_at: string | null
@@ -377,8 +392,11 @@ export type Database = {
           batch_id?: string | null
           catatan?: string | null
           created_at?: string | null
+          detail_petani?: Json | null
           id?: string
+          is_organic?: boolean | null
           jumlah_kg: number
+          lot_number?: string | null
           pengepul_id: string
           tanggal_ambil?: string
           updated_at?: string | null
@@ -387,8 +405,11 @@ export type Database = {
           batch_id?: string | null
           catatan?: string | null
           created_at?: string | null
+          detail_petani?: Json | null
           id?: string
+          is_organic?: boolean | null
           jumlah_kg?: number
+          lot_number?: string | null
           pengepul_id?: string
           tanggal_ambil?: string
           updated_at?: string | null
@@ -567,6 +588,7 @@ export type Database = {
           created_at: string | null
           harga_per_kg: number
           id: string
+          is_organic: boolean | null
           jumlah_kg: number
           kualitas: string | null
           pengepul_id: string
@@ -581,6 +603,7 @@ export type Database = {
           created_at?: string | null
           harga_per_kg: number
           id?: string
+          is_organic?: boolean | null
           jumlah_kg: number
           kualitas?: string | null
           pengepul_id: string
@@ -595,6 +618,7 @@ export type Database = {
           created_at?: string | null
           harga_per_kg?: number
           id?: string
+          is_organic?: boolean | null
           jumlah_kg?: number
           kualitas?: string | null
           pengepul_id?: string
@@ -627,6 +651,7 @@ export type Database = {
           created_at: string | null
           foto_url: string | null
           id: string
+          is_organic: boolean | null
           kode_petani: string
           logo_url: string | null
           nama: string
@@ -641,6 +666,7 @@ export type Database = {
           created_at?: string | null
           foto_url?: string | null
           id?: string
+          is_organic?: boolean | null
           kode_petani: string
           logo_url?: string | null
           nama: string
@@ -655,6 +681,7 @@ export type Database = {
           created_at?: string | null
           foto_url?: string | null
           id?: string
+          is_organic?: boolean | null
           kode_petani?: string
           logo_url?: string | null
           nama?: string
@@ -796,54 +823,78 @@ export type Database = {
           batch_id: string
           catatan: string | null
           created_at: string | null
+          detail_petani: Json | null
           durasi_jam: number | null
           id: string
+          is_organic: boolean | null
           jumlah_kg_sebelum: number
           jumlah_kg_sesudah: number | null
           kadar_air_akhir: number | null
           kadar_air_awal: number | null
+          lot_number: string | null
           operator: string | null
           penyusutan_kg: number | null
+          qc_off: number | null
           status: string | null
           suhu_oven: number | null
+          susut_persen: number | null
+          susut_qc_off_persen: number | null
           tanggal_mulai: string
           tanggal_selesai: string | null
+          total_kering: number | null
+          total_kering_packing: number | null
           updated_at: string | null
         }
         Insert: {
           batch_id: string
           catatan?: string | null
           created_at?: string | null
+          detail_petani?: Json | null
           durasi_jam?: number | null
           id?: string
+          is_organic?: boolean | null
           jumlah_kg_sebelum: number
           jumlah_kg_sesudah?: number | null
           kadar_air_akhir?: number | null
           kadar_air_awal?: number | null
+          lot_number?: string | null
           operator?: string | null
           penyusutan_kg?: number | null
+          qc_off?: number | null
           status?: string | null
           suhu_oven?: number | null
+          susut_persen?: number | null
+          susut_qc_off_persen?: number | null
           tanggal_mulai?: string
           tanggal_selesai?: string | null
+          total_kering?: number | null
+          total_kering_packing?: number | null
           updated_at?: string | null
         }
         Update: {
           batch_id?: string
           catatan?: string | null
           created_at?: string | null
+          detail_petani?: Json | null
           durasi_jam?: number | null
           id?: string
+          is_organic?: boolean | null
           jumlah_kg_sebelum?: number
           jumlah_kg_sesudah?: number | null
           kadar_air_akhir?: number | null
           kadar_air_awal?: number | null
+          lot_number?: string | null
           operator?: string | null
           penyusutan_kg?: number | null
+          qc_off?: number | null
           status?: string | null
           suhu_oven?: number | null
+          susut_persen?: number | null
+          susut_qc_off_persen?: number | null
           tanggal_mulai?: string
           tanggal_selesai?: string | null
+          total_kering?: number | null
+          total_kering_packing?: number | null
           updated_at?: string | null
         }
         Relationships: [
