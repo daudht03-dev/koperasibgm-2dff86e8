@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -8,13 +8,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Package, Users, AlertCircle } from "lucide-react";
+import { Plus, Package, Users, AlertCircle, Leaf, Factory } from "lucide-react";
 import { usePengambilanKoperasi, PengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
-import { usePenjualanPetani } from "@/hooks/use-penjualan-petani";
 import { useFarmers } from "@/hooks/use-farmers";
 import { useLands } from "@/hooks/use-lands";
 import { QualityGrade } from "@/hooks/use-batch-panen";
-import { format, subDays } from "date-fns";
+import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -29,6 +28,14 @@ interface BatchPenerimaanFormProps {
     harga_per_kg: number | null;
     kondisi: string | null;
     pengepul_ids: string[] | null;
+    is_organic: boolean;
+    detail_petani: Array<{
+      petani_id: string;
+      petani_nama: string;
+      petani_kode: string;
+      jumlah_kg: number;
+      is_organic: boolean;
+    }>;
   }, pengambilanIds: string[]) => Promise<void>;
   dialogOpen: boolean;
   setDialogOpen: (open: boolean) => void;
@@ -43,17 +50,16 @@ interface PetaniDetail {
   pengepul_kode: string;
   warna_produk: string | null;
   kualitas: string;
+  is_organic: boolean;
 }
 
 export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: BatchPenerimaanFormProps) => {
   const { pengambilanList, loading: pengambilanLoading } = usePengambilanKoperasi();
-  const { penjualanList, getPenjualanByDateRange } = usePenjualanPetani();
   const { farmers } = useFarmers();
   const { lands } = useLands();
 
   const [selectedPengambilan, setSelectedPengambilan] = useState<string[]>([]);
   const [petaniDetails, setPetaniDetails] = useState<PetaniDetail[]>([]);
-  const [loadingDetails, setLoadingDetails] = useState(false);
 
   const [form, setForm] = useState({
     petani_id: "",
@@ -65,91 +71,97 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
     kondisi: "",
   });
 
-  // Filter pengambilan yang belum diproses (batch_id = null)
-  const unprocessedPengambilan = pengambilanList.filter(p => !p.batch_id);
+  // Memoize unprocessed list to prevent infinite loops
+  const unprocessedPengambilan = useMemo(() => 
+    pengambilanList.filter(p => !p.batch_id),
+    [pengambilanList]
+  );
 
   // Calculate total kg from selected pengambilan
-  const totalKg = unprocessedPengambilan
-    .filter(p => selectedPengambilan.includes(p.id))
-    .reduce((sum, p) => sum + Number(p.jumlah_kg), 0);
+  const totalKg = useMemo(() => 
+    unprocessedPengambilan
+      .filter(p => selectedPengambilan.includes(p.id))
+      .reduce((sum, p) => sum + Number(p.jumlah_kg), 0),
+    [unprocessedPengambilan, selectedPengambilan]
+  );
 
   // Get unique pengepul IDs from selected pengambilan
-  const selectedPengepulIds = [...new Set(
+  const selectedPengepulIds = useMemo(() => [...new Set(
     unprocessedPengambilan
       .filter(p => selectedPengambilan.includes(p.id))
       .map(p => p.pengepul_id)
-  )];
+  )], [unprocessedPengambilan, selectedPengambilan]);
 
-  // Load petani details when pengambilan is selected
-  useEffect(() => {
-    const loadPetaniDetails = async () => {
-      if (selectedPengambilan.length === 0) {
-        setPetaniDetails([]);
-        return;
-      }
+  // Check if selected items are organic (first item determines type)
+  const isOrganicBatch = useMemo(() => {
+    const selectedItems = unprocessedPengambilan.filter(p => selectedPengambilan.includes(p.id));
+    if (selectedItems.length === 0) return true;
+    return selectedItems[0].is_organic !== false;
+  }, [unprocessedPengambilan, selectedPengambilan]);
 
-      setLoadingDetails(true);
-      try {
-        // Get the date range from selected pengambilan
-        const selectedItems = unprocessedPengambilan.filter(p => selectedPengambilan.includes(p.id));
-        const dates = selectedItems.map(p => p.tanggal_ambil);
-        const pengepulIds = [...new Set(selectedItems.map(p => p.pengepul_id))];
+  // Load petani details from detail_petani field in pengambilan_koperasi
+  const loadPetaniDetails = useCallback(() => {
+    if (selectedPengambilan.length === 0) {
+      setPetaniDetails([]);
+      return;
+    }
 
-        // Calculate barang masuk date range (7 days before pengambilan date)
-        const details: PetaniDetail[] = [];
-        
-        for (const item of selectedItems) {
-          const pengambilanDate = new Date(item.tanggal_ambil);
-          const startDate = format(subDays(pengambilanDate, 7), "yyyy-MM-dd");
-          const endDate = format(subDays(pengambilanDate, 1), "yyyy-MM-dd");
-          
-          const penjualanData = await getPenjualanByDateRange(startDate, endDate, item.pengepul_id);
-          
-          // Group by petani
-          const petaniMap = new Map<string, PetaniDetail>();
-          for (const p of penjualanData) {
-            const key = p.petani_id;
-            if (petaniMap.has(key)) {
-              const existing = petaniMap.get(key)!;
-              existing.total_kg += Number(p.jumlah_kg);
+    const selectedItems = unprocessedPengambilan.filter(p => selectedPengambilan.includes(p.id));
+    const details: PetaniDetail[] = [];
+    const petaniMap = new Map<string, PetaniDetail>();
+
+    for (const item of selectedItems) {
+      // Get detail_petani from the pengambilan_koperasi record
+      const detailPetani = item.detail_petani as Array<{
+        id?: string;
+        petani_id?: string;
+        name?: string;
+        petani_nama?: string;
+        code?: string;
+        petani_kode?: string;
+        kg?: number;
+        jumlah_kg?: number;
+        isOrganic?: boolean;
+        is_organic?: boolean;
+      }> | null;
+
+      if (detailPetani && Array.isArray(detailPetani)) {
+        for (const farmer of detailPetani) {
+          const farmerId = farmer.petani_id || farmer.id || '';
+          const farmerName = farmer.petani_nama || farmer.name || 'Unknown';
+          const farmerCode = farmer.petani_kode || farmer.code || '-';
+          const farmerKg = farmer.jumlah_kg || farmer.kg || 0;
+          const farmerIsOrganic = farmer.is_organic ?? farmer.isOrganic ?? (item.is_organic !== false);
+
+          if (farmerId) {
+            if (petaniMap.has(farmerId)) {
+              const existing = petaniMap.get(farmerId)!;
+              existing.total_kg += farmerKg;
             } else {
-              petaniMap.set(key, {
-                petani_id: p.petani_id,
-                petani_nama: p.petani?.nama || "Unknown",
-                petani_kode: p.petani?.kode_petani || "-",
-                total_kg: Number(p.jumlah_kg),
-                pengepul_nama: p.pengepul?.nama || "Unknown",
-                pengepul_kode: p.pengepul?.kode_pengepul || "-",
-                warna_produk: p.warna_produk,
-                kualitas: p.kualitas,
+              petaniMap.set(farmerId, {
+                petani_id: farmerId,
+                petani_nama: farmerName,
+                petani_kode: farmerCode,
+                total_kg: farmerKg,
+                pengepul_nama: item.pengepul?.nama || "Unknown",
+                pengepul_kode: item.pengepul?.kode_pengepul || "-",
+                warna_produk: null,
+                kualitas: "grade_a",
+                is_organic: farmerIsOrganic,
               });
             }
           }
-          
-          details.push(...petaniMap.values());
         }
-        
-        // Merge duplicate petani entries
-        const mergedDetails = new Map<string, PetaniDetail>();
-        for (const detail of details) {
-          if (mergedDetails.has(detail.petani_id)) {
-            const existing = mergedDetails.get(detail.petani_id)!;
-            existing.total_kg += detail.total_kg;
-          } else {
-            mergedDetails.set(detail.petani_id, { ...detail });
-          }
-        }
-        
-        setPetaniDetails(Array.from(mergedDetails.values()));
-      } catch (error) {
-        console.error("Error loading petani details:", error);
-      } finally {
-        setLoadingDetails(false);
       }
-    };
+    }
 
-    loadPetaniDetails();
+    setPetaniDetails(Array.from(petaniMap.values()));
   }, [selectedPengambilan, unprocessedPengambilan]);
+
+  // Load details when selection changes
+  useEffect(() => {
+    loadPetaniDetails();
+  }, [loadPetaniDetails]);
 
   // Auto-select first petani from details
   useEffect(() => {
@@ -162,11 +174,12 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
         kualitas: (firstPetani.kualitas as QualityGrade) || "grade_a",
       }));
     }
-  }, [petaniDetails]);
+  }, [petaniDetails, form.petani_id]);
 
   // Filter lands by selected petani
-  const filteredLands = lands.filter(land => 
-    !form.petani_id || land.petani_id === form.petani_id
+  const filteredLands = useMemo(() => 
+    lands.filter(land => !form.petani_id || land.petani_id === form.petani_id),
+    [lands, form.petani_id]
   );
 
   const handlePengambilanToggle = (id: string) => {
@@ -183,6 +196,12 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
     } else {
       setSelectedPengambilan(unprocessedPengambilan.map(p => p.id));
     }
+  };
+
+  // Select by organic type
+  const handleSelectByType = (isOrganic: boolean) => {
+    const items = unprocessedPengambilan.filter(p => (p.is_organic !== false) === isOrganic);
+    setSelectedPengambilan(items.map(p => p.id));
   };
 
   const resetForm = () => {
@@ -203,6 +222,15 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
     if (selectedPengambilan.length === 0) return;
     if (!form.petani_id) return;
 
+    // Prepare detail_petani for batch
+    const detailPetaniForBatch = petaniDetails.map(p => ({
+      petani_id: p.petani_id,
+      petani_nama: p.petani_nama,
+      petani_kode: p.petani_kode,
+      jumlah_kg: p.total_kg,
+      is_organic: p.is_organic,
+    }));
+
     await onSubmit({
       petani_id: form.petani_id,
       lahan_id: form.lahan_id || null,
@@ -213,11 +241,17 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
       harga_per_kg: form.harga_per_kg ? parseFloat(form.harga_per_kg) : null,
       kondisi: form.kondisi || null,
       pengepul_ids: selectedPengepulIds.length > 0 ? selectedPengepulIds : null,
+      is_organic: isOrganicBatch,
+      detail_petani: detailPetaniForBatch,
     }, selectedPengambilan);
 
     resetForm();
     setDialogOpen(false);
   };
+
+  // Group unprocessed by type
+  const organicItems = unprocessedPengambilan.filter(p => p.is_organic !== false);
+  const conventionalItems = unprocessedPengambilan.filter(p => p.is_organic === false);
 
   return (
     <Dialog open={dialogOpen} onOpenChange={(open) => {
@@ -244,11 +278,25 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
                 <Package className="h-4 w-4" />
                 Pilih Pengambilan Koperasi *
               </Label>
-              {unprocessedPengambilan.length > 0 && (
-                <Button variant="outline" size="sm" onClick={handleSelectAll}>
-                  {selectedPengambilan.length === unprocessedPengambilan.length ? "Batalkan Semua" : "Pilih Semua"}
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                {organicItems.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={() => handleSelectByType(true)} className="text-green-600">
+                    <Leaf className="h-3 w-3 mr-1" />
+                    Organik ({organicItems.length})
+                  </Button>
+                )}
+                {conventionalItems.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={() => handleSelectByType(false)} className="text-orange-500">
+                    <Factory className="h-3 w-3 mr-1" />
+                    Konvensional ({conventionalItems.length})
+                  </Button>
+                )}
+                {unprocessedPengambilan.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={handleSelectAll}>
+                    {selectedPengambilan.length === unprocessedPengambilan.length ? "Batalkan" : "Semua"}
+                  </Button>
+                )}
+              </div>
             </div>
             
             {unprocessedPengambilan.length === 0 ? (
@@ -266,55 +314,58 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
                       <TableHead className="w-12"></TableHead>
                       <TableHead>Tanggal</TableHead>
                       <TableHead>Pengepul</TableHead>
-                      <TableHead>Lot Number</TableHead>
                       <TableHead>Tipe</TableHead>
+                      <TableHead>Petani</TableHead>
                       <TableHead>Jumlah (Kg)</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {unprocessedPengambilan.map((item) => (
-                      <TableRow 
-                        key={item.id} 
-                        className={selectedPengambilan.includes(item.id) ? "bg-primary/5" : ""}
-                      >
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedPengambilan.includes(item.id)}
-                            onCheckedChange={() => handlePengambilanToggle(item.id)}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {format(new Date(item.tanggal_ambil), "dd MMM yyyy", { locale: localeId })}
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{item.pengepul?.nama}</p>
-                            <p className="text-xs text-muted-foreground">{item.pengepul?.kode_pengepul}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {item.lot_number ? (
-                            <Badge variant="outline" className="font-mono text-xs">
-                              {item.lot_number}
+                    {unprocessedPengambilan.map((item) => {
+                      const detailPetani = item.detail_petani as Array<any> | null;
+                      const petaniCount = detailPetani?.length || 0;
+                      
+                      return (
+                        <TableRow 
+                          key={item.id} 
+                          className={selectedPengambilan.includes(item.id) ? "bg-primary/5" : ""}
+                        >
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedPengambilan.includes(item.id)}
+                              onCheckedChange={() => handlePengambilanToggle(item.id)}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {format(new Date(item.tanggal_ambil), "dd MMM yyyy", { locale: localeId })}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{item.pengepul?.nama}</p>
+                              <p className="text-xs text-muted-foreground">{item.pengepul?.kode_pengepul}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {item.is_organic !== false ? (
+                              <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+                                <Leaf className="h-3 w-3 mr-1" />
+                                Organik
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs bg-slate-50 text-slate-700 border-slate-200">
+                                <Factory className="h-3 w-3 mr-1" />
+                                Konvensional
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className="text-xs">
+                              {petaniCount} petani
                             </Badge>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {item.is_organic !== false ? (
-                            <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
-                              Organik
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-xs bg-slate-50 text-slate-700 border-slate-200">
-                              Konvensional
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="font-medium">{Number(item.jumlah_kg).toLocaleString()} Kg</TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                          <TableCell className="font-medium">{Number(item.jumlah_kg).toLocaleString()} Kg</TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </ScrollArea>
@@ -322,8 +373,13 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
             
             {selectedPengambilan.length > 0 && (
               <div className="mt-3 p-3 bg-primary/5 rounded-md flex items-center justify-between">
-                <span className="text-sm">
+                <span className="text-sm flex items-center gap-2">
                   <strong>{selectedPengambilan.length}</strong> pengambilan dipilih
+                  {isOrganicBatch ? (
+                    <Badge className="bg-green-600 text-xs"><Leaf className="h-3 w-3 mr-1" />Organik</Badge>
+                  ) : (
+                    <Badge className="bg-orange-500 text-xs"><Factory className="h-3 w-3 mr-1" />Konvensional</Badge>
+                  )}
                 </span>
                 <Badge variant="secondary" className="text-lg">
                   Total: {totalKg.toLocaleString()} Kg
@@ -332,63 +388,46 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
             )}
           </div>
 
-          {/* Petani Details from Barang Masuk */}
-          {selectedPengambilan.length > 0 && (
+          {/* Petani Details from detail_petani */}
+          {selectedPengambilan.length > 0 && petaniDetails.length > 0 && (
             <div className="border rounded-lg p-4">
               <Label className="text-sm font-medium flex items-center gap-2 mb-3">
                 <Users className="h-4 w-4" />
-                Detail Petani (dari Barang Masuk 7 hari sebelumnya)
+                Detail Petani ({petaniDetails.length} petani)
               </Label>
               
-              {loadingDetails ? (
-                <div className="text-center py-4 text-muted-foreground">
-                  Memuat detail petani...
-                </div>
-              ) : petaniDetails.length === 0 ? (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Tidak ditemukan data barang masuk untuk periode 7 hari sebelum tanggal pengambilan.
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <ScrollArea className="h-32 border rounded-md">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Petani</TableHead>
-                        <TableHead>Pengepul</TableHead>
-                        <TableHead>Total (Kg)</TableHead>
-                        <TableHead>Warna</TableHead>
-                        <TableHead>Kualitas</TableHead>
+              <ScrollArea className="h-32 border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Petani</TableHead>
+                      <TableHead>Kode</TableHead>
+                      <TableHead>Tipe</TableHead>
+                      <TableHead>Total (Kg)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {petaniDetails.map((detail, idx) => (
+                      <TableRow key={`${detail.petani_id}-${idx}`}>
+                        <TableCell>
+                          <p className="font-medium">{detail.petani_nama}</p>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-muted-foreground">{detail.petani_kode}</p>
+                        </TableCell>
+                        <TableCell>
+                          {detail.is_organic ? (
+                            <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">O</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs bg-slate-50 text-slate-700 border-slate-200">K</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-medium">{detail.total_kg.toLocaleString()} Kg</TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {petaniDetails.map((detail, idx) => (
-                        <TableRow key={`${detail.petani_id}-${idx}`}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{detail.petani_nama}</p>
-                              <p className="text-xs text-muted-foreground">{detail.petani_kode}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{detail.pengepul_nama}</p>
-                              <p className="text-xs text-muted-foreground">{detail.pengepul_kode}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell className="font-medium">{detail.total_kg.toLocaleString()} Kg</TableCell>
-                          <TableCell>{detail.warna_produk || "-"}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{detail.kualitas}</Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
-              )}
+                    ))}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
             </div>
           )}
 
@@ -442,9 +481,10 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <Label>Tanggal Penerimaan *</Label>
+                  <Label>Tanggal Penerimaan</Label>
                   <Input
                     type="date"
                     value={form.tanggal_penerimaan}
@@ -452,22 +492,11 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
                   />
                 </div>
                 <div>
-                  <Label>Jumlah (Kg)</Label>
-                  <Input
-                    type="number"
-                    value={totalKg}
-                    disabled
-                    className="bg-muted"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
                   <Label>Warna Produk</Label>
                   <Input
                     value={form.warna_produk}
                     onChange={(e) => setForm(prev => ({ ...prev, warna_produk: e.target.value }))}
-                    placeholder="Warna produk"
+                    placeholder="Cokelat muda, dll"
                   />
                 </div>
                 <div>
@@ -488,6 +517,7 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
                   </Select>
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Harga per Kg (Rp)</Label>
@@ -503,22 +533,24 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
                   <Input
                     value={form.kondisi}
                     onChange={(e) => setForm(prev => ({ ...prev, kondisi: e.target.value }))}
-                    placeholder="Kondisi hasil panen"
+                    placeholder="Baik, dll"
                   />
                 </div>
               </div>
             </div>
           )}
         </div>
-
+        
         <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>Batal</Button>
+          <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>
+            Batal
+          </Button>
           <Button 
             onClick={handleSubmit} 
             className="bg-gradient-organic"
             disabled={selectedPengambilan.length === 0 || !form.petani_id}
           >
-            Simpan Batch
+            Buat Batch ({totalKg.toLocaleString()} Kg)
           </Button>
         </div>
       </DialogContent>
