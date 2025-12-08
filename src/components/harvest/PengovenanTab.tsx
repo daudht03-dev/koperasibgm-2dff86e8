@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Plus, Flame, Leaf, Factory, ChevronDown, ChevronRight, Users, Calculator, Package } from "lucide-react";
-import { useProsesPengeringan, useBatchPanen, ProsesPengeringan, PetaniDetailPengeringan } from "@/hooks/use-batch-panen";
+import { useProsesPengeringan, useBatchPanen, useGudangStok, ProsesPengeringan, PetaniDetailPengeringan } from "@/hooks/use-batch-panen";
 import { usePengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
 import { TableSkeleton } from "@/components/ui/skeleton-templates";
 import { format, startOfWeek, getWeek, getYear } from "date-fns";
@@ -44,6 +44,7 @@ export const PengovenanTab = () => {
   const { proses, loading, addProses, updateProses, refetch } = useProsesPengeringan();
   const { batches } = useBatchPanen();
   const { pengambilanList } = usePengambilanKoperasi();
+  const { addStok } = useGudangStok();
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedLot, setSelectedLot] = useState<LotOption | null>(null);
@@ -266,13 +267,37 @@ export const PengovenanTab = () => {
     refetch();
   };
 
-  const handleCompleteDrying = async (prosesId: string) => {
-    // Open a dialog or inline form to complete drying would be ideal
-    // For now, we'll mark it as complete
-    await updateProses(prosesId, {
+  const handleCompleteDrying = async (prosesItem: ProsesPengeringan) => {
+    // Mark drying as complete
+    await updateProses(prosesItem.id, {
       status: "selesai",
       tanggal_selesai: new Date().toISOString(),
     });
+    
+    // Auto-insert to gudang as "produk_jadi"
+    const totalKeringPacking = prosesItem.total_kering_packing || prosesItem.jumlah_kg_sesudah || prosesItem.jumlah_kg_sebelum;
+    
+    await addStok({
+      batch_id: prosesItem.batch_id,
+      lokasi_gudang: "Gudang Utama",
+      rak_posisi: null,
+      tanggal_masuk: new Date().toISOString().split('T')[0],
+      tanggal_keluar: null,
+      jumlah_kg: Number(totalKeringPacking),
+      kondisi_penyimpanan: null,
+      suhu_gudang: null,
+      kelembaban: null,
+      tipe_stok: "produk_jadi",
+      is_organic: prosesItem.is_organic ?? true,
+      catatan: `Dari pengovenan lot ${prosesItem.lot_number || '-'}`,
+      status: "tersimpan",
+    });
+    
+    toast({
+      title: "Berhasil",
+      description: `Pengovenan selesai. ${Number(totalKeringPacking).toLocaleString()} Kg produk jadi ditambahkan ke gudang.`,
+    });
+    
     refetch();
   };
 
@@ -641,7 +666,7 @@ export const PengovenanTab = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleCompleteDrying(p.id)}
+                              onClick={() => handleCompleteDrying(p)}
                             >
                               Selesaikan
                             </Button>
