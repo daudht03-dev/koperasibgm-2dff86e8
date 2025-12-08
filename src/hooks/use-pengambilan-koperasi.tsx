@@ -9,6 +9,9 @@ export interface PengambilanKoperasi {
   jumlah_kg: number;
   batch_id: string | null;
   catatan: string | null;
+  lot_number: string | null;
+  is_organic: boolean;
+  detail_petani: unknown; // JSON from database
   created_at: string;
   updated_at: string;
   // Joined data
@@ -67,7 +70,7 @@ export const usePengambilanKoperasi = (pengepulId?: string) => {
     try {
       const { data, error } = await supabase
         .from("pengambilan_koperasi")
-        .insert(pengambilan)
+        .insert(pengambilan as any)
         .select(`
           *,
           pengepul:pengepul_id(id, nama, kode_pengepul)
@@ -85,13 +88,13 @@ export const usePengambilanKoperasi = (pengepulId?: string) => {
       }
 
       if (data) {
-        setPengambilanList(prev => [data, ...prev]);
+        setPengambilanList(prev => [data as PengambilanKoperasi, ...prev]);
         toast({
           title: "Berhasil",
           description: "Pengambilan berhasil ditambahkan",
         });
       }
-      return data;
+      return data as PengambilanKoperasi;
     } catch (error) {
       console.error("Error adding pengambilan:", error);
       toast({
@@ -107,7 +110,7 @@ export const usePengambilanKoperasi = (pengepulId?: string) => {
     try {
       const { data, error } = await supabase
         .from("pengambilan_koperasi")
-        .update(updates)
+        .update(updates as any)
         .eq("id", id)
         .select(`
           *,
