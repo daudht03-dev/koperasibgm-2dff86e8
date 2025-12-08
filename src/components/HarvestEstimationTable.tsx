@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { RefreshCw, Plus, Trash2, TrendingUp, Leaf, Download, Save, FolderOpen, Loader2 } from "lucide-react";
+import { RefreshCw, Plus, Trash2, TrendingUp, Leaf, Download, Save, FolderOpen, Loader2, Factory } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { WeekData, SavedEstimation } from "@/hooks/use-harvest-estimation";
@@ -404,7 +404,14 @@ export const HarvestEstimationTable = ({
                       {week.farmersData.map((farmer) => (
                         <TableRow key={farmer.farmerId}>
                           <TableCell className="sticky left-0 bg-background z-10 font-medium">
-                            {farmer.farmerName}
+                            <div className="flex items-center gap-1">
+                              {farmer.isOrganic ? (
+                                <Leaf className="h-3 w-3 text-green-600 flex-shrink-0" />
+                              ) : (
+                                <Factory className="h-3 w-3 text-orange-500 flex-shrink-0" />
+                              )}
+                              <span className="truncate">{farmer.farmerName}</span>
+                            </div>
                           </TableCell>
                           <TableCell className="sticky left-[100px] bg-background z-10 text-muted-foreground">
                             {farmer.farmerCode}
@@ -509,7 +516,14 @@ export const HarvestEstimationTable = ({
                       {week.farmersData.map((farmer) => (
                         <TableRow key={farmer.farmerId}>
                           <TableCell className="sticky left-0 bg-background z-10 font-medium">
-                            {farmer.farmerName}
+                            <div className="flex items-center gap-1">
+                              {farmer.isOrganic ? (
+                                <Leaf className="h-3 w-3 text-green-600 flex-shrink-0" />
+                              ) : (
+                                <Factory className="h-3 w-3 text-orange-500 flex-shrink-0" />
+                              )}
+                              <span className="truncate">{farmer.farmerName}</span>
+                            </div>
                           </TableCell>
                           <TableCell className="sticky left-[100px] bg-background z-10 text-muted-foreground">
                             {farmer.farmerCode}

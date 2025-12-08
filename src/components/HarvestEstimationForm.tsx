@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,15 +6,17 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Calculator, Users, Calendar, RefreshCw, Zap } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Calculator, Users, Calendar, RefreshCw, Zap, Save, Leaf, Factory } from "lucide-react";
 import { format } from "date-fns";
-import { id as localeId } from "date-fns/locale";
 import { FarmerEstimation } from "@/hooks/use-harvest-estimation";
+import { useToast } from "@/hooks/use-toast";
 
 interface Farmer {
   id: string;
   nama: string;
   kode_petani: string;
+  is_organic?: boolean;
 }
 
 interface HarvestEstimationFormProps {
@@ -35,6 +37,13 @@ interface HarvestEstimationFormProps {
 }
 
 const dayNames = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+const FARMER_SETTINGS_KEY = "harvest_estimation_farmer_settings";
+
+interface SavedFarmerSetting {
+  farmerId: string;
+  averageDaily: number;
+  isOrganic: boolean;
+}
 
 export const HarvestEstimationForm = ({
   farmers,
@@ -52,7 +61,32 @@ export const HarvestEstimationForm = ({
   applyBatchAverage,
   updateFarmerAverage,
 }: HarvestEstimationFormProps) => {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Load saved settings on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(FARMER_SETTINGS_KEY);
+    if (saved && selectedFarmers.length > 0) {
+      try {
+        const savedSettings: SavedFarmerSetting[] = JSON.parse(saved);
+        const updatedFarmers = selectedFarmers.map(farmer => {
+          const setting = savedSettings.find(s => s.farmerId === farmer.farmerId);
+          if (setting) {
+            return {
+              ...farmer,
+              averageDaily: setting.averageDaily,
+              isOrganic: setting.isOrganic,
+            };
+          }
+          return farmer;
+        });
+        setSelectedFarmers(updatedFarmers);
+      } catch (e) {
+        console.error("Error loading saved settings:", e);
+      }
+    }
+  }, []);
 
   const filteredFarmers = farmers.filter(
     (f) =>
@@ -61,6 +95,16 @@ export const HarvestEstimationForm = ({
   );
 
   const handleFarmerToggle = (farmer: Farmer, checked: boolean) => {
+    // Load saved setting for this farmer
+    const saved = localStorage.getItem(FARMER_SETTINGS_KEY);
+    let savedSettings: SavedFarmerSetting[] = [];
+    if (saved) {
+      try {
+        savedSettings = JSON.parse(saved);
+      } catch (e) {}
+    }
+    const savedSetting = savedSettings.find(s => s.farmerId === farmer.id);
+
     if (checked) {
       setSelectedFarmers([
         ...selectedFarmers,
@@ -68,7 +112,8 @@ export const HarvestEstimationForm = ({
           farmerId: farmer.id,
           farmerName: farmer.nama,
           farmerCode: farmer.kode_petani,
-          averageDaily: batchAverage,
+          averageDaily: savedSetting?.averageDaily ?? batchAverage,
+          isOrganic: savedSetting?.isOrganic ?? (farmer.is_organic !== false),
         },
       ]);
     } else {
@@ -77,16 +122,29 @@ export const HarvestEstimationForm = ({
   };
 
   const handleSelectAll = () => {
+    // Load saved settings
+    const saved = localStorage.getItem(FARMER_SETTINGS_KEY);
+    let savedSettings: SavedFarmerSetting[] = [];
+    if (saved) {
+      try {
+        savedSettings = JSON.parse(saved);
+      } catch (e) {}
+    }
+
     if (selectedFarmers.length === filteredFarmers.length) {
       setSelectedFarmers([]);
     } else {
       setSelectedFarmers(
-        filteredFarmers.map((f) => ({
-          farmerId: f.id,
-          farmerName: f.nama,
-          farmerCode: f.kode_petani,
-          averageDaily: batchAverage,
-        }))
+        filteredFarmers.map((f) => {
+          const savedSetting = savedSettings.find(s => s.farmerId === f.id);
+          return {
+            farmerId: f.id,
+            farmerName: f.nama,
+            farmerCode: f.kode_petani,
+            averageDaily: savedSetting?.averageDaily ?? batchAverage,
+            isOrganic: savedSetting?.isOrganic ?? (f.is_organic !== false),
+          };
+        })
       );
     }
   };
@@ -107,6 +165,36 @@ export const HarvestEstimationForm = ({
     return farmer?.averageDaily || batchAverage;
   };
 
+  const getSelectedFarmerOrganic = (farmerId: string) => {
+    const farmer = selectedFarmers.find((f) => f.farmerId === farmerId);
+    return farmer?.isOrganic ?? true;
+  };
+
+  const updateFarmerOrganic = (farmerId: string, isOrganic: boolean) => {
+    setSelectedFarmers(
+      selectedFarmers.map((f) =>
+        f.farmerId === farmerId ? { ...f, isOrganic } : f
+      )
+    );
+  };
+
+  const saveSettings = () => {
+    const settings: SavedFarmerSetting[] = selectedFarmers.map((f) => ({
+      farmerId: f.farmerId,
+      averageDaily: f.averageDaily,
+      isOrganic: f.isOrganic,
+    }));
+    localStorage.setItem(FARMER_SETTINGS_KEY, JSON.stringify(settings));
+    toast({
+      title: "Pengaturan disimpan",
+      description: `Pengaturan ${settings.length} petani berhasil disimpan.`,
+    });
+  };
+
+  // Count organic and conventional farmers
+  const organicCount = selectedFarmers.filter((f) => f.isOrganic).length;
+  const conventionalCount = selectedFarmers.filter((f) => !f.isOrganic).length;
+
   return (
     <Card className="border-primary/20">
       <CardHeader>
@@ -126,12 +214,27 @@ export const HarvestEstimationForm = ({
               <Users className="h-4 w-4" />
               Pilih Petani ({selectedFarmers.length} dipilih)
             </Label>
-            <Button variant="outline" size="sm" onClick={handleSelectAll}>
-              {selectedFarmers.length === filteredFarmers.length
-                ? "Batal Pilih Semua"
-                : "Pilih Semua"}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleSelectAll}>
+                {selectedFarmers.length === filteredFarmers.length
+                  ? "Batal Pilih Semua"
+                  : "Pilih Semua"}
+              </Button>
+            </div>
           </div>
+
+          {selectedFarmers.length > 0 && (
+            <div className="flex gap-2 flex-wrap">
+              <Badge variant="default" className="bg-green-600">
+                <Leaf className="h-3 w-3 mr-1" />
+                Organik: {organicCount}
+              </Badge>
+              <Badge variant="secondary" className="bg-orange-500 text-white">
+                <Factory className="h-3 w-3 mr-1" />
+                Konvensional: {conventionalCount}
+              </Badge>
+            </div>
+          )}
 
           <Input
             placeholder="Cari nama atau kode petani..."
@@ -139,39 +242,66 @@ export const HarvestEstimationForm = ({
             onChange={(e) => setSearchTerm(e.target.value)}
           />
 
-          <ScrollArea className="h-48 border rounded-md p-3">
+          <ScrollArea className="h-56 border rounded-md p-3">
             <div className="space-y-2">
               {filteredFarmers.map((farmer) => (
                 <div
                   key={farmer.id}
-                  className="flex items-center justify-between gap-3 p-2 rounded-md hover:bg-muted/50"
+                  className="flex items-center justify-between gap-2 p-2 rounded-md hover:bg-muted/50"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
                     <Checkbox
                       checked={isSelected(farmer.id)}
                       onCheckedChange={(checked) =>
                         handleFarmerToggle(farmer, checked as boolean)
                       }
                     />
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <span className="font-medium text-sm">{farmer.kode_petani}</span>
-                      <span className="text-muted-foreground text-sm ml-2">
+                      <span className="text-muted-foreground text-sm ml-2 truncate">
                         - {farmer.nama}
                       </span>
                     </div>
                   </div>
                   {isSelected(farmer.id) && (
-                    <Input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      className="w-20 h-8 text-sm"
-                      value={getSelectedFarmerAverage(farmer.id)}
-                      onChange={(e) =>
-                        updateFarmerAverage(farmer.id, parseFloat(e.target.value) || 0)
-                      }
-                      title="Rata-rata panen harian (kg)"
-                    />
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={getSelectedFarmerOrganic(farmer.id) ? "default" : "secondary"}
+                        size="sm"
+                        className={`h-7 px-2 text-xs ${
+                          getSelectedFarmerOrganic(farmer.id)
+                            ? "bg-green-600 hover:bg-green-700"
+                            : "bg-orange-500 hover:bg-orange-600 text-white"
+                        }`}
+                        onClick={() =>
+                          updateFarmerOrganic(farmer.id, !getSelectedFarmerOrganic(farmer.id))
+                        }
+                        title="Klik untuk toggle Organik/Konvensional"
+                      >
+                        {getSelectedFarmerOrganic(farmer.id) ? (
+                          <>
+                            <Leaf className="h-3 w-3 mr-1" />
+                            O
+                          </>
+                        ) : (
+                          <>
+                            <Factory className="h-3 w-3 mr-1" />
+                            K
+                          </>
+                        )}
+                      </Button>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        className="w-16 h-7 text-xs"
+                        value={getSelectedFarmerAverage(farmer.id)}
+                        onChange={(e) =>
+                          updateFarmerAverage(farmer.id, parseFloat(e.target.value) || 0)
+                        }
+                        title="Rata-rata panen harian (kg)"
+                      />
+                    </div>
                   )}
                 </div>
               ))}
@@ -210,6 +340,17 @@ export const HarvestEstimationForm = ({
             Nilai ini akan digunakan sebagai acuan dengan variasi ±1.9 kg
           </p>
         </div>
+
+        {/* Save Settings Button */}
+        <Button
+          variant="outline"
+          onClick={saveSettings}
+          disabled={selectedFarmers.length === 0}
+          className="w-full"
+        >
+          <Save className="h-4 w-4 mr-2" />
+          Simpan Pengaturan Petani
+        </Button>
 
         {/* Start Date */}
         <div className="space-y-3">

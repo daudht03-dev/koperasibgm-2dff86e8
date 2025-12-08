@@ -8,6 +8,7 @@ export interface FarmerEstimation {
   farmerName: string;
   farmerCode: string;
   averageDaily: number;
+  isOrganic: boolean;
 }
 
 export interface DailyData {
@@ -23,6 +24,7 @@ export interface FarmerWeeklyData {
   dailySales: DailyData[];
   totalHarvest: number;
   totalSales: number;
+  isOrganic: boolean;
 }
 
 export interface WeekData {
@@ -44,7 +46,11 @@ export interface SavedEstimation {
   catatan: string | null;
   created_at: string;
   updated_at: string;
+  pengaturan_petani?: FarmerEstimation[];
 }
+
+// Local storage key for farmer settings
+const FARMER_SETTINGS_KEY = "harvest_estimation_farmer_settings";
 
 export const useHarvestEstimation = () => {
   const { toast } = useToast();
@@ -145,6 +151,7 @@ export const useHarvestEstimation = () => {
         dailySales,
         totalHarvest: dailyHarvest.reduce((sum, d) => sum + d.value, 0),
         totalSales: dailySales.reduce((sum, d) => sum + d.value, 0),
+        isOrganic: farmer.isOrganic,
       };
     });
 
@@ -270,7 +277,7 @@ export const useHarvestEstimation = () => {
     })));
   }, [batchAverage]);
 
-  // Export to CSV
+  // Export to CSV with proper number format for spreadsheets
   const exportToCSV = useCallback(() => {
     if (weeklyData.length === 0) {
       toast({
@@ -283,69 +290,74 @@ export const useHarvestEstimation = () => {
 
     const rows: string[] = [];
     
+    // Use semicolon as separator for better Excel compatibility with numbers
+    const SEP = ";";
+    
     weeklyData.forEach((week) => {
       // Add week header
       rows.push(`Minggu ${week.weekIndex + 1}: ${format(week.startDate, "dd/MM/yyyy")} - ${format(week.endDate, "dd/MM/yyyy")}`);
       rows.push("");
       
       // Harvest table header
-      const harvestHeader = ["Nama Petani", "Kode"];
+      const harvestHeader = ["Nama Petani", "Kode", "Status"];
       for (let i = 0; i < 7; i++) {
         harvestHeader.push(format(addDays(week.startDate, i), "dd/MM"));
       }
       harvestHeader.push("Total Panen");
       rows.push("ESTIMASI PANEN");
-      rows.push(harvestHeader.join(","));
+      rows.push(harvestHeader.join(SEP));
       
-      // Harvest data
+      // Harvest data - numbers without quotes for proper spreadsheet recognition
       week.farmersData.forEach(farmer => {
         const row = [
           `"${farmer.farmerName}"`,
           farmer.farmerCode,
-          ...farmer.dailyHarvest.map(d => d.value.toFixed(1)),
-          farmer.totalHarvest.toFixed(1),
+          farmer.isOrganic ? "Organik" : "Konvensional",
+          ...farmer.dailyHarvest.map(d => String(d.value).replace(".", ",")), // Use comma as decimal for EU/ID locale
+          String(farmer.totalHarvest).replace(".", ","),
         ];
-        rows.push(row.join(","));
+        rows.push(row.join(SEP));
       });
       
       // Harvest total row
-      const harvestTotals = ["TOTAL", ""];
+      const harvestTotals = ["TOTAL", "", ""];
       for (let i = 0; i < 7; i++) {
         const dayTotal = week.farmersData.reduce((sum, f) => sum + (f.dailyHarvest[i]?.value || 0), 0);
-        harvestTotals.push(dayTotal.toFixed(1));
+        harvestTotals.push(String(Math.round(dayTotal * 10) / 10).replace(".", ","));
       }
-      harvestTotals.push(week.farmersData.reduce((sum, f) => sum + f.totalHarvest, 0).toFixed(1));
-      rows.push(harvestTotals.join(","));
+      harvestTotals.push(String(Math.round(week.farmersData.reduce((sum, f) => sum + f.totalHarvest, 0) * 10) / 10).replace(".", ","));
+      rows.push(harvestTotals.join(SEP));
       rows.push("");
       
       // Sales table header
-      const salesHeader = ["Nama Petani", "Kode"];
+      const salesHeader = ["Nama Petani", "Kode", "Status"];
       for (let i = 0; i < 7; i++) {
         salesHeader.push(format(addDays(week.startDate, i), "dd/MM"));
       }
       salesHeader.push("Total Penjualan");
       rows.push("ESTIMASI PENJUALAN");
-      rows.push(salesHeader.join(","));
+      rows.push(salesHeader.join(SEP));
       
-      // Sales data
+      // Sales data - numbers without quotes
       week.farmersData.forEach(farmer => {
         const row = [
           `"${farmer.farmerName}"`,
           farmer.farmerCode,
-          ...farmer.dailySales.map(d => d.value.toFixed(1)),
-          farmer.totalSales.toFixed(1),
+          farmer.isOrganic ? "Organik" : "Konvensional",
+          ...farmer.dailySales.map(d => String(d.value).replace(".", ",")),
+          String(farmer.totalSales).replace(".", ","),
         ];
-        rows.push(row.join(","));
+        rows.push(row.join(SEP));
       });
       
       // Sales total row
-      const salesTotals = ["TOTAL", ""];
+      const salesTotals = ["TOTAL", "", ""];
       for (let i = 0; i < 7; i++) {
         const dayTotal = week.farmersData.reduce((sum, f) => sum + (f.dailySales[i]?.value || 0), 0);
-        salesTotals.push(dayTotal.toFixed(1));
+        salesTotals.push(String(Math.round(dayTotal * 10) / 10).replace(".", ","));
       }
-      salesTotals.push(week.farmersData.reduce((sum, f) => sum + f.totalSales, 0).toFixed(1));
-      rows.push(salesTotals.join(","));
+      salesTotals.push(String(Math.round(week.farmersData.reduce((sum, f) => sum + f.totalSales, 0) * 10) / 10).replace(".", ","));
+      rows.push(salesTotals.join(SEP));
       rows.push("");
       rows.push("");
     });
@@ -397,6 +409,7 @@ export const useHarvestEstimation = () => {
         data_petani: selectedFarmers as unknown as Record<string, unknown>,
         data_panen: serializableWeeklyData as unknown as Record<string, unknown>,
         data_penjualan: serializableWeeklyData as unknown as Record<string, unknown>,
+        pengaturan_petani: selectedFarmers as unknown as Record<string, unknown>,
         catatan: notes || null,
       };
 
