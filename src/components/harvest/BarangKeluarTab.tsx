@@ -200,8 +200,10 @@ export const BarangKeluarTab = () => {
     const results: AutoGenerateResult[] = [];
     
     // Group penjualan by pengepul, date, and organic status
+    // Use "|" as separator since UUID contains "-"
     const penjualanByPengepulDate = new Map<string, { 
-      pengepul: any; 
+      pengepul: any;
+      pengepul_id: string;
       dates: Map<string, { kg: number; farmers: Array<{ id: string; name: string; code: string; kg: number; isOrganic: boolean }> }>;
       isOrganic: boolean;
     }>();
@@ -213,12 +215,14 @@ export const BarangKeluarTab = () => {
       
       if (isAfter(day8Date, today)) continue;
       
-      const key = `${p.pengepul_id}-${isOrganic ? 'organic' : 'conventional'}`;
+      // Use "|" separator to avoid splitting UUID
+      const key = `${p.pengepul_id}|${isOrganic ? 'organic' : 'conventional'}`;
       const day8Str = format(day8Date, "yyyy-MM-dd");
       
       if (!penjualanByPengepulDate.has(key)) {
         penjualanByPengepulDate.set(key, {
           pengepul: p.pengepul,
+          pengepul_id: p.pengepul_id,
           dates: new Map(),
           isOrganic,
         });
@@ -242,17 +246,16 @@ export const BarangKeluarTab = () => {
     
     // Check which ones don't have existing pengambilan
     for (const [key, data] of penjualanByPengepulDate) {
-      const pengepulId = key.split('-')[0];
       for (const [tanggalAmbil, dateData] of data.dates) {
         const exists = pengambilanList.some(
-          p => p.pengepul_id === pengepulId && 
+          p => p.pengepul_id === data.pengepul_id && 
                p.tanggal_ambil === tanggalAmbil &&
                (p as any).is_organic === data.isOrganic
         );
         
         if (!exists && dateData.kg > 0) {
           results.push({
-            pengepul_id: pengepulId,
+            pengepul_id: data.pengepul_id,
             pengepul_nama: data.pengepul?.nama || "Unknown",
             pengepul_kode: data.pengepul?.kode_pengepul || "-",
             tanggal_ambil: tanggalAmbil,
