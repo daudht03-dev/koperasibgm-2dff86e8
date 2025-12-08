@@ -206,6 +206,7 @@ const HarvestManagement = () => {
       harga_per_kg: data.harga_per_kg,
       kondisi: data.kondisi,
       pengepul_ids: data.pengepul_ids,
+      is_organic: true, // Default to organic
       status: "penerimaan",
     });
 
@@ -230,6 +231,7 @@ const HarvestManagement = () => {
       harga_per_kg: batchForm.harga_per_kg ? parseFloat(batchForm.harga_per_kg) : null,
       kondisi: batchForm.kondisi || null,
       pengepul_ids: null,
+      is_organic: true, // Default to organic
       status: "penerimaan",
     });
 
@@ -242,6 +244,7 @@ const HarvestManagement = () => {
 
     await addProses({
       batch_id: pengeringanForm.batch_id,
+      lot_number: null,
       tanggal_mulai: new Date().toISOString(),
       tanggal_selesai: null,
       suhu_oven: pengeringanForm.suhu_oven ? parseFloat(pengeringanForm.suhu_oven) : null,
@@ -250,6 +253,13 @@ const HarvestManagement = () => {
       kadar_air_akhir: null,
       jumlah_kg_sebelum: parseFloat(pengeringanForm.jumlah_kg_sebelum),
       jumlah_kg_sesudah: null,
+      susut_persen: null,
+      qc_off: null,
+      susut_qc_off_persen: null,
+      total_kering: null,
+      total_kering_packing: null,
+      is_organic: true,
+      detail_petani: null,
       operator: pengeringanForm.operator || null,
       catatan: pengeringanForm.catatan || null,
       status: "proses",
@@ -275,6 +285,8 @@ const HarvestManagement = () => {
       kondisi_penyimpanan: gudangForm.kondisi_penyimpanan || null,
       suhu_gudang: gudangForm.suhu_gudang ? parseFloat(gudangForm.suhu_gudang) : null,
       kelembaban: gudangForm.kelembaban ? parseFloat(gudangForm.kelembaban) : null,
+      tipe_stok: "bahan_baku",
+      is_organic: true,
       catatan: gudangForm.catatan || null,
       status: "tersimpan",
     });

@@ -20,6 +20,7 @@ export interface BatchPanen {
   kondisi: string | null;
   status: BatchStatus;
   pengepul_ids: string[] | null;
+  is_organic: boolean;
   created_at: string;
   updated_at: string;
   // Joined data
@@ -36,9 +37,18 @@ export interface BatchPanen {
   };
 }
 
+export interface PetaniDetailPengeringan {
+  petani_id: string;
+  petani_nama: string;
+  petani_kode: string;
+  jumlah_kg: number;
+  is_organic: boolean;
+}
+
 export interface ProsesPengeringan {
   id: string;
   batch_id: string;
+  lot_number: string | null;
   tanggal_mulai: string;
   tanggal_selesai: string | null;
   suhu_oven: number | null;
@@ -48,6 +58,13 @@ export interface ProsesPengeringan {
   jumlah_kg_sebelum: number;
   jumlah_kg_sesudah: number | null;
   penyusutan_kg: number | null;
+  susut_persen: number | null;
+  qc_off: number | null;
+  susut_qc_off_persen: number | null;
+  total_kering: number | null;
+  total_kering_packing: number | null;
+  is_organic: boolean;
+  detail_petani: unknown; // JSON from database
   operator: string | null;
   catatan: string | null;
   status: string;
@@ -66,6 +83,8 @@ export interface GudangStok {
   kondisi_penyimpanan: string | null;
   suhu_gudang: number | null;
   kelembaban: number | null;
+  tipe_stok: string;
+  is_organic: boolean;
   catatan: string | null;
   status: string;
   created_at: string;
@@ -318,7 +337,7 @@ export const useProsesPengeringan = (batchId?: string) => {
         return;
       }
 
-      setProses(data || []);
+      setProses((data || []) as ProsesPengeringan[]);
     } catch (error) {
       console.error("Error fetching proses pengeringan:", error);
     } finally {
@@ -330,7 +349,7 @@ export const useProsesPengeringan = (batchId?: string) => {
     try {
       const { data: newData, error } = await supabase
         .from("proses_pengeringan")
-        .insert(data)
+        .insert(data as any)
         .select()
         .single();
 
@@ -344,13 +363,13 @@ export const useProsesPengeringan = (batchId?: string) => {
       }
 
       if (newData) {
-        setProses(prev => [newData, ...prev]);
+        setProses(prev => [newData as ProsesPengeringan, ...prev]);
         toast({
           title: "Berhasil",
           description: "Proses pengeringan berhasil ditambahkan",
         });
       }
-      return newData;
+      return newData as ProsesPengeringan;
     } catch (error) {
       console.error("Error adding proses:", error);
       return null;
@@ -361,7 +380,7 @@ export const useProsesPengeringan = (batchId?: string) => {
     try {
       const { data, error } = await supabase
         .from("proses_pengeringan")
-        .update(updates)
+        .update(updates as any)
         .eq("id", id)
         .select()
         .single();
@@ -376,7 +395,7 @@ export const useProsesPengeringan = (batchId?: string) => {
       }
 
       if (data) {
-        setProses(prev => prev.map(p => p.id === id ? data : p));
+        setProses(prev => prev.map(p => p.id === id ? data as ProsesPengeringan : p));
         toast({
           title: "Berhasil",
           description: "Proses pengeringan berhasil diupdate",

@@ -82,7 +82,7 @@ const BatchDetail = () => {
         supabase.from("penjualan").select("*").eq("batch_id", id).order("tanggal_penjualan", { ascending: false }),
       ]);
 
-      setPengeringan(pengeringanRes.data || []);
+      setPengeringan((pengeringanRes.data || []) as ProsesPengeringan[]);
       setGudang(gudangRes.data || []);
       setDokumen(dokumenRes.data || []);
       setPenjualan(penjualanRes.data || []);

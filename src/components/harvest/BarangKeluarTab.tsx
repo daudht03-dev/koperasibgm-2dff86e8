@@ -319,6 +319,9 @@ export const BarangKeluarTab = () => {
       jumlah_kg: parseFloat(form.jumlah_kg),
       batch_id: null,
       catatan: form.catatan || null,
+      lot_number: null,
+      is_organic: true,
+      detail_petani: null,
     });
 
     resetForm();
