@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,13 +8,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, ArrowUpFromLine, Trash2, Wand2, AlertCircle } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Plus, ArrowUpFromLine, Trash2, Wand2, AlertCircle, ChevronDown, ChevronRight, Leaf, Factory, Users } from "lucide-react";
 import { usePengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
 import { usePenjualanPetani } from "@/hooks/use-penjualan-petani";
 import { usePengepul } from "@/hooks/use-pengepul";
 import { TableSkeleton } from "@/components/ui/skeleton-templates";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { format, subDays, addDays, isBefore, isAfter, startOfDay } from "date-fns";
+import { format, addDays, isAfter, startOfDay, startOfWeek, endOfWeek, isSameWeek } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
 
@@ -24,7 +25,40 @@ interface AutoGenerateResult {
   pengepul_kode: string;
   tanggal_ambil: string;
   jumlah_kg: number;
+  is_organic: boolean;
   source_dates: string[];
+  farmers: Array<{
+    id: string;
+    name: string;
+    code: string;
+    kg: number;
+    isOrganic: boolean;
+  }>;
+}
+
+interface WeeklyLot {
+  lotNumber: number;
+  weekStart: Date;
+  weekEnd: Date;
+  pickupDate: Date;
+  isOrganic: boolean;
+  items: Array<{
+    id: string;
+    pengepul_id: string;
+    pengepul_nama: string;
+    pengepul_kode: string;
+    jumlah_kg: number;
+    batch_id: string | null;
+    catatan: string | null;
+    farmers: Array<{
+      petani_id: string;
+      petani_nama: string;
+      petani_kode: string;
+      jumlah_kg: number;
+      tanggal_jual: string;
+    }>;
+  }>;
+  totalKg: number;
 }
 
 export const BarangKeluarTab = () => {
@@ -37,6 +71,7 @@ export const BarangKeluarTab = () => {
   const [filterPengepul, setFilterPengepul] = useState<string>("all");
   const [autoGenerateResults, setAutoGenerateResults] = useState<AutoGenerateResult[]>([]);
   const [generatingAuto, setGeneratingAuto] = useState(false);
+  const [expandedLots, setExpandedLots] = useState<Set<string>>(new Set());
   
   const [form, setForm] = useState({
     pengepul_id: "",
@@ -54,60 +89,183 @@ export const BarangKeluarTab = () => {
     });
   };
 
+  // Toggle lot expansion
+  const toggleLot = (lotKey: string) => {
+    setExpandedLots(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(lotKey)) {
+        newSet.delete(lotKey);
+      } else {
+        newSet.add(lotKey);
+      }
+      return newSet;
+    });
+  };
+
+  // Group pengambilan into weekly lots with organic/conventional separation
+  const weeklyLots = useMemo((): { organic: WeeklyLot[]; conventional: WeeklyLot[] } => {
+    const organicLots: WeeklyLot[] = [];
+    const conventionalLots: WeeklyLot[] = [];
+
+    // Group by week
+    const weekGroups = new Map<string, { 
+      weekStart: Date; 
+      weekEnd: Date; 
+      pickupDate: Date;
+      items: typeof pengambilanList;
+      isOrganic: boolean;
+    }[]>();
+
+    pengambilanList.forEach(item => {
+      const pickupDate = new Date(item.tanggal_ambil);
+      const weekStartDate = startOfWeek(pickupDate, { weekStartsOn: 1 });
+      const weekKey = format(weekStartDate, "yyyy-MM-dd");
+      const isOrganic = (item as any).is_organic !== false;
+      const groupKey = `${weekKey}-${isOrganic ? 'organic' : 'conventional'}`;
+
+      if (!weekGroups.has(groupKey)) {
+        weekGroups.set(groupKey, [{
+          weekStart: weekStartDate,
+          weekEnd: endOfWeek(pickupDate, { weekStartsOn: 1 }),
+          pickupDate,
+          items: [],
+          isOrganic,
+        }]);
+      }
+      
+      const groups = weekGroups.get(groupKey)!;
+      groups[0].items.push(item);
+    });
+
+    // Convert to lots
+    let organicLotNumber = 1;
+    let conventionalLotNumber = 1;
+
+    const sortedKeys = Array.from(weekGroups.keys()).sort();
+    
+    sortedKeys.forEach(key => {
+      const groups = weekGroups.get(key)!;
+      groups.forEach(group => {
+        // Get farmer details from penjualan for this week
+        const lotItems = group.items.map(item => {
+          const farmerDetails = penjualanList
+            .filter(p => 
+              p.pengepul_id === item.pengepul_id &&
+              isSameWeek(new Date(p.tanggal_jual), group.weekStart, { weekStartsOn: 1 })
+            )
+            .map(p => ({
+              petani_id: p.petani_id,
+              petani_nama: p.petani?.nama || "Unknown",
+              petani_kode: p.petani?.kode_petani || "-",
+              jumlah_kg: Number(p.jumlah_kg),
+              tanggal_jual: p.tanggal_jual,
+            }));
+
+          return {
+            id: item.id,
+            pengepul_id: item.pengepul_id,
+            pengepul_nama: item.pengepul?.nama || "Unknown",
+            pengepul_kode: item.pengepul?.kode_pengepul || "-",
+            jumlah_kg: Number(item.jumlah_kg),
+            batch_id: item.batch_id,
+            catatan: item.catatan,
+            farmers: farmerDetails,
+          };
+        });
+
+        const lot: WeeklyLot = {
+          lotNumber: group.isOrganic ? organicLotNumber++ : conventionalLotNumber++,
+          weekStart: group.weekStart,
+          weekEnd: group.weekEnd,
+          pickupDate: group.pickupDate,
+          isOrganic: group.isOrganic,
+          items: lotItems,
+          totalKg: lotItems.reduce((sum, item) => sum + item.jumlah_kg, 0),
+        };
+
+        if (group.isOrganic) {
+          organicLots.push(lot);
+        } else {
+          conventionalLots.push(lot);
+        }
+      });
+    });
+
+    return { organic: organicLots, conventional: conventionalLots };
+  }, [pengambilanList, penjualanList]);
+
   // Auto-generate barang keluar berdasarkan hari ke-8 dari penjualan petani
   const generateAutoBarangKeluar = () => {
     const today = startOfDay(new Date());
     const results: AutoGenerateResult[] = [];
     
-    // Group penjualan by pengepul and date
-    const penjualanByPengepulDate = new Map<string, { pengepul: any; dates: Map<string, number> }>();
+    // Group penjualan by pengepul, date, and organic status
+    const penjualanByPengepulDate = new Map<string, { 
+      pengepul: any; 
+      dates: Map<string, { kg: number; farmers: Array<{ id: string; name: string; code: string; kg: number; isOrganic: boolean }> }>;
+      isOrganic: boolean;
+    }>();
     
     for (const p of penjualanList) {
       const saleDate = startOfDay(new Date(p.tanggal_jual));
-      const day8Date = addDays(saleDate, 7); // Hari ke-8 = 7 hari setelah penjualan
+      const day8Date = addDays(saleDate, 7);
+      const isOrganic = (p as any).is_organic !== false;
       
-      // Only include if day8 is today or in the past
       if (isAfter(day8Date, today)) continue;
       
-      const key = p.pengepul_id;
+      const key = `${p.pengepul_id}-${isOrganic ? 'organic' : 'conventional'}`;
       const day8Str = format(day8Date, "yyyy-MM-dd");
       
       if (!penjualanByPengepulDate.has(key)) {
         penjualanByPengepulDate.set(key, {
           pengepul: p.pengepul,
           dates: new Map(),
+          isOrganic,
         });
       }
       
       const pengepulData = penjualanByPengepulDate.get(key)!;
-      const currentKg = pengepulData.dates.get(day8Str) || 0;
-      pengepulData.dates.set(day8Str, currentKg + Number(p.jumlah_kg));
+      if (!pengepulData.dates.has(day8Str)) {
+        pengepulData.dates.set(day8Str, { kg: 0, farmers: [] });
+      }
+      
+      const dateData = pengepulData.dates.get(day8Str)!;
+      dateData.kg += Number(p.jumlah_kg);
+      dateData.farmers.push({
+        id: p.petani_id,
+        name: p.petani?.nama || "Unknown",
+        code: p.petani?.kode_petani || "-",
+        kg: Number(p.jumlah_kg),
+        isOrganic,
+      });
     }
     
     // Check which ones don't have existing pengambilan
-    for (const [pengepulId, data] of penjualanByPengepulDate) {
-      for (const [tanggalAmbil, jumlahKg] of data.dates) {
-        // Check if pengambilan already exists for this pengepul and date
+    for (const [key, data] of penjualanByPengepulDate) {
+      const pengepulId = key.split('-')[0];
+      for (const [tanggalAmbil, dateData] of data.dates) {
         const exists = pengambilanList.some(
-          p => p.pengepul_id === pengepulId && p.tanggal_ambil === tanggalAmbil
+          p => p.pengepul_id === pengepulId && 
+               p.tanggal_ambil === tanggalAmbil &&
+               (p as any).is_organic === data.isOrganic
         );
         
-        if (!exists && jumlahKg > 0) {
+        if (!exists && dateData.kg > 0) {
           results.push({
             pengepul_id: pengepulId,
             pengepul_nama: data.pengepul?.nama || "Unknown",
             pengepul_kode: data.pengepul?.kode_pengepul || "-",
             tanggal_ambil: tanggalAmbil,
-            jumlah_kg: jumlahKg,
+            jumlah_kg: dateData.kg,
+            is_organic: data.isOrganic,
             source_dates: [],
+            farmers: dateData.farmers,
           });
         }
       }
     }
     
-    // Sort by date
     results.sort((a, b) => a.tanggal_ambil.localeCompare(b.tanggal_ambil));
-    
     return results;
   };
 
@@ -126,8 +284,10 @@ export const BarangKeluarTab = () => {
           tanggal_ambil: result.tanggal_ambil,
           jumlah_kg: result.jumlah_kg,
           batch_id: null,
-          catatan: `Auto-generated dari penjualan petani (hari ke-8)`,
-        });
+          catatan: `Auto-generated (${result.is_organic ? 'Organik' : 'Konvensional'})`,
+          is_organic: result.is_organic,
+          detail_petani: result.farmers,
+        } as any);
       }
       
       toast({
@@ -171,174 +331,269 @@ export const BarangKeluarTab = () => {
     }
   };
 
-  // Filter list by pengepul
-  const filteredList = filterPengepul === "all" 
-    ? pengambilanList 
-    : pengambilanList.filter(p => p.pengepul_id === filterPengepul);
+  // Render lot card
+  const renderLotCard = (lot: WeeklyLot, type: 'organic' | 'conventional') => {
+    const lotKey = `${type}-${lot.lotNumber}`;
+    const isExpanded = expandedLots.has(lotKey);
+    const hasUnprocessed = lot.items.some(item => !item.batch_id);
 
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle className="flex items-center gap-2">
-            <ArrowUpFromLine className="h-5 w-5" />
-            Barang Keluar
-          </CardTitle>
-          <CardDescription>Pengambilan oleh koperasi (hari ke-8 dari penjualan petani)</CardDescription>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-          <Select value={filterPengepul} onValueChange={setFilterPengepul}>
-            <SelectTrigger className="w-40 sm:w-48">
-              <SelectValue placeholder="Filter Pengepul" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Pengepul</SelectItem>
-              {pengepulList.map((p) => (
-                <SelectItem key={p.id} value={p.id}>{p.nama}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          {/* Auto Generate Button */}
-          <Button 
-            variant="outline" 
-            onClick={handleAutoGenerate}
-            disabled={penjualanLoading}
-          >
-            <Wand2 className="h-4 w-4 mr-2" />
-            Auto Generate
-          </Button>
-          
-          <Dialog open={dialogOpen} onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) resetForm();
-          }}>
-            <DialogTrigger asChild>
-              <Button className="bg-gradient-organic">
-                <Plus className="h-4 w-4 mr-2" />
-                Tambah Manual
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Tambah Barang Keluar</DialogTitle>
-                <DialogDescription>Catat pengambilan barang oleh koperasi</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div>
-                  <Label>Pengepul *</Label>
-                  <Select 
-                    value={form.pengepul_id} 
-                    onValueChange={(value) => setForm(prev => ({ ...prev, pengepul_id: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih pengepul" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {pengepulList.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.kode_pengepul} - {p.nama}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+    return (
+      <Collapsible key={lotKey} open={isExpanded} onOpenChange={() => toggleLot(lotKey)}>
+        <Card className={`border-l-4 ${type === 'organic' ? 'border-l-green-500' : 'border-l-orange-500'}`}>
+          <CollapsibleTrigger className="w-full">
+            <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  <div className="text-left">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      LOT {lot.lotNumber}
+                      <Badge variant={type === 'organic' ? 'default' : 'secondary'} 
+                        className={type === 'organic' ? 'bg-green-600' : 'bg-orange-500'}>
+                        {type === 'organic' ? <Leaf className="h-3 w-3 mr-1" /> : <Factory className="h-3 w-3 mr-1" />}
+                        {type === 'organic' ? 'Organik' : 'Konvensional'}
+                      </Badge>
+                      {hasUnprocessed && (
+                        <Badge variant="secondary">Belum Diproses</Badge>
+                      )}
+                    </CardTitle>
+                    <CardDescription>
+                      Minggu {format(lot.weekStart, "dd MMM", { locale: localeId })} - {format(lot.weekEnd, "dd MMM yyyy", { locale: localeId })}
+                      {" | "}Pengambilan: {format(lot.pickupDate, "dd MMM yyyy", { locale: localeId })}
+                    </CardDescription>
+                  </div>
                 </div>
-                <div>
-                  <Label>Tanggal Pengambilan *</Label>
-                  <Input
-                    type="date"
-                    value={form.tanggal_ambil}
-                    onChange={(e) => setForm(prev => ({ ...prev, tanggal_ambil: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label>Jumlah (Kg) *</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={form.jumlah_kg}
-                    onChange={(e) => setForm(prev => ({ ...prev, jumlah_kg: e.target.value }))}
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <Label>Catatan</Label>
-                  <Textarea
-                    value={form.catatan}
-                    onChange={(e) => setForm(prev => ({ ...prev, catatan: e.target.value }))}
-                    placeholder="Catatan tambahan..."
-                  />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>Batal</Button>
-                  <Button onClick={handleSubmit} className="bg-gradient-organic">Simpan</Button>
+                <div className="text-right">
+                  <p className="text-lg font-bold">{lot.totalKg.toLocaleString()} Kg</p>
+                  <p className="text-sm text-muted-foreground">{lot.items.length} pengepul</p>
                 </div>
               </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <TableSkeleton rows={5} columns={5} />
-        ) : filteredList.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <ArrowUpFromLine className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p>Belum ada data barang keluar</p>
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tanggal</TableHead>
-                <TableHead>Pengepul</TableHead>
-                <TableHead>Jumlah (Kg)</TableHead>
-                <TableHead>Status Batch</TableHead>
-                <TableHead>Catatan</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredList.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    {format(new Date(item.tanggal_ambil), "dd MMM yyyy", { locale: localeId })}
-                  </TableCell>
-                  <TableCell>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0">
+              {lot.items.map((item, idx) => (
+                <div key={item.id} className="border rounded-lg p-4 mb-3 last:mb-0">
+                  <div className="flex items-center justify-between mb-3">
                     <div>
-                      <p className="font-medium">{item.pengepul?.nama}</p>
-                      <p className="text-xs text-muted-foreground">{item.pengepul?.kode_pengepul}</p>
+                      <p className="font-medium">{item.pengepul_nama}</p>
+                      <p className="text-sm text-muted-foreground">{item.pengepul_kode}</p>
                     </div>
-                  </TableCell>
-                  <TableCell className="font-medium">{Number(item.jumlah_kg).toLocaleString()} Kg</TableCell>
-                  <TableCell>
-                    {item.batch_id ? (
-                      <Badge variant="default">Sudah Diproses</Badge>
-                    ) : (
-                      <Badge variant="secondary">Belum Diproses</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="max-w-xs truncate">{item.catatan || "-"}</TableCell>
-                  <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleDelete(item.id)}
-                      disabled={!!item.batch_id}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
+                    <div className="flex items-center gap-3">
+                      <p className="font-bold">{item.jumlah_kg.toLocaleString()} Kg</p>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(item.id)}
+                        disabled={!!item.batch_id}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Farmer details */}
+                  {item.farmers.length > 0 && (
+                    <div className="bg-muted/50 rounded-md p-3">
+                      <p className="text-sm font-medium mb-2 flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        Detail Petani ({item.farmers.length})
+                      </p>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="h-8 text-xs">Petani</TableHead>
+                            <TableHead className="h-8 text-xs">Kode</TableHead>
+                            <TableHead className="h-8 text-xs">Tanggal Jual</TableHead>
+                            <TableHead className="h-8 text-xs text-right">Jumlah</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {item.farmers.map((farmer, fIdx) => (
+                            <TableRow key={fIdx}>
+                              <TableCell className="py-1 text-sm">{farmer.petani_nama}</TableCell>
+                              <TableCell className="py-1 text-sm text-muted-foreground">{farmer.petani_kode}</TableCell>
+                              <TableCell className="py-1 text-sm">
+                                {format(new Date(farmer.tanggal_jual), "dd/MM", { locale: localeId })}
+                              </TableCell>
+                              <TableCell className="py-1 text-sm text-right font-medium">{farmer.jumlah_kg.toLocaleString()} Kg</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
               ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header Card */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <ArrowUpFromLine className="h-5 w-5" />
+              Barang Keluar
+            </CardTitle>
+            <CardDescription>Pengambilan oleh koperasi (hari ke-8 dari penjualan petani) - Format LOT Mingguan</CardDescription>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+            <Select value={filterPengepul} onValueChange={setFilterPengepul}>
+              <SelectTrigger className="w-40 sm:w-48">
+                <SelectValue placeholder="Filter Pengepul" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Pengepul</SelectItem>
+                {pengepulList.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.nama}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Button 
+              variant="outline" 
+              onClick={handleAutoGenerate}
+              disabled={penjualanLoading}
+            >
+              <Wand2 className="h-4 w-4 mr-2" />
+              Auto Generate
+            </Button>
+            
+            <Dialog open={dialogOpen} onOpenChange={(open) => {
+              setDialogOpen(open);
+              if (!open) resetForm();
+            }}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-organic">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Tambah Manual
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Tambah Barang Keluar</DialogTitle>
+                  <DialogDescription>Catat pengambilan barang oleh koperasi</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div>
+                    <Label>Pengepul *</Label>
+                    <Select 
+                      value={form.pengepul_id} 
+                      onValueChange={(value) => setForm(prev => ({ ...prev, pengepul_id: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih pengepul" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {pengepulList.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.kode_pengepul} - {p.nama}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Tanggal Pengambilan *</Label>
+                    <Input
+                      type="date"
+                      value={form.tanggal_ambil}
+                      onChange={(e) => setForm(prev => ({ ...prev, tanggal_ambil: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label>Jumlah (Kg) *</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={form.jumlah_kg}
+                      onChange={(e) => setForm(prev => ({ ...prev, jumlah_kg: e.target.value }))}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <Label>Catatan</Label>
+                    <Textarea
+                      value={form.catatan}
+                      onChange={(e) => setForm(prev => ({ ...prev, catatan: e.target.value }))}
+                      placeholder="Catatan tambahan..."
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>Batal</Button>
+                    <Button onClick={handleSubmit} className="bg-gradient-organic">Simpan</Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+      </Card>
+
+      {loading ? (
+        <TableSkeleton rows={5} columns={5} />
+      ) : weeklyLots.organic.length === 0 && weeklyLots.conventional.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <ArrowUpFromLine className="h-12 w-12 text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground">Belum ada data barang keluar</p>
+            <p className="text-sm text-muted-foreground mt-2">Gunakan "Auto Generate" untuk membuat dari data penjualan petani</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {/* Organic Column */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Leaf className="h-5 w-5 text-green-600" />
+              <h3 className="font-semibold text-lg">Produk Organik</h3>
+              <Badge className="bg-green-600">{weeklyLots.organic.length} LOT</Badge>
+            </div>
+            {weeklyLots.organic.length === 0 ? (
+              <Card className="border-dashed">
+                <CardContent className="py-8 text-center text-muted-foreground">
+                  Belum ada data barang keluar organik
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {weeklyLots.organic.map(lot => renderLotCard(lot, 'organic'))}
+              </div>
+            )}
+          </div>
+
+          {/* Conventional Column */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Factory className="h-5 w-5 text-orange-500" />
+              <h3 className="font-semibold text-lg">Produk Konvensional</h3>
+              <Badge className="bg-orange-500">{weeklyLots.conventional.length} LOT</Badge>
+            </div>
+            {weeklyLots.conventional.length === 0 ? (
+              <Card className="border-dashed">
+                <CardContent className="py-8 text-center text-muted-foreground">
+                  Belum ada data barang keluar konvensional
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {weeklyLots.conventional.map(lot => renderLotCard(lot, 'conventional'))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       
       {/* Auto Generate Dialog */}
       <Dialog open={autoGenerateDialogOpen} onOpenChange={setAutoGenerateDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Wand2 className="h-5 w-5" />
@@ -358,17 +613,45 @@ export const BarangKeluarTab = () => {
             </Alert>
           ) : (
             <div className="space-y-4">
+              {/* Summary by type */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Leaf className="h-4 w-4 text-green-600" />
+                    <span className="font-medium">Organik</span>
+                  </div>
+                  <p className="text-2xl font-bold">{autoGenerateResults.filter(r => r.is_organic).reduce((sum, r) => sum + r.jumlah_kg, 0).toLocaleString()} Kg</p>
+                  <p className="text-sm text-muted-foreground">{autoGenerateResults.filter(r => r.is_organic).length} data</p>
+                </div>
+                <div className="p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg border border-orange-200 dark:border-orange-800">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Factory className="h-4 w-4 text-orange-500" />
+                    <span className="font-medium">Konvensional</span>
+                  </div>
+                  <p className="text-2xl font-bold">{autoGenerateResults.filter(r => !r.is_organic).reduce((sum, r) => sum + r.jumlah_kg, 0).toLocaleString()} Kg</p>
+                  <p className="text-sm text-muted-foreground">{autoGenerateResults.filter(r => !r.is_organic).length} data</p>
+                </div>
+              </div>
+
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Status</TableHead>
                     <TableHead>Tanggal Pengambilan</TableHead>
                     <TableHead>Pengepul</TableHead>
-                    <TableHead>Jumlah (Kg)</TableHead>
+                    <TableHead>Jumlah</TableHead>
+                    <TableHead>Petani</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {autoGenerateResults.map((result, idx) => (
                     <TableRow key={`${result.pengepul_id}-${result.tanggal_ambil}-${idx}`}>
+                      <TableCell>
+                        <Badge className={result.is_organic ? 'bg-green-600' : 'bg-orange-500'}>
+                          {result.is_organic ? <Leaf className="h-3 w-3 mr-1" /> : <Factory className="h-3 w-3 mr-1" />}
+                          {result.is_organic ? 'O' : 'K'}
+                        </Badge>
+                      </TableCell>
                       <TableCell>
                         {format(new Date(result.tanggal_ambil), "dd MMM yyyy", { locale: localeId })}
                       </TableCell>
@@ -379,17 +662,15 @@ export const BarangKeluarTab = () => {
                         </div>
                       </TableCell>
                       <TableCell className="font-medium">{result.jumlah_kg.toLocaleString()} Kg</TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          {result.farmers.length} petani
+                        </span>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-              
-              <div className="p-3 bg-primary/5 rounded-md">
-                <p className="text-sm">
-                  Total: <strong>{autoGenerateResults.length}</strong> data akan ditambahkan dengan total{" "}
-                  <strong>{autoGenerateResults.reduce((sum, r) => sum + r.jumlah_kg, 0).toLocaleString()} Kg</strong>
-                </p>
-              </div>
             </div>
           )}
           
@@ -409,6 +690,6 @@ export const BarangKeluarTab = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </Card>
+    </div>
   );
 };
