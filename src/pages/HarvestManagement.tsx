@@ -194,10 +194,18 @@ const HarvestManagement = () => {
       harga_per_kg: number | null;
       kondisi: string | null;
       pengepul_ids: string[] | null;
+      is_organic: boolean;
+      detail_petani: Array<{
+        petani_id: string;
+        petani_nama: string;
+        petani_kode: string;
+        jumlah_kg: number;
+        is_organic: boolean;
+      }>;
     },
     pengambilanIds: string[]
   ) => {
-    // Create batch
+    // Create batch with detail_petani
     const newBatch = await addBatch({
       petani_id: data.petani_id,
       lahan_id: data.lahan_id,
@@ -208,9 +216,10 @@ const HarvestManagement = () => {
       harga_per_kg: data.harga_per_kg,
       kondisi: data.kondisi,
       pengepul_ids: data.pengepul_ids,
-      is_organic: true, // Default to organic
+      is_organic: data.is_organic,
       status: "penerimaan",
-    });
+      detail_petani: data.detail_petani,
+    } as any);
 
     // Update pengambilan_koperasi with batch_id
     if (newBatch) {

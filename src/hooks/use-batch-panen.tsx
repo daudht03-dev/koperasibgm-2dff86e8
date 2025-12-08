@@ -21,6 +21,7 @@ export interface BatchPanen {
   status: BatchStatus;
   pengepul_ids: string[] | null;
   is_organic: boolean;
+  detail_petani?: unknown; // JSON from database - optional
   created_at: string;
   updated_at: string;
   // Joined data
@@ -172,7 +173,7 @@ export const useBatchPanen = () => {
     return data;
   };
 
-  const addBatch = async (batch: Omit<BatchPanen, 'id' | 'batch_number' | 'total_harga' | 'created_at' | 'updated_at' | 'petani' | 'lahan'>) => {
+  const addBatch = async (batch: Omit<BatchPanen, 'id' | 'batch_number' | 'total_harga' | 'created_at' | 'updated_at' | 'petani' | 'lahan' | 'detail_petani'> & { detail_petani?: unknown }) => {
     try {
       const batchNumber = await generateBatchNumber();
       
@@ -181,7 +182,8 @@ export const useBatchPanen = () => {
         .insert({
           ...batch,
           batch_number: batchNumber,
-        })
+          detail_petani: batch.detail_petani || null,
+        } as any)
         .select(`
           *,
           petani:petani_id(id, nama, kode_petani, alamat),
@@ -222,7 +224,7 @@ export const useBatchPanen = () => {
     try {
       const { data, error } = await supabase
         .from("batch_panen")
-        .update(updates)
+        .update(updates as any)
         .eq("id", id)
         .select(`
           *,
