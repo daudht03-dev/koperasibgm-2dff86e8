@@ -28,6 +28,7 @@ import { LaporanPengepulTab } from "@/components/harvest/LaporanPengepulTab";
 import { BatchPenerimaanForm } from "@/components/harvest/BatchPenerimaanForm";
 import { GudangTab } from "@/components/harvest/GudangTab";
 import { PengovenanTab } from "@/components/harvest/PengovenanTab";
+import { BatchSummaryView } from "@/components/harvest/BatchSummaryView";
 import { usePengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
@@ -493,6 +494,10 @@ const HarvestManagement = () => {
               <TabsTrigger value="estimasi" className="flex items-center gap-2">
                 <Calculator className="h-4 w-4" />
                 <span className="hidden sm:inline">Estimasi</span>
+              </TabsTrigger>
+              <TabsTrigger value="ringkasan" className="flex items-center gap-2">
+                <Eye className="h-4 w-4" />
+                <span className="hidden sm:inline">Ringkasan</span>
               </TabsTrigger>
             </TabsList>
             <ScrollBar orientation="horizontal" />
@@ -1033,6 +1038,15 @@ const HarvestManagement = () => {
                 />
               </div>
             </div>
+          </TabsContent>
+
+          {/* Ringkasan Tab */}
+          <TabsContent value="ringkasan">
+            <BatchSummaryView 
+              batches={batches}
+              prosesPengeringan={pengeringanList}
+              gudangStok={gudangList}
+            />
           </TabsContent>
         </Tabs>
       </main>
