@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,48 +11,33 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, Flame, Leaf, Factory, ChevronDown, ChevronRight, Users, Calculator, Package } from "lucide-react";
+import { Plus, Flame, Leaf, Factory, ChevronDown, ChevronRight, Users, AlertCircle, Package } from "lucide-react";
 import { useProsesPengeringan, useBatchPanen, useGudangStok, ProsesPengeringan, PetaniDetailPengeringan } from "@/hooks/use-batch-panen";
-import { usePengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
 import { TableSkeleton } from "@/components/ui/skeleton-templates";
-import { format, startOfWeek, getWeek, getYear } from "date-fns";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
 
-interface LotOption {
-  lotNumber: string;
-  weekNumber: number;
-  year: number;
-  isOrganic: boolean;
-  pickupDate: string;
-  totalKg: number;
-  items: Array<{
-    id: string;
-    pengepul_id: string;
-    pengepul_nama: string;
-    jumlah_kg: number;
-    detail_petani: Array<{
-      petani_id: string;
-      petani_nama: string;
-      petani_kode: string;
-      jumlah_kg: number;
-    }>;
-  }>;
+interface FarmerDetail {
+  petani_id: string;
+  petani_nama: string;
+  petani_kode: string;
+  jumlah_kg: number;
+  is_organic?: boolean;
 }
 
 export const PengovenanTab = () => {
   const { proses, loading, addProses, updateProses, refetch } = useProsesPengeringan();
-  const { batches } = useBatchPanen();
-  const { pengambilanList } = usePengambilanKoperasi();
+  const { batches, refetch: refetchBatches } = useBatchPanen();
   const { addStok } = useGudangStok();
   
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedLot, setSelectedLot] = useState<LotOption | null>(null);
+  const [selectedBatchId, setSelectedBatchId] = useState<string>("");
   const [selectedFarmers, setSelectedFarmers] = useState<Set<string>>(new Set());
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   
   const [form, setForm] = useState({
-    batch_id: "",
     suhu_oven: "",
     durasi_jam: "",
     kadar_air_awal: "",
@@ -64,82 +49,40 @@ export const PengovenanTab = () => {
     catatan: "",
   });
 
-  // Generate lot options from pengambilan_koperasi
-  const lotOptions = useMemo(() => {
-    const lots: LotOption[] = [];
-    const lotMap = new Map<string, LotOption>();
+  // Get batches that are in penerimaan status (ready for drying)
+  const availableBatches = useMemo(() => 
+    batches.filter(b => b.status === 'penerimaan'),
+    [batches]
+  );
 
-    pengambilanList.forEach(item => {
-      const pickupDate = new Date(item.tanggal_ambil);
-      const weekStart = startOfWeek(pickupDate, { weekStartsOn: 1 });
-      const weekNumber = getWeek(pickupDate, { weekStartsOn: 1 });
-      const year = getYear(pickupDate);
-      const isOrganic = item.is_organic ?? true;
-      
-      const lotKey = `LOT-${year}-W${String(weekNumber).padStart(2, '0')}-${isOrganic ? 'ORG' : 'CONV'}`;
-      
-      const detailPetani = Array.isArray(item.detail_petani) 
-        ? item.detail_petani as Array<{petani_id: string; petani_nama: string; petani_kode: string; jumlah_kg: number}>
-        : [];
-      
-      if (lotMap.has(lotKey)) {
-        const existing = lotMap.get(lotKey)!;
-        existing.totalKg += Number(item.jumlah_kg);
-        existing.items.push({
-          id: item.id,
-          pengepul_id: item.pengepul_id,
-          pengepul_nama: item.pengepul?.nama || 'Unknown',
-          jumlah_kg: Number(item.jumlah_kg),
-          detail_petani: detailPetani,
-        });
-      } else {
-        lotMap.set(lotKey, {
-          lotNumber: lotKey,
-          weekNumber,
-          year,
-          isOrganic,
-          pickupDate: item.tanggal_ambil,
-          totalKg: Number(item.jumlah_kg),
-          items: [{
-            id: item.id,
-            pengepul_id: item.pengepul_id,
-            pengepul_nama: item.pengepul?.nama || 'Unknown',
-            jumlah_kg: Number(item.jumlah_kg),
-            detail_petani: detailPetani,
-          }],
-        });
-      }
-    });
+  // Get selected batch details
+  const selectedBatch = useMemo(() => 
+    batches.find(b => b.id === selectedBatchId),
+    [batches, selectedBatchId]
+  );
 
-    return Array.from(lotMap.values()).sort((a, b) => b.lotNumber.localeCompare(a.lotNumber));
-  }, [pengambilanList]);
-
-  // Get all farmers from selected lot
-  const allFarmersFromLot = useMemo(() => {
-    if (!selectedLot) return [];
+  // Get detail_petani from selected batch
+  const batchFarmers = useMemo((): FarmerDetail[] => {
+    if (!selectedBatch) return [];
     
-    const farmerMap = new Map<string, { petani_id: string; petani_nama: string; petani_kode: string; jumlah_kg: number }>();
+    const detailPetani = (selectedBatch as any).detail_petani;
+    if (!detailPetani || !Array.isArray(detailPetani)) return [];
     
-    selectedLot.items.forEach(item => {
-      item.detail_petani.forEach(farmer => {
-        if (farmerMap.has(farmer.petani_id)) {
-          const existing = farmerMap.get(farmer.petani_id)!;
-          existing.jumlah_kg += farmer.jumlah_kg;
-        } else {
-          farmerMap.set(farmer.petani_id, { ...farmer });
-        }
-      });
-    });
-    
-    return Array.from(farmerMap.values());
-  }, [selectedLot]);
+    return detailPetani.map((f: any) => ({
+      petani_id: f.petani_id || f.id || '',
+      petani_nama: f.petani_nama || f.name || 'Unknown',
+      petani_kode: f.petani_kode || f.code || '-',
+      jumlah_kg: f.jumlah_kg || f.kg || 0,
+      is_organic: f.is_organic ?? f.isOrganic ?? true,
+    }));
+  }, [selectedBatch]);
 
   // Calculate totals from selected farmers
   const selectedTotalKg = useMemo(() => {
-    return allFarmersFromLot
+    return batchFarmers
       .filter(f => selectedFarmers.has(f.petani_id))
       .reduce((sum, f) => sum + f.jumlah_kg, 0);
-  }, [allFarmersFromLot, selectedFarmers]);
+  }, [batchFarmers, selectedFarmers]);
 
   // Auto-calculate susut values
   const calculateSusut = () => {
@@ -162,23 +105,28 @@ export const PengovenanTab = () => {
     };
   };
 
-  const handleLotChange = (lotNumber: string) => {
-    const lot = lotOptions.find(l => l.lotNumber === lotNumber);
-    setSelectedLot(lot || null);
+  const handleBatchChange = (batchId: string) => {
+    setSelectedBatchId(batchId);
     setSelectedFarmers(new Set());
     
-    if (lot) {
-      // Auto-populate jumlah_kg_sebelum
+    const batch = batches.find(b => b.id === batchId);
+    if (batch) {
+      // Auto-populate jumlah_kg_sebelum from batch
       setForm(prev => ({
         ...prev,
-        jumlah_kg_sebelum: lot.totalKg.toString(),
+        jumlah_kg_sebelum: String(batch.jumlah_kg),
       }));
-      // Select all farmers by default
-      const allFarmerIds = new Set<string>();
-      lot.items.forEach(item => {
-        item.detail_petani.forEach(f => allFarmerIds.add(f.petani_id));
-      });
-      setSelectedFarmers(allFarmerIds);
+      
+      // Auto-select all farmers
+      const detailPetani = (batch as any).detail_petani;
+      if (detailPetani && Array.isArray(detailPetani)) {
+        const farmerIds = new Set<string>();
+        detailPetani.forEach((f: any) => {
+          const id = f.petani_id || f.id;
+          if (id) farmerIds.add(id);
+        });
+        setSelectedFarmers(farmerIds);
+      }
     }
   };
 
@@ -195,16 +143,15 @@ export const PengovenanTab = () => {
   };
 
   const selectAllFarmers = () => {
-    if (selectedFarmers.size === allFarmersFromLot.length) {
+    if (selectedFarmers.size === batchFarmers.length) {
       setSelectedFarmers(new Set());
     } else {
-      setSelectedFarmers(new Set(allFarmersFromLot.map(f => f.petani_id)));
+      setSelectedFarmers(new Set(batchFarmers.map(f => f.petani_id)));
     }
   };
 
   const resetForm = () => {
     setForm({
-      batch_id: "",
       suhu_oven: "",
       durasi_jam: "",
       kadar_air_awal: "",
@@ -215,36 +162,42 @@ export const PengovenanTab = () => {
       operator: "",
       catatan: "",
     });
-    setSelectedLot(null);
+    setSelectedBatchId("");
     setSelectedFarmers(new Set());
   };
 
   const handleSubmit = async () => {
-    if (!form.batch_id || !selectedLot) {
+    if (!selectedBatchId || !selectedBatch) {
       toast({
         title: "Error",
-        description: "Pilih batch dan lot terlebih dahulu",
+        description: "Pilih batch terlebih dahulu",
         variant: "destructive",
       });
       return;
     }
 
     const susutCalc = calculateSusut();
+    const isOrganic = selectedBatch.is_organic ?? true;
     
     // Prepare farmer details
-    const farmerDetails: PetaniDetailPengeringan[] = allFarmersFromLot
+    const farmerDetails: PetaniDetailPengeringan[] = batchFarmers
       .filter(f => selectedFarmers.has(f.petani_id))
       .map(f => ({
         petani_id: f.petani_id,
         petani_nama: f.petani_nama,
         petani_kode: f.petani_kode,
         jumlah_kg: f.jumlah_kg,
-        is_organic: selectedLot.isOrganic,
+        is_organic: isOrganic,
       }));
 
+    // Generate lot number
+    const today = format(new Date(), "yyyyMMdd");
+    const existingLotsToday = proses.filter(p => p.lot_number?.startsWith(`OVEN-${today}`)).length;
+    const lotNumber = `OVEN-${today}-${String(existingLotsToday + 1).padStart(3, '0')}`;
+
     await addProses({
-      batch_id: form.batch_id,
-      lot_number: selectedLot.lotNumber,
+      batch_id: selectedBatchId,
+      lot_number: lotNumber,
       tanggal_mulai: new Date().toISOString(),
       tanggal_selesai: null,
       suhu_oven: form.suhu_oven ? parseFloat(form.suhu_oven) : null,
@@ -254,7 +207,7 @@ export const PengovenanTab = () => {
       jumlah_kg_sebelum: parseFloat(form.jumlah_kg_sebelum),
       jumlah_kg_sesudah: form.jumlah_kg_sesudah ? parseFloat(form.jumlah_kg_sesudah) : null,
       qc_off: form.qc_off ? parseFloat(form.qc_off) : null,
-      is_organic: selectedLot.isOrganic,
+      is_organic: isOrganic,
       detail_petani: farmerDetails,
       operator: form.operator || null,
       catatan: form.catatan || null,
@@ -334,7 +287,7 @@ export const PengovenanTab = () => {
               <Flame className="h-5 w-5 text-orange-500" />
               Proses Pengovenan
             </CardTitle>
-            <CardDescription>Kelola proses pengeringan dengan lot number dan perhitungan susut</CardDescription>
+            <CardDescription>Kelola proses pengeringan dengan perhitungan susut</CardDescription>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -346,65 +299,74 @@ export const PengovenanTab = () => {
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
               <DialogHeader>
                 <DialogTitle>Tambah Proses Pengovenan</DialogTitle>
-                <DialogDescription>Pilih lot dan petani untuk proses pengeringan</DialogDescription>
+                <DialogDescription>Pilih batch dan petani untuk proses pengeringan</DialogDescription>
               </DialogHeader>
               
               <ScrollArea className="flex-1 pr-4">
                 <div className="space-y-4">
                   {/* Batch Selection */}
                   <div>
-                    <Label>Batch Penerimaan *</Label>
-                    <Select value={form.batch_id} onValueChange={(value) => setForm(prev => ({ ...prev, batch_id: value }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih batch" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {batches
-                          .filter(b => b.status === 'penerimaan')
-                          .map(batch => (
+                    <Label>Pilih Batch Penerimaan *</Label>
+                    {availableBatches.length === 0 ? (
+                      <Alert className="mt-2">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          Tidak ada batch dengan status "penerimaan". Buat batch baru di tab Penerimaan terlebih dahulu.
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <Select value={selectedBatchId} onValueChange={handleBatchChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih batch" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableBatches.map(batch => (
                             <SelectItem key={batch.id} value={batch.id}>
-                              {batch.batch_number} - {batch.petani?.nama} ({batch.jumlah_kg} Kg)
+                              <div className="flex items-center gap-2">
+                                {batch.is_organic ? (
+                                  <Leaf className="h-4 w-4 text-green-600" />
+                                ) : (
+                                  <Factory className="h-4 w-4 text-orange-500" />
+                                )}
+                                <span>{batch.batch_number}</span>
+                                <span className="text-muted-foreground">- {batch.petani?.nama}</span>
+                                <Badge variant="outline" className="ml-2">{batch.jumlah_kg} Kg</Badge>
+                              </div>
                             </SelectItem>
                           ))}
-                      </SelectContent>
-                    </Select>
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
 
-                  {/* Lot Selection */}
-                  <div>
-                    <Label>Pilih Lot *</Label>
-                    <Select value={selectedLot?.lotNumber || ""} onValueChange={handleLotChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih lot" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {lotOptions.map(lot => (
-                          <SelectItem key={lot.lotNumber} value={lot.lotNumber}>
-                            <div className="flex items-center gap-2">
-                              {lot.isOrganic ? (
-                                <Leaf className="h-4 w-4 text-emerald-600" />
-                              ) : (
-                                <Factory className="h-4 w-4 text-slate-600" />
-                              )}
-                              <span>{lot.lotNumber}</span>
-                              <Badge variant="outline" className="ml-2">{lot.totalKg.toLocaleString()} Kg</Badge>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {/* Selected Batch Info */}
+                  {selectedBatch && (
+                    <div className="p-3 bg-muted/50 rounded-lg border">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Package className="h-4 w-4" />
+                        <span className="font-medium">{selectedBatch.batch_number}</span>
+                        <Badge className={selectedBatch.is_organic ? 'bg-green-600' : 'bg-orange-500'}>
+                          {selectedBatch.is_organic ? 'Organik' : 'Konvensional'}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Petani: {selectedBatch.petani?.nama} | 
+                        Total: {selectedBatch.jumlah_kg} Kg | 
+                        Tanggal: {format(new Date(selectedBatch.tanggal_penerimaan), "dd MMM yyyy", { locale: localeId })}
+                      </div>
+                    </div>
+                  )}
 
-                  {/* Farmer Selection */}
-                  {selectedLot && allFarmersFromLot.length > 0 && (
+                  {/* Farmer Selection from Batch */}
+                  {selectedBatchId && batchFarmers.length > 0 && (
                     <div className="border rounded-lg p-4">
                       <div className="flex items-center justify-between mb-3">
                         <Label className="text-sm font-medium flex items-center gap-2">
                           <Users className="h-4 w-4" />
-                          Pilih Petani untuk Dioven
+                          Pilih Petani untuk Dioven ({batchFarmers.length} petani)
                         </Label>
                         <Button variant="outline" size="sm" onClick={selectAllFarmers}>
-                          {selectedFarmers.size === allFarmersFromLot.length ? "Batalkan Semua" : "Pilih Semua"}
+                          {selectedFarmers.size === batchFarmers.length ? "Batalkan Semua" : "Pilih Semua"}
                         </Button>
                       </div>
                       
@@ -419,7 +381,7 @@ export const PengovenanTab = () => {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {allFarmersFromLot.map(farmer => (
+                            {batchFarmers.map(farmer => (
                               <TableRow 
                                 key={farmer.petani_id}
                                 className={selectedFarmers.has(farmer.petani_id) ? "bg-primary/5" : ""}
@@ -450,6 +412,15 @@ export const PengovenanTab = () => {
                     </div>
                   )}
 
+                  {selectedBatchId && batchFarmers.length === 0 && (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Batch ini tidak memiliki data detail petani. Pastikan batch dibuat dari Barang Keluar yang memiliki data petani.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
                   {/* Drying Parameters */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -462,24 +433,24 @@ export const PengovenanTab = () => {
                       />
                     </div>
                     <div>
+                      <Label>Jumlah Sesudah (Kg)</Label>
+                      <Input
+                        type="number"
+                        value={form.jumlah_kg_sesudah}
+                        onChange={(e) => setForm(prev => ({ ...prev, jumlah_kg_sesudah: e.target.value }))}
+                        placeholder="Diisi setelah proses selesai"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
                       <Label>Suhu Oven (°C)</Label>
                       <Input
                         type="number"
                         value={form.suhu_oven}
                         onChange={(e) => setForm(prev => ({ ...prev, suhu_oven: e.target.value }))}
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Kadar Air Awal (%)</Label>
-                      <Input
-                        type="number"
-                        value={form.kadar_air_awal}
-                        onChange={(e) => setForm(prev => ({ ...prev, kadar_air_awal: e.target.value }))}
-                        placeholder="0"
+                        placeholder="70"
                       />
                     </div>
                     <div>
@@ -488,30 +459,21 @@ export const PengovenanTab = () => {
                         type="number"
                         value={form.durasi_jam}
                         onChange={(e) => setForm(prev => ({ ...prev, durasi_jam: e.target.value }))}
-                        placeholder="0"
+                        placeholder="24"
+                      />
+                    </div>
+                    <div>
+                      <Label>Kadar Air Awal (%)</Label>
+                      <Input
+                        type="number"
+                        value={form.kadar_air_awal}
+                        onChange={(e) => setForm(prev => ({ ...prev, kadar_air_awal: e.target.value }))}
+                        placeholder="40"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label>Jumlah Sesudah (Kg)</Label>
-                      <Input
-                        type="number"
-                        value={form.jumlah_kg_sesudah}
-                        onChange={(e) => setForm(prev => ({ ...prev, jumlah_kg_sesudah: e.target.value }))}
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <Label>Kadar Air Akhir (%)</Label>
-                      <Input
-                        type="number"
-                        value={form.kadar_air_akhir}
-                        onChange={(e) => setForm(prev => ({ ...prev, kadar_air_akhir: e.target.value }))}
-                        placeholder="0"
-                      />
-                    </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>QC Off (Kg)</Label>
                       <Input
@@ -521,37 +483,6 @@ export const PengovenanTab = () => {
                         placeholder="0"
                       />
                     </div>
-                  </div>
-
-                  {/* Auto-calculated Susut Display */}
-                  {(form.jumlah_kg_sebelum && form.jumlah_kg_sesudah) && (
-                    <div className="border rounded-lg p-4 bg-muted/30">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Calculator className="h-4 w-4" />
-                        <Label className="font-medium">Perhitungan Susut (Otomatis)</Label>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Penyusutan:</span>
-                          <span className="font-medium ml-2">{calculateSusut().penyusutan_kg.toFixed(2)} Kg</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Susut (%):</span>
-                          <span className="font-medium ml-2">{calculateSusut().susut_persen.toFixed(2)}%</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Total Kering:</span>
-                          <span className="font-medium ml-2">{calculateSusut().total_kering?.toFixed(2)} Kg</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Total Kering Packing:</span>
-                          <span className="font-medium ml-2">{calculateSusut().total_kering_packing?.toFixed(2)} Kg</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>Operator</Label>
                       <Input
@@ -560,15 +491,15 @@ export const PengovenanTab = () => {
                         placeholder="Nama operator"
                       />
                     </div>
-                    <div>
-                      <Label>Catatan</Label>
-                      <Textarea
-                        value={form.catatan}
-                        onChange={(e) => setForm(prev => ({ ...prev, catatan: e.target.value }))}
-                        placeholder="Catatan tambahan"
-                        rows={1}
-                      />
-                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Catatan</Label>
+                    <Textarea
+                      value={form.catatan}
+                      onChange={(e) => setForm(prev => ({ ...prev, catatan: e.target.value }))}
+                      placeholder="Catatan tambahan..."
+                    />
                   </div>
                 </div>
               </ScrollArea>
@@ -578,11 +509,11 @@ export const PengovenanTab = () => {
                   Batal
                 </Button>
                 <Button 
-                  onClick={handleSubmit}
+                  onClick={handleSubmit} 
                   className="bg-gradient-organic"
-                  disabled={!form.batch_id || !selectedLot || !form.jumlah_kg_sebelum}
+                  disabled={!selectedBatchId || !form.jumlah_kg_sebelum}
                 >
-                  Simpan Proses
+                  Mulai Pengovenan
                 </Button>
               </div>
             </DialogContent>
@@ -592,141 +523,157 @@ export const PengovenanTab = () => {
       
       <CardContent>
         {proses.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Flame className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Belum ada proses pengovenan</p>
+          <div className="text-center py-12">
+            <Flame className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground">Belum ada proses pengovenan</p>
+            <p className="text-sm text-muted-foreground mt-1">Klik "Tambah Proses" untuk memulai</p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-8"></TableHead>
-                <TableHead>Lot Number</TableHead>
-                <TableHead>Tipe</TableHead>
-                <TableHead>Sebelum (Kg)</TableHead>
-                <TableHead>Sesudah (Kg)</TableHead>
-                <TableHead>Susut (%)</TableHead>
-                <TableHead>QC Off</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {proses.map(p => {
-                const detailPetani = getDetailPetani(p);
-                const isExpanded = expandedRows.has(p.id);
-                
-                return (
-                  <Collapsible key={p.id} asChild open={isExpanded}>
-                    <>
-                      <TableRow className="hover:bg-muted/50">
-                        <TableCell>
-                          <CollapsibleTrigger asChild>
-                            <Button variant="ghost" size="sm" onClick={() => toggleRow(p.id)}>
-                              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                            </Button>
-                          </CollapsibleTrigger>
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            <Package className="h-4 w-4 text-muted-foreground" />
-                            {p.lot_number || '-'}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {p.is_organic ? (
-                            <Badge variant="outline" className="border-emerald-500 text-emerald-700">
-                              <Leaf className="h-3 w-3 mr-1" />
-                              Organik
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="border-slate-500 text-slate-700">
-                              <Factory className="h-3 w-3 mr-1" />
-                              Konvensional
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>{Number(p.jumlah_kg_sebelum).toLocaleString()}</TableCell>
-                        <TableCell>{p.jumlah_kg_sesudah ? Number(p.jumlah_kg_sesudah).toLocaleString() : '-'}</TableCell>
-                        <TableCell>
-                          {p.susut_persen ? (
-                            <Badge variant={Number(p.susut_persen) > 15 ? "destructive" : "secondary"}>
-                              {Number(p.susut_persen).toFixed(1)}%
-                            </Badge>
-                          ) : '-'}
-                        </TableCell>
-                        <TableCell>{p.qc_off ? `${Number(p.qc_off).toLocaleString()} Kg` : '-'}</TableCell>
-                        <TableCell>
-                          <Badge variant={p.status === 'selesai' ? 'default' : 'secondary'}>
-                            {p.status === 'selesai' ? 'Selesai' : 'Proses'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {p.status !== 'selesai' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleCompleteDrying(p)}
-                            >
-                              Selesaikan
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                      <CollapsibleContent asChild>
-                        <TableRow className="bg-muted/30">
-                          <TableCell colSpan={9} className="p-4">
-                            <div className="space-y-3">
-                              <div className="grid grid-cols-4 gap-4 text-sm">
-                                <div>
-                                  <span className="text-muted-foreground">Suhu Oven:</span>
-                                  <span className="font-medium ml-2">{p.suhu_oven ? `${p.suhu_oven}°C` : '-'}</span>
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground">Durasi:</span>
-                                  <span className="font-medium ml-2">{p.durasi_jam ? `${p.durasi_jam} jam` : '-'}</span>
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground">Kadar Air Awal:</span>
-                                  <span className="font-medium ml-2">{p.kadar_air_awal ? `${p.kadar_air_awal}%` : '-'}</span>
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground">Kadar Air Akhir:</span>
-                                  <span className="font-medium ml-2">{p.kadar_air_akhir ? `${p.kadar_air_akhir}%` : '-'}</span>
-                                </div>
-                              </div>
-                              
-                              {detailPetani.length > 0 && (
-                                <div>
-                                  <Label className="text-sm mb-2 block">Detail Petani:</Label>
-                                  <div className="grid grid-cols-2 gap-2">
-                                    {detailPetani.map((f, idx) => (
-                                      <div key={idx} className="flex items-center gap-2 p-2 bg-background rounded-md text-sm">
-                                        <span className="font-medium">{f.petani_nama}</span>
-                                        <span className="text-muted-foreground">({f.petani_kode})</span>
-                                        <Badge variant="outline" className="ml-auto">{f.jumlah_kg} Kg</Badge>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {p.catatan && (
-                                <div className="text-sm">
-                                  <span className="text-muted-foreground">Catatan:</span>
-                                  <span className="ml-2">{p.catatan}</span>
-                                </div>
-                              )}
+          <div className="space-y-4">
+            {proses.map((p) => {
+              const isExpanded = expandedRows.has(p.id);
+              const detailPetani = getDetailPetani(p);
+              const susutCalc = {
+                penyusutan: p.penyusutan_kg ?? 0,
+                susutPersen: p.susut_persen ?? 0,
+                totalKering: p.total_kering ?? p.jumlah_kg_sesudah ?? 0,
+                totalKeringPacking: p.total_kering_packing ?? 0,
+              };
+
+              return (
+                <Collapsible key={p.id} open={isExpanded} onOpenChange={() => toggleRow(p.id)}>
+                  <Card className={`border-l-4 ${p.is_organic ? 'border-l-green-500' : 'border-l-orange-500'}`}>
+                    <CollapsibleTrigger className="w-full">
+                      <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            <div className="text-left">
+                              <CardTitle className="text-base flex items-center gap-2">
+                                {p.lot_number || 'LOT-???'}
+                                <Badge className={p.is_organic ? 'bg-green-600' : 'bg-orange-500'}>
+                                  {p.is_organic ? <Leaf className="h-3 w-3 mr-1" /> : <Factory className="h-3 w-3 mr-1" />}
+                                  {p.is_organic ? 'Organik' : 'Konvensional'}
+                                </Badge>
+                                <Badge variant={p.status === 'selesai' ? 'default' : 'secondary'}>
+                                  {p.status === 'selesai' ? 'Selesai' : 'Proses'}
+                                </Badge>
+                              </CardTitle>
+                              <CardDescription>
+                                Mulai: {format(new Date(p.tanggal_mulai), "dd MMM yyyy HH:mm", { locale: localeId })}
+                                {p.tanggal_selesai && ` | Selesai: ${format(new Date(p.tanggal_selesai), "dd MMM yyyy HH:mm", { locale: localeId })}`}
+                              </CardDescription>
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      </CollapsibleContent>
-                    </>
-                  </Collapsible>
-                );
-              })}
-            </TableBody>
-          </Table>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold">{Number(p.jumlah_kg_sebelum).toLocaleString()} Kg</p>
+                            <p className="text-sm text-muted-foreground">
+                              {p.jumlah_kg_sesudah ? `→ ${Number(p.jumlah_kg_sesudah).toLocaleString()} Kg` : 'Belum selesai'}
+                            </p>
+                          </div>
+                        </div>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-0 space-y-4">
+                        {/* Drying Details */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="p-3 bg-muted/50 rounded-lg">
+                            <p className="text-xs text-muted-foreground">Suhu Oven</p>
+                            <p className="font-medium">{p.suhu_oven ?? '-'} °C</p>
+                          </div>
+                          <div className="p-3 bg-muted/50 rounded-lg">
+                            <p className="text-xs text-muted-foreground">Durasi</p>
+                            <p className="font-medium">{p.durasi_jam ?? '-'} Jam</p>
+                          </div>
+                          <div className="p-3 bg-muted/50 rounded-lg">
+                            <p className="text-xs text-muted-foreground">Kadar Air Awal</p>
+                            <p className="font-medium">{p.kadar_air_awal ?? '-'}%</p>
+                          </div>
+                          <div className="p-3 bg-muted/50 rounded-lg">
+                            <p className="text-xs text-muted-foreground">Kadar Air Akhir</p>
+                            <p className="font-medium">{p.kadar_air_akhir ?? '-'}%</p>
+                          </div>
+                        </div>
+
+                        {/* Shrinkage Calculation */}
+                        {p.jumlah_kg_sesudah && (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg border border-orange-200 dark:border-orange-800">
+                              <p className="text-xs text-orange-600">Penyusutan</p>
+                              <p className="font-medium">{Number(susutCalc.penyusutan).toLocaleString()} Kg ({Number(susutCalc.susutPersen).toFixed(1)}%)</p>
+                            </div>
+                            <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                              <p className="text-xs text-blue-600">Total Kering</p>
+                              <p className="font-medium">{Number(susutCalc.totalKering).toLocaleString()} Kg</p>
+                            </div>
+                            <div className="p-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg border border-purple-200 dark:border-purple-800">
+                              <p className="text-xs text-purple-600">QC Off</p>
+                              <p className="font-medium">{Number(p.qc_off ?? 0).toLocaleString()} Kg ({Number(p.susut_qc_off_persen ?? 0).toFixed(1)}%)</p>
+                            </div>
+                            <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                              <p className="text-xs text-green-600">Total Kering Packing</p>
+                              <p className="font-medium">{Number(susutCalc.totalKeringPacking).toLocaleString()} Kg</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Farmer Details */}
+                        {detailPetani.length > 0 && (
+                          <div>
+                            <p className="text-sm font-medium mb-2 flex items-center gap-1">
+                              <Users className="h-4 w-4" />
+                              Detail Petani ({detailPetani.length})
+                            </p>
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Petani</TableHead>
+                                  <TableHead>Kode</TableHead>
+                                  <TableHead>Tipe</TableHead>
+                                  <TableHead>Jumlah (Kg)</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {detailPetani.map((farmer, idx) => (
+                                  <TableRow key={`${farmer.petani_id}-${idx}`}>
+                                    <TableCell className="font-medium">{farmer.petani_nama}</TableCell>
+                                    <TableCell>{farmer.petani_kode}</TableCell>
+                                    <TableCell>
+                                      {farmer.is_organic ? (
+                                        <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">O</Badge>
+                                      ) : (
+                                        <Badge variant="outline" className="text-xs bg-slate-50 text-slate-700 border-slate-200">K</Badge>
+                                      )}
+                                    </TableCell>
+                                    <TableCell>{farmer.jumlah_kg.toLocaleString()} Kg</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
+
+                        {/* Actions */}
+                        {p.status !== 'selesai' && (
+                          <div className="flex justify-end gap-2 pt-2 border-t">
+                            <Button 
+                              variant="outline" 
+                              onClick={() => handleCompleteDrying(p)}
+                              disabled={!p.jumlah_kg_sesudah}
+                            >
+                              <Flame className="h-4 w-4 mr-2" />
+                              Selesaikan Pengovenan
+                            </Button>
+                          </div>
+                        )}
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+              );
+            })}
+          </div>
         )}
       </CardContent>
     </Card>

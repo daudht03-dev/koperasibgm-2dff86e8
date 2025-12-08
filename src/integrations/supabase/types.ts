@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           batch_number: string
           created_at: string | null
+          detail_petani: Json | null
           harga_per_kg: number | null
           id: string
           is_organic: boolean | null
@@ -36,6 +37,7 @@ export type Database = {
         Insert: {
           batch_number: string
           created_at?: string | null
+          detail_petani?: Json | null
           harga_per_kg?: number | null
           id?: string
           is_organic?: boolean | null
@@ -54,6 +56,7 @@ export type Database = {
         Update: {
           batch_number?: string
           created_at?: string | null
+          detail_petani?: Json | null
           harga_per_kg?: number | null
           id?: string
           is_organic?: boolean | null
