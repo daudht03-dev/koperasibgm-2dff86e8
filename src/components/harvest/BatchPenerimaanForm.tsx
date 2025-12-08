@@ -259,13 +259,15 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
                 </AlertDescription>
               </Alert>
             ) : (
-              <ScrollArea className="h-40 border rounded-md">
+              <ScrollArea className="h-48 border rounded-md">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-12"></TableHead>
                       <TableHead>Tanggal</TableHead>
                       <TableHead>Pengepul</TableHead>
+                      <TableHead>Lot Number</TableHead>
+                      <TableHead>Tipe</TableHead>
                       <TableHead>Jumlah (Kg)</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -289,6 +291,26 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
                             <p className="font-medium">{item.pengepul?.nama}</p>
                             <p className="text-xs text-muted-foreground">{item.pengepul?.kode_pengepul}</p>
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {item.lot_number ? (
+                            <Badge variant="outline" className="font-mono text-xs">
+                              {item.lot_number}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {item.is_organic !== false ? (
+                            <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+                              Organik
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs bg-slate-50 text-slate-700 border-slate-200">
+                              Konvensional
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="font-medium">{Number(item.jumlah_kg).toLocaleString()} Kg</TableCell>
                       </TableRow>

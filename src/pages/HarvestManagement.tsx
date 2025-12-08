@@ -17,7 +17,7 @@ import { useBatchPanen, useProsesPengeringan, useGudangStok, usePengolahanDokume
 import { useFarmers } from "@/hooks/use-farmers";
 import { useLands } from "@/hooks/use-lands";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Plus, Package, Flame, Warehouse, FileText, ShoppingCart, Eye, Edit, Trash2, RefreshCw, TrendingUp, Calendar, Scale, Droplets, Calculator, Users, ArrowDownToLine, ArrowUpFromLine, FileBarChart } from "lucide-react";
+import { ArrowLeft, Plus, Package, Flame, Warehouse, FileText, ShoppingCart, Eye, Edit, Trash2, RefreshCw, TrendingUp, Calendar, Scale, Droplets, Calculator, Users, ArrowDownToLine, ArrowUpFromLine, FileBarChart, Leaf, Factory } from "lucide-react";
 import { useHarvestEstimation } from "@/hooks/use-harvest-estimation";
 import { HarvestEstimationForm } from "@/components/HarvestEstimationForm";
 import { HarvestEstimationTable } from "@/components/HarvestEstimationTable";
@@ -26,6 +26,8 @@ import { BarangMasukTab } from "@/components/harvest/BarangMasukTab";
 import { BarangKeluarTab } from "@/components/harvest/BarangKeluarTab";
 import { LaporanPengepulTab } from "@/components/harvest/LaporanPengepulTab";
 import { BatchPenerimaanForm } from "@/components/harvest/BatchPenerimaanForm";
+import { GudangTab } from "@/components/harvest/GudangTab";
+import { PengovenanTab } from "@/components/harvest/PengovenanTab";
 import { usePengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
@@ -532,6 +534,7 @@ const HarvestManagement = () => {
                         <TableHead>Petani</TableHead>
                         <TableHead>Tanggal</TableHead>
                         <TableHead>Jumlah (Kg)</TableHead>
+                        <TableHead>Tipe</TableHead>
                         <TableHead>Kualitas</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Aksi</TableHead>
@@ -551,6 +554,19 @@ const HarvestManagement = () => {
                             {format(new Date(batch.tanggal_penerimaan), "dd MMM yyyy", { locale: localeId })}
                           </TableCell>
                           <TableCell>{Number(batch.jumlah_kg).toLocaleString()}</TableCell>
+                          <TableCell>
+                            {batch.is_organic !== false ? (
+                              <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+                                <Leaf className="h-3 w-3 mr-1" />
+                                Organik
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs bg-slate-50 text-slate-700 border-slate-200">
+                                <Factory className="h-3 w-3 mr-1" />
+                                Konv.
+                              </Badge>
+                            )}
+                          </TableCell>
                           <TableCell>
                             <Badge variant="outline">{qualityLabels[batch.kualitas]}</Badge>
                           </TableCell>
@@ -596,7 +612,7 @@ const HarvestManagement = () => {
                       ))}
                       {batches.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                             Belum ada data batch panen
                           </TableCell>
                         </TableRow>
@@ -608,352 +624,14 @@ const HarvestManagement = () => {
             </Card>
           </TabsContent>
 
-          {/* Pengeringan Tab */}
+          {/* Pengeringan Tab - Using PengovenanTab */}
           <TabsContent value="pengeringan">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Proses Pengeringan / Oven</CardTitle>
-                  <CardDescription>Kelola proses pengeringan hasil panen</CardDescription>
-                </div>
-                <Dialog open={dialogOpen && activeTab === "pengeringan"} onOpenChange={(open) => {
-                  setDialogOpen(open);
-                  if (!open) resetForms();
-                }}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-gradient-organic">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Mulai Pengeringan
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Mulai Proses Pengeringan</DialogTitle>
-                      <DialogDescription>Catat proses pengeringan/oven batch panen</DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div>
-                        <Label>Pilih Batch *</Label>
-                        <Select
-                          value={pengeringanForm.batch_id}
-                          onValueChange={(value) => {
-                            const batch = batches.find(b => b.id === value);
-                            setPengeringanForm(prev => ({
-                              ...prev,
-                              batch_id: value,
-                              jumlah_kg_sebelum: batch ? String(batch.jumlah_kg) : "",
-                              kadar_air_awal: "",
-                            }));
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih batch" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {batches.filter(b => b.status === 'penerimaan').map((batch) => (
-                              <SelectItem key={batch.id} value={batch.id}>
-                                {batch.batch_number} - {batch.petani?.nama} ({batch.jumlah_kg} Kg)
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label>Suhu Oven (°C)</Label>
-                          <Input
-                            type="number"
-                            value={pengeringanForm.suhu_oven}
-                            onChange={(e) => setPengeringanForm(prev => ({ ...prev, suhu_oven: e.target.value }))}
-                            placeholder="0"
-                          />
-                        </div>
-                        <div>
-                          <Label>Durasi (Jam)</Label>
-                          <Input
-                            type="number"
-                            value={pengeringanForm.durasi_jam}
-                            onChange={(e) => setPengeringanForm(prev => ({ ...prev, durasi_jam: e.target.value }))}
-                            placeholder="0"
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label>Kadar Air Awal (%)</Label>
-                          <Input
-                            type="number"
-                            step="0.1"
-                            value={pengeringanForm.kadar_air_awal}
-                            onChange={(e) => setPengeringanForm(prev => ({ ...prev, kadar_air_awal: e.target.value }))}
-                            placeholder="0.0"
-                          />
-                        </div>
-                        <div>
-                          <Label>Jumlah Kg Sebelum *</Label>
-                          <Input
-                            type="number"
-                            step="0.1"
-                            value={pengeringanForm.jumlah_kg_sebelum}
-                            onChange={(e) => setPengeringanForm(prev => ({ ...prev, jumlah_kg_sebelum: e.target.value }))}
-                            placeholder="0.0"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <Label>Operator</Label>
-                        <Input
-                          value={pengeringanForm.operator}
-                          onChange={(e) => setPengeringanForm(prev => ({ ...prev, operator: e.target.value }))}
-                          placeholder="Nama operator"
-                        />
-                      </div>
-                      <div>
-                        <Label>Catatan</Label>
-                        <Textarea
-                          value={pengeringanForm.catatan}
-                          onChange={(e) => setPengeringanForm(prev => ({ ...prev, catatan: e.target.value }))}
-                          placeholder="Catatan proses..."
-                        />
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => setDialogOpen(false)}>Batal</Button>
-                        <Button onClick={handleAddPengeringan} className="bg-gradient-organic">Mulai Proses</Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                {pengeringanLoading ? (
-                  <TableSkeleton rows={5} columns={6} />
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Batch</TableHead>
-                        <TableHead>Mulai</TableHead>
-                        <TableHead>Suhu (°C)</TableHead>
-                        <TableHead>Kg Sebelum</TableHead>
-                        <TableHead>Kg Sesudah</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Aksi</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {pengeringanList.map((proses) => {
-                        const batch = batches.find(b => b.id === proses.batch_id);
-                        return (
-                          <TableRow key={proses.id}>
-                            <TableCell className="font-mono">{batch?.batch_number || "-"}</TableCell>
-                            <TableCell>
-                              {format(new Date(proses.tanggal_mulai), "dd MMM yyyy HH:mm", { locale: localeId })}
-                            </TableCell>
-                            <TableCell>{proses.suhu_oven || "-"}</TableCell>
-                            <TableCell>{Number(proses.jumlah_kg_sebelum).toLocaleString()}</TableCell>
-                            <TableCell>{proses.jumlah_kg_sesudah ? Number(proses.jumlah_kg_sesudah).toLocaleString() : "-"}</TableCell>
-                            <TableCell>
-                              <Badge variant={proses.status === 'selesai' ? 'default' : 'secondary'}>
-                                {proses.status === 'selesai' ? 'Selesai' : 'Proses'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {proses.status !== 'selesai' && (
-                                <Button variant="outline" size="sm">
-                                  Selesaikan
-                                </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                      {pengeringanList.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                            Belum ada data proses pengeringan
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
+            <PengovenanTab />
           </TabsContent>
 
-          {/* Penyimpanan Tab */}
+          {/* Penyimpanan Tab - Using GudangTab */}
           <TabsContent value="penyimpanan">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Stok Gudang</CardTitle>
-                  <CardDescription>Kelola penyimpanan hasil panen di gudang</CardDescription>
-                </div>
-                <Dialog open={dialogOpen && activeTab === "penyimpanan"} onOpenChange={(open) => {
-                  setDialogOpen(open);
-                  if (!open) resetForms();
-                }}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-gradient-organic">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Tambah ke Gudang
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Tambah Stok Gudang</DialogTitle>
-                      <DialogDescription>Catat penyimpanan batch di gudang</DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div>
-                        <Label>Pilih Batch *</Label>
-                        <Select
-                          value={gudangForm.batch_id}
-                          onValueChange={(value) => {
-                            const batch = batches.find(b => b.id === value);
-                            setGudangForm(prev => ({
-                              ...prev,
-                              batch_id: value,
-                              jumlah_kg: batch ? String(batch.jumlah_kg) : "",
-                            }));
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih batch" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {batches.filter(b => b.status === 'pengeringan').map((batch) => (
-                              <SelectItem key={batch.id} value={batch.id}>
-                                {batch.batch_number} - {batch.petani?.nama} ({batch.jumlah_kg} Kg)
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label>Lokasi Gudang</Label>
-                          <Input
-                            value={gudangForm.lokasi_gudang}
-                            onChange={(e) => setGudangForm(prev => ({ ...prev, lokasi_gudang: e.target.value }))}
-                          />
-                        </div>
-                        <div>
-                          <Label>Posisi Rak</Label>
-                          <Input
-                            value={gudangForm.rak_posisi}
-                            onChange={(e) => setGudangForm(prev => ({ ...prev, rak_posisi: e.target.value }))}
-                            placeholder="A1, B2, dll"
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div>
-                          <Label>Jumlah (Kg) *</Label>
-                          <Input
-                            type="number"
-                            step="0.1"
-                            value={gudangForm.jumlah_kg}
-                            onChange={(e) => setGudangForm(prev => ({ ...prev, jumlah_kg: e.target.value }))}
-                          />
-                        </div>
-                        <div>
-                          <Label>Suhu (°C)</Label>
-                          <Input
-                            type="number"
-                            value={gudangForm.suhu_gudang}
-                            onChange={(e) => setGudangForm(prev => ({ ...prev, suhu_gudang: e.target.value }))}
-                          />
-                        </div>
-                        <div>
-                          <Label>Kelembaban (%)</Label>
-                          <Input
-                            type="number"
-                            value={gudangForm.kelembaban}
-                            onChange={(e) => setGudangForm(prev => ({ ...prev, kelembaban: e.target.value }))}
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <Label>Kondisi Penyimpanan</Label>
-                        <Input
-                          value={gudangForm.kondisi_penyimpanan}
-                          onChange={(e) => setGudangForm(prev => ({ ...prev, kondisi_penyimpanan: e.target.value }))}
-                          placeholder="Baik, perlu perhatian, dll"
-                        />
-                      </div>
-                      <div>
-                        <Label>Catatan</Label>
-                        <Textarea
-                          value={gudangForm.catatan}
-                          onChange={(e) => setGudangForm(prev => ({ ...prev, catatan: e.target.value }))}
-                        />
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => setDialogOpen(false)}>Batal</Button>
-                        <Button onClick={handleAddGudang} className="bg-gradient-organic">Simpan</Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                {gudangLoading ? (
-                  <TableSkeleton rows={5} columns={6} />
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Batch</TableHead>
-                        <TableHead>Lokasi</TableHead>
-                        <TableHead>Tanggal Masuk</TableHead>
-                        <TableHead>Jumlah (Kg)</TableHead>
-                        <TableHead>Suhu/Kelembaban</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {gudangList.map((item) => {
-                        const batch = batches.find(b => b.id === item.batch_id);
-                        return (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-mono">{batch?.batch_number || "-"}</TableCell>
-                            <TableCell>
-                              <div>
-                                <p>{item.lokasi_gudang}</p>
-                                {item.rak_posisi && <p className="text-sm text-muted-foreground">Rak: {item.rak_posisi}</p>}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {format(new Date(item.tanggal_masuk), "dd MMM yyyy", { locale: localeId })}
-                            </TableCell>
-                            <TableCell>{Number(item.jumlah_kg).toLocaleString()}</TableCell>
-                            <TableCell>
-                              {item.suhu_gudang && `${item.suhu_gudang}°C`}
-                              {item.suhu_gudang && item.kelembaban && " / "}
-                              {item.kelembaban && `${item.kelembaban}%`}
-                              {!item.suhu_gudang && !item.kelembaban && "-"}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={item.status === 'tersimpan' ? 'default' : 'secondary'}>
-                                {item.status === 'tersimpan' ? 'Tersimpan' : item.status}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                      {gudangList.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                            Belum ada data stok gudang
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
+            <GudangTab />
           </TabsContent>
 
           {/* Dokumen Tab */}
