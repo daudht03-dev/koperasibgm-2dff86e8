@@ -15,7 +15,7 @@ export const GudangTab = () => {
   const { batches } = useBatchPanen();
   const { proses } = useProsesPengeringan();
   
-  const [activeSubTab, setActiveSubTab] = useState("bahan-baku-organik");
+  const [activeSubTab, setActiveSubTab] = useState("hasil-oven");
 
   // Separate stok by type and organic status
   const categorizedStok = useMemo(() => {
@@ -59,6 +59,19 @@ export const GudangTab = () => {
     };
   }, [categorizedStok]);
 
+  // Get oven process data with detailed info
+  const ovenProcessData = useMemo(() => {
+    return proses.filter(p => p.status === 'selesai').map(p => {
+      const batch = batches.find(b => b.id === p.batch_id);
+      const stokEntry = stok.find(s => s.batch_id === p.batch_id && s.tipe_stok === 'produk_jadi');
+      return {
+        ...p,
+        batch,
+        stokEntry,
+      };
+    });
+  }, [proses, batches, stok]);
+
   const renderStokTable = (items: GudangStok[], emptyMessage: string) => {
     if (items.length === 0) {
       return (
@@ -76,18 +89,22 @@ export const GudangTab = () => {
             <TableHead>Lokasi</TableHead>
             <TableHead>Tanggal Masuk</TableHead>
             <TableHead>Jumlah (Kg)</TableHead>
-            <TableHead>Suhu/Kelembaban</TableHead>
+            <TableHead>Kondisi</TableHead>
             <TableHead>Status</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.map((item) => {
             const batch = batches.find(b => b.id === item.batch_id);
+            const ovenProses = proses.find(p => p.batch_id === item.batch_id);
             return (
               <TableRow key={item.id}>
                 <TableCell>
                   <div>
                     <p className="font-mono font-medium">{batch?.batch_number || "-"}</p>
+                    {ovenProses?.lot_number && (
+                      <p className="text-xs text-muted-foreground font-mono">{ovenProses.lot_number}</p>
+                    )}
                     <div className="flex items-center gap-1 mt-1">
                       {item.is_organic ? (
                         <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
@@ -117,10 +134,12 @@ export const GudangTab = () => {
                 </TableCell>
                 <TableCell className="font-medium">{Number(item.jumlah_kg).toLocaleString()} Kg</TableCell>
                 <TableCell>
-                  {item.suhu_gudang && `${item.suhu_gudang}°C`}
-                  {item.suhu_gudang && item.kelembaban && " / "}
-                  {item.kelembaban && `${item.kelembaban}%`}
-                  {!item.suhu_gudang && !item.kelembaban && "-"}
+                  <div className="text-sm">
+                    {item.kondisi_penyimpanan || "-"}
+                    {item.suhu_gudang && (
+                      <p className="text-xs text-muted-foreground">{item.suhu_gudang}°C / {item.kelembaban || "-"}%</p>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <Badge 
@@ -129,6 +148,92 @@ export const GudangTab = () => {
                   >
                     {item.status === 'tersimpan' ? 'Tersimpan' : item.status === 'keluar' ? 'Keluar' : item.status}
                   </Badge>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    );
+  };
+
+  const renderOvenResultsTable = () => {
+    const completedProses = proses.filter(p => p.status === 'selesai');
+    
+    if (completedProses.length === 0) {
+      return (
+        <div className="text-center py-8 text-muted-foreground">
+          Belum ada hasil pengovenan yang selesai
+        </div>
+      );
+    }
+
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Lot Number</TableHead>
+            <TableHead>Tanggal Selesai</TableHead>
+            <TableHead>Bahan Masuk</TableHead>
+            <TableHead>Susut (%)</TableHead>
+            <TableHead>Total Kering</TableHead>
+            <TableHead>QC Off</TableHead>
+            <TableHead>Hasil Packing</TableHead>
+            <TableHead>Status Gudang</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {completedProses.map((item) => {
+            const stokEntry = stok.find(s => s.batch_id === item.batch_id && s.tipe_stok === 'produk_jadi');
+            return (
+              <TableRow key={item.id}>
+                <TableCell>
+                  <div>
+                    <p className="font-mono font-medium">{item.lot_number || "-"}</p>
+                    <div className="flex items-center gap-1 mt-1">
+                      {item.is_organic ? (
+                        <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+                          <Leaf className="h-3 w-3 mr-1" />
+                          Organik
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs bg-slate-50 text-slate-700 border-slate-200">
+                          <Factory className="h-3 w-3 mr-1" />
+                          Konvensional
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {item.tanggal_selesai 
+                    ? format(new Date(item.tanggal_selesai), "dd MMM yyyy HH:mm", { locale: localeId })
+                    : "-"
+                  }
+                </TableCell>
+                <TableCell className="font-medium">{Number(item.jumlah_kg_sebelum).toLocaleString()} Kg</TableCell>
+                <TableCell>
+                  <span className="text-orange-600">{item.susut_persen || 0}%</span>
+                </TableCell>
+                <TableCell className="font-medium">{Number(item.total_kering || 0).toLocaleString()} Kg</TableCell>
+                <TableCell>
+                  <span className="text-red-600">{Number(item.qc_off || 0).toLocaleString()} Kg</span>
+                  {item.susut_qc_off_persen && (
+                    <span className="text-xs text-muted-foreground ml-1">({item.susut_qc_off_persen}%)</span>
+                  )}
+                </TableCell>
+                <TableCell className="font-bold text-emerald-600">
+                  {Number(item.total_kering_packing || 0).toLocaleString()} Kg
+                </TableCell>
+                <TableCell>
+                  {stokEntry ? (
+                    <Badge variant="default" className="bg-emerald-100 text-emerald-800 border-emerald-200">
+                      <Package className="h-3 w-3 mr-1" />
+                      Di Gudang
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary">Belum Masuk</Badge>
+                  )}
                 </TableCell>
               </TableRow>
             );
@@ -224,24 +329,32 @@ export const GudangTab = () => {
         </CardHeader>
         <CardContent>
           <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
-            <TabsList className="grid grid-cols-4 w-full mb-4">
+            <TabsList className="grid grid-cols-5 w-full mb-4">
+              <TabsTrigger value="hasil-oven" className="flex items-center gap-1">
+                <Flame className="h-3 w-3 text-orange-600" />
+                <span className="hidden sm:inline">Hasil</span> Oven
+              </TabsTrigger>
               <TabsTrigger value="bahan-baku-organik" className="flex items-center gap-1">
                 <Leaf className="h-3 w-3 text-emerald-600" />
-                <span className="hidden sm:inline">Bahan Baku</span> Organik
+                <span className="hidden sm:inline">BB</span> Organik
               </TabsTrigger>
               <TabsTrigger value="bahan-baku-konv" className="flex items-center gap-1">
                 <Factory className="h-3 w-3 text-slate-600" />
-                <span className="hidden sm:inline">Bahan Baku</span> Konv.
+                <span className="hidden sm:inline">BB</span> Konv.
               </TabsTrigger>
               <TabsTrigger value="produk-organik" className="flex items-center gap-1">
                 <Leaf className="h-3 w-3 text-emerald-600" />
-                <span className="hidden sm:inline">Produk</span> Organik
+                <span className="hidden sm:inline">Produk</span> Org.
               </TabsTrigger>
               <TabsTrigger value="produk-konv" className="flex items-center gap-1">
                 <Factory className="h-3 w-3 text-slate-600" />
                 <span className="hidden sm:inline">Produk</span> Konv.
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="hasil-oven">
+              {renderOvenResultsTable()}
+            </TabsContent>
 
             <TabsContent value="bahan-baku-organik">
               {renderStokTable(
