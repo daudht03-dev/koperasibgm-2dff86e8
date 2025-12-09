@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, Flame, Leaf, Factory, ChevronDown, ChevronRight, Users, AlertCircle, Calendar, Check } from "lucide-react";
+import { Plus, Flame, Leaf, Factory, ChevronDown, ChevronRight, Users, AlertCircle, Calendar, Check, Pencil } from "lucide-react";
 import { useProsesPengeringan, useBatchPanen, useGudangStok, ProsesPengeringan, PetaniDetailPengeringan } from "@/hooks/use-batch-panen";
 import { usePengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
 import { TableSkeleton } from "@/components/ui/skeleton-templates";
@@ -54,6 +54,15 @@ export const PengovenanTab = () => {
   const [selectedWeek, setSelectedWeek] = useState<string>("");
   const [selectedFarmers, setSelectedFarmers] = useState<Set<string>>(new Set());
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  
+  // Edit state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingProses, setEditingProses] = useState<ProsesPengeringan | null>(null);
+  const [editForm, setEditForm] = useState({
+    susut_persen: "",
+    susut_qc_off_persen: "",
+    operator: "",
+  });
   
   const [form, setForm] = useState({
     susut_persen: "",
@@ -391,6 +400,64 @@ export const PengovenanTab = () => {
       description: `Pengovenan selesai. ${Number(totalKeringPacking).toLocaleString()} Kg produk jadi ditambahkan ke gudang.`,
     });
     
+    refetch();
+  };
+
+  // Edit functions
+  const openEditDialog = (prosesItem: ProsesPengeringan) => {
+    setEditingProses(prosesItem);
+    setEditForm({
+      susut_persen: prosesItem.susut_persen?.toString() || "",
+      susut_qc_off_persen: prosesItem.susut_qc_off_persen?.toString() || "",
+      operator: prosesItem.operator || "",
+    });
+    setEditDialogOpen(true);
+  };
+
+  // Calculate edit results
+  const editCalculateResults = useMemo(() => {
+    if (!editingProses) return null;
+    
+    const bahanMasuk = Number(editingProses.jumlah_kg_sebelum);
+    const susutPersen = parseFloat(editForm.susut_persen) || 0;
+    const susutQcOffPersen = parseFloat(editForm.susut_qc_off_persen) || 0;
+    
+    const totalKering = bahanMasuk - (bahanMasuk * susutPersen / 100);
+    const qcOff = totalKering * susutQcOffPersen / 100;
+    const totalKeringPacking = totalKering - qcOff;
+    const penyusutanKg = bahanMasuk - totalKering;
+    
+    return {
+      bahan_masuk: bahanMasuk,
+      susut_persen: susutPersen,
+      penyusutan_kg: penyusutanKg,
+      total_kering: totalKering,
+      qc_off: qcOff,
+      susut_qc_off_persen: susutQcOffPersen,
+      total_kering_packing: totalKeringPacking,
+    };
+  }, [editingProses, editForm.susut_persen, editForm.susut_qc_off_persen]);
+
+  const handleEditSubmit = async () => {
+    if (!editingProses || !editCalculateResults) return;
+    
+    await updateProses(editingProses.id, {
+      susut_persen: editCalculateResults.susut_persen,
+      susut_qc_off_persen: editCalculateResults.susut_qc_off_persen,
+      total_kering: editCalculateResults.total_kering,
+      qc_off: editCalculateResults.qc_off,
+      total_kering_packing: editCalculateResults.total_kering_packing,
+      jumlah_kg_sesudah: editCalculateResults.total_kering,
+      operator: editForm.operator || null,
+    });
+    
+    toast({
+      title: "Berhasil",
+      description: `Data pengovenan ${editingProses.lot_number} berhasil diupdate`,
+    });
+    
+    setEditDialogOpen(false);
+    setEditingProses(null);
     refetch();
   };
 
@@ -807,17 +874,27 @@ export const PengovenanTab = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {p.status === 'proses' && (
+                          <div className="flex items-center gap-1">
                             <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleCompleteDrying(p)}
-                              className="text-green-600 border-green-600 hover:bg-green-50"
+                              variant="ghost" 
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => openEditDialog(p)}
                             >
-                              <Check className="h-4 w-4 mr-1" />
-                              Selesai
+                              <Pencil className="h-3.5 w-3.5" />
                             </Button>
-                          )}
+                            {p.status === 'proses' && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleCompleteDrying(p)}
+                                className="text-green-600 border-green-600 hover:bg-green-50"
+                              >
+                                <Check className="h-4 w-4 mr-1" />
+                                Selesai
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                       <CollapsibleContent asChild>
@@ -858,6 +935,98 @@ export const PengovenanTab = () => {
           </Table>
         )}
       </CardContent>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Data Pengovenan</DialogTitle>
+            <DialogDescription>
+              {editingProses && (
+                <span>
+                  Lot: <strong>{editingProses.lot_number}</strong> | 
+                  Bahan Baku: <strong>{Number(editingProses.jumlah_kg_sebelum).toLocaleString()} Kg</strong>
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editingProses && editCalculateResults && (
+            <div className="space-y-4">
+              {/* Susut Parameters */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Susut % *</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={editForm.susut_persen}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, susut_persen: e.target.value }))}
+                    placeholder="Contoh: 15"
+                  />
+                </div>
+                <div>
+                  <Label>Susut QC Off %</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={editForm.susut_qc_off_persen}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, susut_qc_off_persen: e.target.value }))}
+                    placeholder="Contoh: 5"
+                  />
+                </div>
+              </div>
+
+              {/* Calculated Results */}
+              <div className="p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                <h4 className="font-medium mb-3 text-orange-800 dark:text-orange-200">Hasil Perhitungan</h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>Bahan Baku:</div>
+                  <div className="font-medium">{editCalculateResults.bahan_masuk.toLocaleString()} Kg</div>
+                  
+                  <div>Penyusutan:</div>
+                  <div className="font-medium">{editCalculateResults.penyusutan_kg.toFixed(2)} Kg ({editCalculateResults.susut_persen}%)</div>
+                  
+                  <div>Total Kering:</div>
+                  <div className="font-medium">{editCalculateResults.total_kering.toFixed(2)} Kg</div>
+                  
+                  <div>QC Off:</div>
+                  <div className="font-medium">{editCalculateResults.qc_off.toFixed(2)} Kg ({editCalculateResults.susut_qc_off_persen}%)</div>
+                  
+                  <div className="font-bold text-green-700 dark:text-green-400">Total Kering Packing:</div>
+                  <div className="font-bold text-green-700 dark:text-green-400">{editCalculateResults.total_kering_packing.toFixed(2)} Kg</div>
+                </div>
+              </div>
+
+              <div>
+                <Label>Operator</Label>
+                <Input
+                  value={editForm.operator}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, operator: e.target.value }))}
+                  placeholder="Nama operator"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setEditDialogOpen(false)}
+                  className="flex-1"
+                >
+                  Batal
+                </Button>
+                <Button 
+                  onClick={handleEditSubmit} 
+                  className="flex-1"
+                  disabled={!editForm.susut_persen}
+                >
+                  Simpan Perubahan
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
