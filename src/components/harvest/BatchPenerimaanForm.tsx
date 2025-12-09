@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -6,12 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Package, Users, AlertCircle, Leaf, Factory, Calendar } from "lucide-react";
-import { usePengambilanKoperasi, PengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
-import { useFarmers } from "@/hooks/use-farmers";
-import { useLands } from "@/hooks/use-lands";
+import { Plus, Package, Users, AlertCircle, Leaf, Factory, Calendar, User } from "lucide-react";
+import { usePengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
+import { usePengepul } from "@/hooks/use-pengepul";
 import { QualityGrade } from "@/hooks/use-batch-panen";
 import { format, addDays } from "date-fns";
 import { id as localeId } from "date-fns/locale";
@@ -42,18 +40,18 @@ interface BatchPenerimaanFormProps {
   setDialogOpen: (open: boolean) => void;
 }
 
-interface WeekOption {
-  key: string;
+interface WeekData {
   estimationName: string;
   weekLabel: string;
   weekIndex: number;
   startDate: string;
   endDate: string;
-  pickupDate: string; // Day 8 = tanggal penerimaan
-  isOrganic: boolean;
+  pickupDate: string;
   pengambilanIds: string[];
-  farmers: FarmerDetail[];
-  totalKg: number;
+  organicFarmers: FarmerDetail[];
+  conventionalFarmers: FarmerDetail[];
+  totalOrganicKg: number;
+  totalConventionalKg: number;
 }
 
 interface FarmerDetail {
@@ -62,38 +60,32 @@ interface FarmerDetail {
   petani_kode: string;
   total_kg: number;
   daily_values: number[];
-  pengepul_nama: string;
-  pengepul_kode: string;
   is_organic: boolean;
+}
+
+interface PengepulWeekData {
+  pengepulId: string;
+  pengepulNama: string;
+  pengepulKode: string;
+  weeks: WeekData[];
 }
 
 export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: BatchPenerimaanFormProps) => {
   const { pengambilanList, loading: pengambilanLoading } = usePengambilanKoperasi();
-  const { farmers } = useFarmers();
-  const { lands } = useLands();
+  const { pengepulList } = usePengepul();
 
-  const [selectedWeek, setSelectedWeek] = useState<string>("");
+  const [selectedPengepul, setSelectedPengepul] = useState<string>("");
 
   const [form, setForm] = useState({
-    petani_id: "",
-    lahan_id: "",
     warna_produk: "",
     kualitas: "grade_a" as QualityGrade,
     harga_per_kg: "",
     kondisi: "",
   });
 
-  // Group pengambilan by week (like Barang Keluar)
-  const weekOptions = useMemo((): WeekOption[] => {
-    const weekMap = new Map<string, {
-      estimationName: string;
-      weekLabel: string;
-      weekIndex: number;
-      isOrganic: boolean;
-      pickupDate: string;
-      pengambilanIds: string[];
-      farmers: FarmerDetail[];
-    }>();
+  // Group pengambilan by pengepul -> weeks -> organic/conventional
+  const pengepulData = useMemo((): PengepulWeekData[] => {
+    const pengepulMap = new Map<string, PengepulWeekData>();
 
     // Filter unprocessed (no batch_id)
     const unprocessed = pengambilanList.filter(p => !p.batch_id);
@@ -104,109 +96,120 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
 
       const [, estName, weekLabel, weekNum, type] = match;
       const isOrganic = type === 'Organik';
-      const key = `${estName}-${weekLabel}-${type}`;
+      const pengepulId = item.pengepul_id;
 
-      if (!weekMap.has(key)) {
-        weekMap.set(key, {
-          estimationName: estName,
-          weekLabel,
-          weekIndex: parseInt(weekNum) - 1,
-          isOrganic,
-          pickupDate: item.tanggal_ambil,
-          pengambilanIds: [],
-          farmers: [],
+      // Initialize pengepul if not exists
+      if (!pengepulMap.has(pengepulId)) {
+        const pengepul = pengepulList.find(p => p.id === pengepulId);
+        pengepulMap.set(pengepulId, {
+          pengepulId,
+          pengepulNama: pengepul?.nama || item.pengepul?.nama || 'Unknown',
+          pengepulKode: pengepul?.kode_pengepul || item.pengepul?.kode_pengepul || '-',
+          weeks: [],
         });
       }
 
-      const weekData = weekMap.get(key)!;
-      weekData.pengambilanIds.push(item.id);
+      const pengepulEntry = pengepulMap.get(pengepulId)!;
+      
+      // Find or create week
+      const weekKey = `${estName}-${weekLabel}`;
+      let weekEntry = pengepulEntry.weeks.find(w => 
+        w.estimationName === estName && w.weekLabel === weekLabel
+      );
+
+      if (!weekEntry) {
+        const pickup = new Date(item.tanggal_ambil);
+        const endDate = addDays(pickup, -1);
+        const startDate = addDays(endDate, -6);
+
+        weekEntry = {
+          estimationName: estName,
+          weekLabel,
+          weekIndex: parseInt(weekNum) - 1,
+          startDate: format(startDate, "yyyy-MM-dd"),
+          endDate: format(endDate, "yyyy-MM-dd"),
+          pickupDate: item.tanggal_ambil,
+          pengambilanIds: [],
+          organicFarmers: [],
+          conventionalFarmers: [],
+          totalOrganicKg: 0,
+          totalConventionalKg: 0,
+        };
+        pengepulEntry.weeks.push(weekEntry);
+      }
+
+      weekEntry.pengambilanIds.push(item.id);
 
       // Extract farmer details
       const detailPetani = (item as any).detail_petani;
       if (Array.isArray(detailPetani)) {
         detailPetani.forEach((f: any) => {
           const farmerId = f.petani_id || f.id || '';
-          const existing = weekData.farmers.find(ef => ef.petani_id === farmerId);
-          
-          if (!existing) {
-            weekData.farmers.push({
-              petani_id: farmerId,
-              petani_nama: f.petani_nama || f.name || 'Unknown',
-              petani_kode: f.petani_kode || f.code || '-',
-              total_kg: f.jumlah_kg || f.kg || 0,
-              daily_values: f.daily_values || [0, 0, 0, 0, 0, 0, 0],
-              pengepul_nama: item.pengepul?.nama || 'Unknown',
-              pengepul_kode: item.pengepul?.kode_pengepul || '-',
-              is_organic: isOrganic,
-            });
+          const farmerData: FarmerDetail = {
+            petani_id: farmerId,
+            petani_nama: f.petani_nama || f.name || 'Unknown',
+            petani_kode: f.petani_kode || f.code || '-',
+            total_kg: f.jumlah_kg || f.kg || 0,
+            daily_values: f.daily_values || [0, 0, 0, 0, 0, 0, 0],
+            is_organic: isOrganic,
+          };
+
+          if (isOrganic) {
+            const existing = weekEntry!.organicFarmers.find(ef => ef.petani_id === farmerId);
+            if (!existing) {
+              weekEntry!.organicFarmers.push(farmerData);
+              weekEntry!.totalOrganicKg += farmerData.total_kg;
+            } else {
+              existing.total_kg += farmerData.total_kg;
+              weekEntry!.totalOrganicKg += farmerData.total_kg;
+            }
           } else {
-            existing.total_kg += (f.jumlah_kg || f.kg || 0);
+            const existing = weekEntry!.conventionalFarmers.find(ef => ef.petani_id === farmerId);
+            if (!existing) {
+              weekEntry!.conventionalFarmers.push(farmerData);
+              weekEntry!.totalConventionalKg += farmerData.total_kg;
+            } else {
+              existing.total_kg += farmerData.total_kg;
+              weekEntry!.totalConventionalKg += farmerData.total_kg;
+            }
           }
         });
       }
     });
 
-    return Array.from(weekMap.entries()).map(([key, data]) => {
-      // Calculate startDate and endDate from pickupDate (pickupDate = day 8 = endDate + 1)
-      const pickup = new Date(data.pickupDate);
-      const endDate = addDays(pickup, -1);
-      const startDate = addDays(endDate, -6);
-
-      return {
-        key,
-        estimationName: data.estimationName,
-        weekLabel: data.weekLabel,
-        weekIndex: data.weekIndex,
-        startDate: format(startDate, "yyyy-MM-dd"),
-        endDate: format(endDate, "yyyy-MM-dd"),
-        pickupDate: data.pickupDate,
-        isOrganic: data.isOrganic,
-        pengambilanIds: data.pengambilanIds,
-        farmers: data.farmers,
-        totalKg: data.farmers.reduce((sum, f) => sum + f.total_kg, 0),
-      };
-    }).sort((a, b) => {
-      if (a.estimationName !== b.estimationName) return a.estimationName.localeCompare(b.estimationName);
-      if (a.weekIndex !== b.weekIndex) return a.weekIndex - b.weekIndex;
-      return a.isOrganic ? -1 : 1;
+    // Sort weeks within each pengepul
+    pengepulMap.forEach(entry => {
+      entry.weeks.sort((a, b) => {
+        if (a.estimationName !== b.estimationName) return a.estimationName.localeCompare(b.estimationName);
+        return a.weekIndex - b.weekIndex;
+      });
     });
-  }, [pengambilanList]);
 
-  const selectedWeekData = useMemo(() => 
-    weekOptions.find(w => w.key === selectedWeek),
-    [weekOptions, selectedWeek]
+    return Array.from(pengepulMap.values()).sort((a, b) => a.pengepulNama.localeCompare(b.pengepulNama));
+  }, [pengambilanList, pengepulList]);
+
+  const selectedPengepulData = useMemo(() => 
+    pengepulData.find(p => p.pengepulId === selectedPengepul),
+    [pengepulData, selectedPengepul]
   );
 
-  // Filter lands by selected petani
-  const filteredLands = useMemo(() => 
-    lands.filter(land => !form.petani_id || land.petani_id === form.petani_id),
-    [lands, form.petani_id]
-  );
+  // Calculate totals for selected pengepul
+  const totals = useMemo(() => {
+    if (!selectedPengepulData) return { organic: 0, conventional: 0, total: 0 };
+    
+    const organic = selectedPengepulData.weeks.reduce((sum, w) => sum + w.totalOrganicKg, 0);
+    const conventional = selectedPengepulData.weeks.reduce((sum, w) => sum + w.totalConventionalKg, 0);
+    
+    return { organic, conventional, total: organic + conventional };
+  }, [selectedPengepulData]);
 
-  // Auto-set first farmer as petani_id when week is selected
-  useEffect(() => {
-    if (selectedWeekData && selectedWeekData.farmers.length > 0 && !form.petani_id) {
-      setForm(prev => ({
-        ...prev,
-        petani_id: selectedWeekData.farmers[0].petani_id,
-      }));
-    }
-  }, [selectedWeekData]);
-
-  const handleWeekChange = (weekKey: string) => {
-    setSelectedWeek(weekKey);
-    setForm(prev => ({
-      ...prev,
-      petani_id: "",
-      lahan_id: "",
-    }));
+  const handlePengepulChange = (pengepulId: string) => {
+    setSelectedPengepul(pengepulId);
   };
 
   const resetForm = () => {
-    setSelectedWeek("");
+    setSelectedPengepul("");
     setForm({
-      petani_id: "",
-      lahan_id: "",
       warna_produk: "",
       kualitas: "grade_a",
       harga_per_kg: "",
@@ -214,70 +217,97 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
     });
   };
 
-  const handleSubmit = async () => {
-    if (!selectedWeekData) return;
-    if (!form.petani_id) return;
+  const handleSubmit = async (isOrganic: boolean) => {
+    if (!selectedPengepulData) return;
+
+    // Get all weeks data
+    const allPengambilanIds: string[] = [];
+    const allFarmers: FarmerDetail[] = [];
+    let totalKg = 0;
+    let pickupDate = "";
+
+    selectedPengepulData.weeks.forEach(week => {
+      allPengambilanIds.push(...week.pengambilanIds);
+      if (!pickupDate) pickupDate = week.pickupDate;
+      
+      const farmers = isOrganic ? week.organicFarmers : week.conventionalFarmers;
+      farmers.forEach(f => {
+        const existing = allFarmers.find(ef => ef.petani_id === f.petani_id);
+        if (!existing) {
+          allFarmers.push({ ...f });
+        } else {
+          existing.total_kg += f.total_kg;
+        }
+      });
+      
+      totalKg += isOrganic ? week.totalOrganicKg : week.totalConventionalKg;
+    });
+
+    if (allFarmers.length === 0) {
+      return;
+    }
 
     // Prepare detail_petani for batch
-    const detailPetaniForBatch = selectedWeekData.farmers.map(f => ({
+    const detailPetaniForBatch = allFarmers.map(f => ({
       petani_id: f.petani_id,
       petani_nama: f.petani_nama,
       petani_kode: f.petani_kode,
       jumlah_kg: f.total_kg,
-      is_organic: f.is_organic,
+      is_organic: isOrganic,
       daily_values: f.daily_values,
     }));
 
-    // Get unique pengepul IDs
-    const pengepulIds = [...new Set(
-      pengambilanList
-        .filter(p => selectedWeekData.pengambilanIds.includes(p.id))
-        .map(p => p.pengepul_id)
-    )];
-
     await onSubmit({
-      petani_id: form.petani_id,
-      lahan_id: form.lahan_id || null,
-      tanggal_penerimaan: selectedWeekData.pickupDate, // Auto-fill tanggal penerimaan = hari ke-8
-      jumlah_kg: selectedWeekData.totalKg,
+      petani_id: allFarmers[0].petani_id, // Use first farmer as primary
+      lahan_id: null,
+      tanggal_penerimaan: pickupDate,
+      jumlah_kg: totalKg,
       warna_produk: form.warna_produk || null,
       kualitas: form.kualitas,
       harga_per_kg: form.harga_per_kg ? parseFloat(form.harga_per_kg) : null,
       kondisi: form.kondisi || null,
-      pengepul_ids: pengepulIds.length > 0 ? pengepulIds : null,
-      is_organic: selectedWeekData.isOrganic,
+      pengepul_ids: [selectedPengepul],
+      is_organic: isOrganic,
       detail_petani: detailPetaniForBatch,
-    }, selectedWeekData.pengambilanIds);
+    }, allPengambilanIds.filter(id => {
+      // Only include pengambilan IDs that match the organic type
+      const item = pengambilanList.find(p => p.id === id);
+      if (!item?.catatan) return false;
+      const isOrganicItem = item.catatan.includes('(Organik)');
+      return isOrganicItem === isOrganic;
+    }));
 
     resetForm();
     setDialogOpen(false);
   };
 
-  // Render farmer table with daily values
-  const renderFarmerTable = () => {
-    if (!selectedWeekData || selectedWeekData.farmers.length === 0) return null;
+  // Render farmer table for a type
+  const renderFarmerTable = (farmers: FarmerDetail[], title: string, icon: React.ReactNode, colorClass: string) => {
+    if (farmers.length === 0) return null;
+    const total = farmers.reduce((sum, f) => sum + f.total_kg, 0);
 
     return (
       <div className="border rounded-lg p-4">
-        <Label className="text-sm font-medium flex items-center gap-2 mb-3">
-          <Users className="h-4 w-4" />
-          Detail Petani ({selectedWeekData.farmers.length} petani)
-        </Label>
+        <div className={`flex items-center gap-2 mb-3 ${colorClass}`}>
+          {icon}
+          <Label className="text-sm font-medium">{title} ({farmers.length} petani)</Label>
+          <Badge variant="secondary">{total.toLocaleString()} Kg</Badge>
+        </div>
         
-        <ScrollArea className="max-h-64 border rounded-md">
+        <div className="max-h-48 overflow-y-auto border rounded-md">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nama Petani</TableHead>
-                <TableHead>Kode</TableHead>
+                <TableHead className="sticky top-0 bg-background">Nama Petani</TableHead>
+                <TableHead className="sticky top-0 bg-background">Kode</TableHead>
                 {[1, 2, 3, 4, 5, 6, 7].map(d => (
-                  <TableHead key={d} className="text-center w-12">H{d}</TableHead>
+                  <TableHead key={d} className="text-center w-12 sticky top-0 bg-background">H{d}</TableHead>
                 ))}
-                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="text-right sticky top-0 bg-background">Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {selectedWeekData.farmers.map(farmer => (
+              {farmers.map(farmer => (
                 <TableRow key={farmer.petani_id}>
                   <TableCell className="font-medium">{farmer.petani_nama}</TableCell>
                   <TableCell>{farmer.petani_kode}</TableCell>
@@ -291,14 +321,45 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
               ))}
               <TableRow className="bg-muted/50">
                 <TableCell colSpan={9} className="font-bold">Total</TableCell>
-                <TableCell className="text-right font-bold">{selectedWeekData.totalKg.toLocaleString()} Kg</TableCell>
+                <TableCell className="text-right font-bold">{total.toLocaleString()} Kg</TableCell>
               </TableRow>
             </TableBody>
           </Table>
-        </ScrollArea>
+        </div>
       </div>
     );
   };
+
+  // Aggregate all farmers across weeks for display
+  const aggregatedFarmers = useMemo(() => {
+    if (!selectedPengepulData) return { organic: [], conventional: [] };
+
+    const organicMap = new Map<string, FarmerDetail>();
+    const conventionalMap = new Map<string, FarmerDetail>();
+
+    selectedPengepulData.weeks.forEach(week => {
+      week.organicFarmers.forEach(f => {
+        if (organicMap.has(f.petani_id)) {
+          organicMap.get(f.petani_id)!.total_kg += f.total_kg;
+        } else {
+          organicMap.set(f.petani_id, { ...f });
+        }
+      });
+
+      week.conventionalFarmers.forEach(f => {
+        if (conventionalMap.has(f.petani_id)) {
+          conventionalMap.get(f.petani_id)!.total_kg += f.total_kg;
+        } else {
+          conventionalMap.set(f.petani_id, { ...f });
+        }
+      });
+    });
+
+    return {
+      organic: Array.from(organicMap.values()),
+      conventional: Array.from(conventionalMap.values()),
+    };
+  }, [selectedPengepulData]);
 
   return (
     <Dialog open={dialogOpen} onOpenChange={(open) => {
@@ -314,18 +375,18 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Tambah Batch Penerimaan</DialogTitle>
-          <DialogDescription>Pilih minggu dari Barang Keluar untuk membuat batch penerimaan</DialogDescription>
+          <DialogDescription>Pilih pengepul untuk melihat data penerimaan per minggu</DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4">
-          {/* Week Selection */}
+          {/* Pengepul Selection */}
           <div className="border rounded-lg p-4">
             <Label className="text-sm font-medium flex items-center gap-2 mb-3">
-              <Package className="h-4 w-4" />
-              Pilih Minggu *
+              <User className="h-4 w-4" />
+              Pilih Pengepul *
             </Label>
             
-            {weekOptions.length === 0 ? (
+            {pengepulData.length === 0 ? (
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
@@ -333,166 +394,175 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
                 </AlertDescription>
               </Alert>
             ) : (
-              <Select value={selectedWeek} onValueChange={handleWeekChange}>
+              <Select value={selectedPengepul} onValueChange={handlePengepulChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Pilih minggu" />
+                  <SelectValue placeholder="Pilih pengepul" />
                 </SelectTrigger>
                 <SelectContent>
-                  {weekOptions.map(week => (
-                    <SelectItem key={week.key} value={week.key}>
-                      <div className="flex items-center gap-2">
-                        {week.isOrganic ? (
-                          <Leaf className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <Factory className="h-4 w-4 text-orange-500" />
-                        )}
-                        <span>{week.estimationName} - {week.weekLabel}</span>
-                        <Badge variant={week.isOrganic ? "default" : "secondary"} className={week.isOrganic ? "bg-green-600" : "bg-orange-500"}>
-                          {week.isOrganic ? 'Organik' : 'Konvensional'}
-                        </Badge>
-                        <span className="text-muted-foreground">
-                          ({week.farmers.length} petani, {week.totalKg.toLocaleString()} Kg)
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {pengepulData.map(pengepul => {
+                    const totalKg = pengepul.weeks.reduce((sum, w) => 
+                      sum + w.totalOrganicKg + w.totalConventionalKg, 0
+                    );
+                    const weekCount = pengepul.weeks.length;
+                    
+                    return (
+                      <SelectItem key={pengepul.pengepulId} value={pengepul.pengepulId}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{pengepul.pengepulNama}</span>
+                          <span className="text-muted-foreground">({pengepul.pengepulKode})</span>
+                          <Badge variant="outline">{weekCount} periode</Badge>
+                          <Badge variant="secondary">{totalKg.toLocaleString()} Kg</Badge>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             )}
           </div>
 
-          {/* Selected Week Info */}
-          {selectedWeekData && (
-            <div className="p-4 bg-muted/50 rounded-lg border">
-              <div className="flex items-center gap-2 mb-2">
-                <Calendar className="h-4 w-4" />
-                <span className="font-medium">{selectedWeekData.estimationName} - {selectedWeekData.weekLabel}</span>
-                <Badge className={selectedWeekData.isOrganic ? 'bg-green-600' : 'bg-orange-500'}>
-                  {selectedWeekData.isOrganic ? 'Organik' : 'Konvensional'}
-                </Badge>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-muted-foreground">
-                <div>
-                  <span className="font-medium">Periode:</span>{' '}
-                  {format(new Date(selectedWeekData.startDate), "dd MMM", { locale: localeId })} - {format(new Date(selectedWeekData.endDate), "dd MMM yyyy", { locale: localeId })}
+          {/* Selected Pengepul Info with Weeks */}
+          {selectedPengepulData && (
+            <>
+              <div className="p-4 bg-muted/50 rounded-lg border">
+                <div className="flex items-center gap-2 mb-3">
+                  <User className="h-4 w-4" />
+                  <span className="font-medium">{selectedPengepulData.pengepulNama}</span>
+                  <span className="text-muted-foreground">({selectedPengepulData.pengepulKode})</span>
                 </div>
-                <div>
-                  <span className="font-medium">Tanggal Penerimaan (H8):</span>{' '}
-                  <Badge variant="outline" className="ml-1">
-                    {format(new Date(selectedWeekData.pickupDate), "dd MMM yyyy", { locale: localeId })}
-                  </Badge>
+                
+                {/* Week Summary */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mb-3">
+                  {selectedPengepulData.weeks.map((week, idx) => (
+                    <div key={idx} className="p-2 bg-background rounded border text-sm">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Calendar className="h-3 w-3" />
+                        <span className="font-medium">{week.estimationName} - {week.weekLabel}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(new Date(week.startDate), "dd MMM", { locale: localeId })} - {format(new Date(week.endDate), "dd MMM", { locale: localeId })}
+                      </div>
+                      <div className="flex gap-2 mt-1">
+                        {week.totalOrganicKg > 0 && (
+                          <Badge className="bg-green-600 text-xs">
+                            <Leaf className="h-3 w-3 mr-1" />
+                            {week.totalOrganicKg.toLocaleString()} Kg
+                          </Badge>
+                        )}
+                        {week.totalConventionalKg > 0 && (
+                          <Badge className="bg-orange-500 text-xs">
+                            <Factory className="h-3 w-3 mr-1" />
+                            {week.totalConventionalKg.toLocaleString()} Kg
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div>
-                  <span className="font-medium">Petani:</span> {selectedWeekData.farmers.length}
-                </div>
-                <div>
-                  <span className="font-medium">Total:</span>{' '}
-                  <Badge variant="secondary">{selectedWeekData.totalKg.toLocaleString()} Kg</Badge>
-                </div>
-              </div>
-            </div>
-          )}
 
-          {/* Farmer Table with Daily Values */}
-          {renderFarmerTable()}
-
-          {/* Form Fields */}
-          {selectedWeekData && (
-            <div className="grid gap-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Petani Utama *</Label>
-                  <Select
-                    value={form.petani_id}
-                    onValueChange={(value) => setForm(prev => ({ ...prev, petani_id: value, lahan_id: "" }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih petani utama" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {selectedWeekData.farmers.map(f => (
-                        <SelectItem key={f.petani_id} value={f.petani_id}>
-                          {f.petani_nama} ({f.petani_kode}) - {f.total_kg.toLocaleString()} Kg
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Lahan</Label>
-                  <Select
-                    value={form.lahan_id}
-                    onValueChange={(value) => setForm(prev => ({ ...prev, lahan_id: value }))}
-                    disabled={!form.petani_id}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih lahan (opsional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredLands.map(land => (
-                        <SelectItem key={land.id} value={land.id}>
-                          {land.nama_lahan} - {land.lokasi || '-'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                {/* Totals */}
+                <div className="flex gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Leaf className="h-4 w-4 text-green-600" />
+                    <span>Organik: <strong>{totals.organic.toLocaleString()} Kg</strong></span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Factory className="h-4 w-4 text-orange-500" />
+                    <span>Konvensional: <strong>{totals.conventional.toLocaleString()} Kg</strong></span>
+                  </div>
+                  <div>
+                    <span>Total: <strong>{totals.total.toLocaleString()} Kg</strong></span>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label>Kualitas</Label>
-                  <Select
-                    value={form.kualitas}
-                    onValueChange={(value) => setForm(prev => ({ ...prev, kualitas: value as QualityGrade }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="premium">Premium</SelectItem>
-                      <SelectItem value="grade_a">Grade A</SelectItem>
-                      <SelectItem value="grade_b">Grade B</SelectItem>
-                      <SelectItem value="grade_c">Grade C</SelectItem>
-                    </SelectContent>
-                  </Select>
+              {/* Organic Farmers Table */}
+              {renderFarmerTable(
+                aggregatedFarmers.organic,
+                "Petani Organik",
+                <Leaf className="h-4 w-4" />,
+                "text-green-600"
+              )}
+
+              {/* Conventional Farmers Table */}
+              {renderFarmerTable(
+                aggregatedFarmers.conventional,
+                "Petani Konvensional",
+                <Factory className="h-4 w-4" />,
+                "text-orange-500"
+              )}
+
+              {/* Form Fields */}
+              <div className="grid gap-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label>Kualitas</Label>
+                    <Select
+                      value={form.kualitas}
+                      onValueChange={(value) => setForm(prev => ({ ...prev, kualitas: value as QualityGrade }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="premium">Premium</SelectItem>
+                        <SelectItem value="grade_a">Grade A</SelectItem>
+                        <SelectItem value="grade_b">Grade B</SelectItem>
+                        <SelectItem value="grade_c">Grade C</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Harga per Kg</Label>
+                    <Input
+                      type="number"
+                      value={form.harga_per_kg}
+                      onChange={(e) => setForm(prev => ({ ...prev, harga_per_kg: e.target.value }))}
+                      placeholder="Rp"
+                    />
+                  </div>
+                  <div>
+                    <Label>Warna Produk</Label>
+                    <Input
+                      value={form.warna_produk}
+                      onChange={(e) => setForm(prev => ({ ...prev, warna_produk: e.target.value }))}
+                      placeholder="Warna produk"
+                    />
+                  </div>
                 </div>
+
                 <div>
-                  <Label>Harga per Kg</Label>
+                  <Label>Kondisi</Label>
                   <Input
-                    type="number"
-                    value={form.harga_per_kg}
-                    onChange={(e) => setForm(prev => ({ ...prev, harga_per_kg: e.target.value }))}
-                    placeholder="Rp"
+                    value={form.kondisi}
+                    onChange={(e) => setForm(prev => ({ ...prev, kondisi: e.target.value }))}
+                    placeholder="Kondisi produk"
                   />
                 </div>
-                <div>
-                  <Label>Warna Produk</Label>
-                  <Input
-                    value={form.warna_produk}
-                    onChange={(e) => setForm(prev => ({ ...prev, warna_produk: e.target.value }))}
-                    placeholder="Warna produk"
-                  />
+
+                {/* Submit Buttons */}
+                <div className="grid grid-cols-2 gap-4">
+                  {totals.organic > 0 && (
+                    <Button 
+                      onClick={() => handleSubmit(true)} 
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <Leaf className="h-4 w-4 mr-2" />
+                      Buat Batch Organik ({totals.organic.toLocaleString()} Kg)
+                    </Button>
+                  )}
+                  {totals.conventional > 0 && (
+                    <Button 
+                      onClick={() => handleSubmit(false)} 
+                      className="bg-orange-500 hover:bg-orange-600"
+                    >
+                      <Factory className="h-4 w-4 mr-2" />
+                      Buat Batch Konvensional ({totals.conventional.toLocaleString()} Kg)
+                    </Button>
+                  )}
                 </div>
               </div>
-
-              <div>
-                <Label>Kondisi</Label>
-                <Input
-                  value={form.kondisi}
-                  onChange={(e) => setForm(prev => ({ ...prev, kondisi: e.target.value }))}
-                  placeholder="Kondisi produk"
-                />
-              </div>
-
-              <Button 
-                onClick={handleSubmit} 
-                className="w-full"
-                disabled={!selectedWeek || !form.petani_id}
-              >
-                Buat Batch Penerimaan
-              </Button>
-            </div>
+            </>
           )}
         </div>
       </DialogContent>
