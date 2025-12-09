@@ -11,8 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, Flame, Leaf, Factory, ChevronDown, ChevronRight, Users, AlertCircle, Calendar, Check, Pencil } from "lucide-react";
-import { useProsesPengeringan, useBatchPanen, useGudangStok, ProsesPengeringan, PetaniDetailPengeringan } from "@/hooks/use-batch-panen";
+import { Plus, Flame, Leaf, Factory, ChevronDown, ChevronRight, Users, AlertCircle, Calendar, Check, Pencil, Package } from "lucide-react";
+import { useProsesPengeringan, useBatchPanen, useGudangStok, ProsesPengeringan, PetaniDetailPengeringan, BatchStatus } from "@/hooks/use-batch-panen";
 import { usePengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
 import { TableSkeleton } from "@/components/ui/skeleton-templates";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -46,9 +46,9 @@ interface WeekOption {
 
 export const PengovenanTab = () => {
   const { proses, loading, addProses, updateProses, refetch } = useProsesPengeringan();
-  const { batches, refetch: refetchBatches } = useBatchPanen();
+  const { batches, addBatch, refetch: refetchBatches } = useBatchPanen();
   const { pengambilanList } = usePengambilanKoperasi();
-  const { addStok } = useGudangStok();
+  const { stok: gudangStok, addStok, refetch: refetchGudang } = useGudangStok();
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedWeek, setSelectedWeek] = useState<string>("");
@@ -301,32 +301,24 @@ export const PengovenanTab = () => {
     if (existingBatch) {
       batchId = existingBatch.id;
     } else {
-      // Create a simple batch record
-      const { data: batchData, error: batchError } = await supabase.rpc('generate_batch_number');
-      if (batchError) {
-        toast({
-          title: "Error",
-          description: "Gagal membuat batch number",
-          variant: "destructive",
-        });
-        return;
-      }
+      // Create a new batch using the hook's addBatch method
+      const firstFarmer = farmerDetails[0];
+      const newBatch = await addBatch({
+        petani_id: firstFarmer?.petani_id || batches[0]?.petani_id || 'b1111111-1111-1111-1111-111111111111',
+        lahan_id: null,
+        tanggal_penerimaan: format(new Date(), 'yyyy-MM-dd'),
+        jumlah_kg: selectedTotalKg,
+        warna_produk: null,
+        kualitas: 'grade_a' as const,
+        harga_per_kg: null,
+        kondisi: null,
+        is_organic: selectedWeekOption.isOrganic,
+        status: 'pengeringan' as BatchStatus,
+        pengepul_ids: null,
+        detail_petani: farmerDetails as any,
+      });
 
-      const { data: newBatch, error: insertError } = await supabase
-        .from('batch_panen')
-        .insert([{
-          batch_number: batchData,
-          petani_id: farmerDetails[0]?.petani_id || '',
-          tanggal_penerimaan: format(new Date(), 'yyyy-MM-dd'),
-          jumlah_kg: selectedTotalKg,
-          is_organic: selectedWeekOption.isOrganic,
-          status: 'pengeringan' as const,
-          detail_petani: farmerDetails as any,
-        }])
-        .select()
-        .single();
-
-      if (insertError || !newBatch) {
+      if (!newBatch) {
         toast({
           title: "Error",
           description: "Gagal membuat batch",
@@ -379,28 +371,31 @@ export const PengovenanTab = () => {
     
     const totalKeringPacking = prosesItem.total_kering_packing || prosesItem.jumlah_kg_sesudah || prosesItem.jumlah_kg_sebelum;
     
-    await addStok({
+    const newStok = await addStok({
       batch_id: prosesItem.batch_id,
       lokasi_gudang: "Gudang Utama",
       rak_posisi: null,
       tanggal_masuk: new Date().toISOString().split('T')[0],
       tanggal_keluar: null,
       jumlah_kg: Number(totalKeringPacking),
-      kondisi_penyimpanan: null,
+      kondisi_penyimpanan: "Baik",
       suhu_gudang: null,
       kelembaban: null,
       tipe_stok: "produk_jadi",
       is_organic: prosesItem.is_organic ?? true,
-      catatan: `Dari pengovenan lot ${prosesItem.lot_number || '-'}`,
+      catatan: `Dari pengovenan lot ${prosesItem.lot_number || '-'} | Susut: ${prosesItem.susut_persen || 0}% | QC Off: ${prosesItem.qc_off || 0} Kg`,
       status: "tersimpan",
     });
     
-    toast({
-      title: "Berhasil",
-      description: `Pengovenan selesai. ${Number(totalKeringPacking).toLocaleString()} Kg produk jadi ditambahkan ke gudang.`,
-    });
+    if (newStok) {
+      toast({
+        title: "Berhasil",
+        description: `Pengovenan selesai. ${Number(totalKeringPacking).toLocaleString()} Kg produk jadi ditambahkan ke gudang.`,
+      });
+    }
     
     refetch();
+    refetchGudang();
   };
 
   // Edit functions
