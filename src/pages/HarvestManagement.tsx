@@ -65,7 +65,7 @@ const HarvestManagement = () => {
   const { stok: gudangList, loading: gudangLoading, addStok, updateStok } = useGudangStok();
   const { dokumen: dokumenList, loading: dokumenLoading, addDokumen } = usePengolahanDokumen();
   const { penjualan: penjualanList, loading: penjualanLoading, addPenjualan, updatePenjualan } = usePenjualan();
-  const { farmers } = useFarmers();
+  const { farmers, loading: farmersLoading } = useFarmers();
   const { lands } = useLands();
   const { updatePengambilan } = usePengambilanKoperasi();
   
@@ -999,22 +999,39 @@ const HarvestManagement = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Form Section */}
               <div className="lg:col-span-1">
-                <HarvestEstimationForm
-                  farmers={farmers}
-                  selectedFarmers={harvestEstimation.selectedFarmers}
-                  setSelectedFarmers={harvestEstimation.setSelectedFarmers}
-                  startDate={harvestEstimation.startDate}
-                  setStartDate={harvestEstimation.setStartDate}
-                  autoHoliday={harvestEstimation.autoHoliday}
-                  setAutoHoliday={harvestEstimation.setAutoHoliday}
-                  manualHolidays={harvestEstimation.manualHolidays}
-                  setManualHolidays={harvestEstimation.setManualHolidays}
-                  batchAverage={harvestEstimation.batchAverage}
-                  setBatchAverage={harvestEstimation.setBatchAverage}
-                  onGenerate={harvestEstimation.generateEstimation}
-                  applyBatchAverage={harvestEstimation.applyBatchAverage}
-                  updateFarmerAverage={harvestEstimation.updateFarmerAverage}
-                />
+                {farmersLoading ? (
+                  <Card className="border-primary/20">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Calculator className="h-5 w-5 text-primary" />
+                        Form Estimasi Panen
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-center py-8">
+                        <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+                        <span className="ml-2 text-muted-foreground">Memuat data petani...</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <HarvestEstimationForm
+                    farmers={farmers}
+                    selectedFarmers={harvestEstimation.selectedFarmers}
+                    setSelectedFarmers={harvestEstimation.setSelectedFarmers}
+                    startDate={harvestEstimation.startDate}
+                    setStartDate={harvestEstimation.setStartDate}
+                    autoHoliday={harvestEstimation.autoHoliday}
+                    setAutoHoliday={harvestEstimation.setAutoHoliday}
+                    manualHolidays={harvestEstimation.manualHolidays}
+                    setManualHolidays={harvestEstimation.setManualHolidays}
+                    batchAverage={harvestEstimation.batchAverage}
+                    setBatchAverage={harvestEstimation.setBatchAverage}
+                    onGenerate={harvestEstimation.generateEstimation}
+                    applyBatchAverage={harvestEstimation.applyBatchAverage}
+                    updateFarmerAverage={harvestEstimation.updateFarmerAverage}
+                  />
+                )}
               </div>
 
               {/* Table Section */}
