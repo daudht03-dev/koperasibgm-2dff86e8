@@ -41,6 +41,7 @@ interface WeekOption {
   remainingKg: number;
   isFullyProcessed: boolean;
   pickupDate: string;
+  lotNumber: string;
 }
 
 export const PengovenanTab = () => {
@@ -55,13 +56,8 @@ export const PengovenanTab = () => {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   
   const [form, setForm] = useState({
-    suhu_oven: "",
-    durasi_jam: "",
-    kadar_air_awal: "",
-    kadar_air_akhir: "",
-    jumlah_kg_sebelum: "",
-    jumlah_kg_sesudah: "",
-    qc_off: "",
+    susut_persen: "",
+    susut_qc_off_persen: "",
     operator: "",
     catatan: "",
   });
@@ -96,6 +92,7 @@ export const PengovenanTab = () => {
       isOrganic: boolean;
       farmers: FarmerDetail[];
       pickupDate: string;
+      lotNumber: string;
     }>();
 
     pengambilanList.forEach(item => {
@@ -117,6 +114,7 @@ export const PengovenanTab = () => {
           isOrganic,
           farmers: [],
           pickupDate: item.tanggal_ambil,
+          lotNumber: item.lot_number || `LOT-${item.tanggal_ambil.replace(/-/g, '')}-${isOrganic ? 'ORG' : 'CNV'}`,
         });
       }
 
@@ -160,6 +158,7 @@ export const PengovenanTab = () => {
         remainingKg,
         isFullyProcessed: remainingFarmers.length === 0,
         pickupDate: data.pickupDate,
+        lotNumber: data.lotNumber,
       });
     });
 
@@ -187,26 +186,30 @@ export const PengovenanTab = () => {
       .reduce((sum, f) => sum + f.jumlah_kg, 0);
   }, [selectedWeekOption, selectedFarmers]);
 
-  // Auto-calculate susut values
-  const calculateSusut = () => {
-    const sebelum = parseFloat(form.jumlah_kg_sebelum) || 0;
-    const sesudah = parseFloat(form.jumlah_kg_sesudah) || 0;
-    const qcOff = parseFloat(form.qc_off) || 0;
+  // Auto-calculate with new formulas:
+  // total_kering = bahan_masuk - (bahan_masuk * susut_persen / 100)
+  // qc_off = total_kering * susut_qc_off_persen / 100
+  // total_kering_packing = total_kering - qc_off
+  const calculateResults = useMemo(() => {
+    const bahanMasuk = selectedTotalKg;
+    const susutPersen = parseFloat(form.susut_persen) || 0;
+    const susutQcOffPersen = parseFloat(form.susut_qc_off_persen) || 0;
     
-    const susutKg = sebelum - sesudah;
-    const susutPersen = sebelum > 0 ? (susutKg / sebelum) * 100 : 0;
-    const totalKering = sesudah;
-    const totalKeringPacking = sesudah - qcOff;
-    const susutQcOffPersen = sesudah > 0 ? (qcOff / sesudah) * 100 : 0;
+    const totalKering = bahanMasuk - (bahanMasuk * susutPersen / 100);
+    const qcOff = totalKering * susutQcOffPersen / 100;
+    const totalKeringPacking = totalKering - qcOff;
+    const penyusutanKg = bahanMasuk - totalKering;
     
     return {
-      penyusutan_kg: susutKg,
+      bahan_masuk: bahanMasuk,
       susut_persen: susutPersen,
+      penyusutan_kg: penyusutanKg,
       total_kering: totalKering,
-      total_kering_packing: totalKeringPacking,
+      qc_off: qcOff,
       susut_qc_off_persen: susutQcOffPersen,
+      total_kering_packing: totalKeringPacking,
     };
-  };
+  }, [selectedTotalKg, form.susut_persen, form.susut_qc_off_persen]);
 
   const handleWeekChange = (weekKey: string) => {
     setSelectedWeek(weekKey);
@@ -214,12 +217,6 @@ export const PengovenanTab = () => {
     
     const week = weekOptions.find(w => w.key === weekKey);
     if (week) {
-      // Auto-populate jumlah_kg_sebelum from remaining farmers
-      setForm(prev => ({
-        ...prev,
-        jumlah_kg_sebelum: String(week.remainingKg),
-      }));
-      
       // Auto-select all remaining farmers
       setSelectedFarmers(new Set(week.remainingFarmers.map(f => f.petani_id)));
     }
@@ -246,25 +243,10 @@ export const PengovenanTab = () => {
     }
   };
 
-  // Update jumlah_kg_sebelum when farmer selection changes
-  useEffect(() => {
-    if (selectedWeekOption) {
-      const total = selectedWeekOption.remainingFarmers
-        .filter(f => selectedFarmers.has(f.petani_id))
-        .reduce((sum, f) => sum + f.jumlah_kg, 0);
-      setForm(prev => ({ ...prev, jumlah_kg_sebelum: String(total) }));
-    }
-  }, [selectedFarmers, selectedWeekOption]);
-
   const resetForm = () => {
     setForm({
-      suhu_oven: "",
-      durasi_jam: "",
-      kadar_air_awal: "",
-      kadar_air_akhir: "",
-      jumlah_kg_sebelum: "",
-      jumlah_kg_sesudah: "",
-      qc_off: "",
+      susut_persen: "",
+      susut_qc_off_persen: "",
       operator: "",
       catatan: "",
     });
@@ -282,7 +264,7 @@ export const PengovenanTab = () => {
       return;
     }
 
-    const susutCalc = calculateSusut();
+    const results = calculateResults;
     
     // Prepare farmer details
     const farmerDetails: PetaniDetailPengeringan[] = selectedWeekOption.remainingFarmers
@@ -295,7 +277,7 @@ export const PengovenanTab = () => {
         is_organic: selectedWeekOption.isOrganic,
       }));
 
-    // Generate lot number
+    // Generate lot number from week data
     const today = format(new Date(), "yyyyMMdd");
     const existingLotsToday = proses.filter(p => p.lot_number?.startsWith(`OVEN-${today}`)).length;
     const lotNumber = `OVEN-${today}-${String(existingLotsToday + 1).padStart(3, '0')}`;
@@ -351,19 +333,22 @@ export const PengovenanTab = () => {
       lot_number: lotNumber,
       tanggal_mulai: new Date().toISOString(),
       tanggal_selesai: null,
-      suhu_oven: form.suhu_oven ? parseFloat(form.suhu_oven) : null,
-      durasi_jam: form.durasi_jam ? parseFloat(form.durasi_jam) : null,
-      kadar_air_awal: form.kadar_air_awal ? parseFloat(form.kadar_air_awal) : null,
-      kadar_air_akhir: form.kadar_air_akhir ? parseFloat(form.kadar_air_akhir) : null,
-      jumlah_kg_sebelum: parseFloat(form.jumlah_kg_sebelum),
-      jumlah_kg_sesudah: form.jumlah_kg_sesudah ? parseFloat(form.jumlah_kg_sesudah) : null,
-      qc_off: form.qc_off ? parseFloat(form.qc_off) : null,
+      suhu_oven: null,
+      durasi_jam: null,
+      kadar_air_awal: null,
+      kadar_air_akhir: null,
+      jumlah_kg_sebelum: results.bahan_masuk,
+      jumlah_kg_sesudah: results.total_kering,
+      qc_off: results.qc_off,
       is_organic: selectedWeekOption.isOrganic,
       detail_petani: farmerDetails,
       operator: form.operator || null,
-      catatan: `Pengovenan dari estimasi: ${selectedWeekOption.estimationName} - ${selectedWeekOption.weekLabel} (${selectedWeekOption.isOrganic ? 'Organik' : 'Konvensional'})`,
+      catatan: `Pengovenan dari estimasi: ${selectedWeekOption.estimationName} - ${selectedWeekOption.weekLabel} (${selectedWeekOption.isOrganic ? 'Organik' : 'Konvensional'}) | Lot: ${selectedWeekOption.lotNumber}`,
       status: "proses",
-      ...susutCalc,
+      susut_persen: results.susut_persen,
+      total_kering: results.total_kering,
+      total_kering_packing: results.total_kering_packing,
+      susut_qc_off_persen: results.susut_qc_off_persen,
     });
 
     toast({
@@ -434,7 +419,7 @@ export const PengovenanTab = () => {
 
   const availableWeeks = weekOptions.filter(w => !w.isFullyProcessed);
 
-  // Render farmer table with daily values (same format as Barang Masuk/Keluar)
+  // Render farmer selection table
   const renderFarmerSelectionTable = () => {
     if (!selectedWeekOption || selectedWeekOption.remainingFarmers.length === 0) return null;
 
@@ -450,17 +435,17 @@ export const PengovenanTab = () => {
           </Button>
         </div>
         
-        <ScrollArea className="max-h-64 border rounded-md">
+        <div className="max-h-48 overflow-y-auto border rounded-md">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-12"></TableHead>
-                <TableHead>Nama Petani</TableHead>
-                <TableHead>Kode</TableHead>
+                <TableHead className="w-12 sticky top-0 bg-background"></TableHead>
+                <TableHead className="sticky top-0 bg-background">Nama Petani</TableHead>
+                <TableHead className="sticky top-0 bg-background">Kode</TableHead>
                 {[1, 2, 3, 4, 5, 6, 7].map(d => (
-                  <TableHead key={d} className="text-center w-12">H{d}</TableHead>
+                  <TableHead key={d} className="text-center w-12 sticky top-0 bg-background">H{d}</TableHead>
                 ))}
-                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="text-right sticky top-0 bg-background">Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -492,7 +477,7 @@ export const PengovenanTab = () => {
               </TableRow>
             </TableBody>
           </Table>
-        </ScrollArea>
+        </div>
         
         <div className="mt-3 p-3 bg-primary/5 rounded-md flex items-center justify-between">
           <span className="text-sm">
@@ -524,191 +509,201 @@ export const PengovenanTab = () => {
                 Tambah Proses
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Tambah Proses Pengovenan</DialogTitle>
                 <DialogDescription>Pilih minggu dari Barang Keluar dan petani untuk proses pengeringan</DialogDescription>
               </DialogHeader>
               
-              <ScrollArea className="flex-1 pr-4">
-                <div className="space-y-4">
-                  {/* Week Selection */}
-                  <div>
-                    <Label>Pilih Minggu *</Label>
-                    {availableWeeks.length === 0 ? (
-                      <Alert className="mt-2">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>
-                          Tidak ada minggu yang tersedia. Pastikan Barang Keluar sudah di-generate terlebih dahulu.
-                        </AlertDescription>
-                      </Alert>
-                    ) : (
-                      <Select value={selectedWeek} onValueChange={handleWeekChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih minggu" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableWeeks.map(week => (
-                            <SelectItem key={week.key} value={week.key}>
-                              <div className="flex items-center gap-2">
-                                {week.isOrganic ? (
-                                  <Leaf className="h-4 w-4 text-green-600" />
-                                ) : (
-                                  <Factory className="h-4 w-4 text-orange-500" />
-                                )}
-                                <span>{week.estimationName} - {week.weekLabel}</span>
-                                <Badge variant={week.isOrganic ? "default" : "secondary"} className={week.isOrganic ? "bg-green-600" : "bg-orange-500"}>
-                                  {week.isOrganic ? 'Organik' : 'Konvensional'}
-                                </Badge>
-                                <span className="text-muted-foreground">
-                                  ({week.remainingFarmers.length} petani, {week.remainingKg.toLocaleString()} Kg)
-                                </span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-
-                  {/* Selected Week Info */}
-                  {selectedWeekOption && (
-                    <div className="p-3 bg-muted/50 rounded-lg border">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Calendar className="h-4 w-4" />
-                        <span className="font-medium">{selectedWeekOption.estimationName} - {selectedWeekOption.weekLabel}</span>
-                        <Badge className={selectedWeekOption.isOrganic ? 'bg-green-600' : 'bg-orange-500'}>
-                          {selectedWeekOption.isOrganic ? 'Organik' : 'Konvensional'}
-                        </Badge>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Tanggal Pengambilan: {format(new Date(selectedWeekOption.pickupDate), "dd MMM yyyy", { locale: localeId })} | 
-                        Total: {selectedWeekOption.totalKg.toLocaleString()} Kg | 
-                        Sudah diproses: {selectedWeekOption.processedFarmerIds.size} petani | 
-                        Tersisa: {selectedWeekOption.remainingFarmers.length} petani ({selectedWeekOption.remainingKg.toLocaleString()} Kg)
-                      </div>
-                    </div>
+              <div className="space-y-4">
+                {/* Week Selection */}
+                <div>
+                  <Label>Pilih Minggu *</Label>
+                  {availableWeeks.length === 0 ? (
+                    <Alert className="mt-2">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Tidak ada minggu yang tersedia. Pastikan Barang Keluar sudah di-generate terlebih dahulu.
+                      </AlertDescription>
+                    </Alert>
+                  ) : (
+                    <Select value={selectedWeek} onValueChange={handleWeekChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih minggu" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableWeeks.map(week => (
+                          <SelectItem key={week.key} value={week.key}>
+                            <div className="flex items-center gap-2">
+                              {week.isOrganic ? (
+                                <Leaf className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <Factory className="h-4 w-4 text-orange-500" />
+                              )}
+                              <span>{week.estimationName} - {week.weekLabel}</span>
+                              <Badge variant={week.isOrganic ? "default" : "secondary"} className={week.isOrganic ? "bg-green-600" : "bg-orange-500"}>
+                                {week.isOrganic ? 'Organik' : 'Konvensional'}
+                              </Badge>
+                              <span className="text-muted-foreground">
+                                ({week.remainingFarmers.length} petani, {week.remainingKg.toLocaleString()} Kg)
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   )}
-
-                  {/* Farmer Selection with Daily Values */}
-                  {renderFarmerSelectionTable()}
-
-                  {/* Drying Parameters */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Jumlah Sebelum (Kg) *</Label>
-                      <Input
-                        type="number"
-                        value={form.jumlah_kg_sebelum}
-                        onChange={(e) => setForm(prev => ({ ...prev, jumlah_kg_sebelum: e.target.value }))}
-                        placeholder="0"
-                        readOnly
-                      />
-                    </div>
-                    <div>
-                      <Label>Jumlah Sesudah (Kg)</Label>
-                      <Input
-                        type="number"
-                        value={form.jumlah_kg_sesudah}
-                        onChange={(e) => setForm(prev => ({ ...prev, jumlah_kg_sesudah: e.target.value }))}
-                        placeholder="Diisi setelah proses selesai"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label>Suhu Oven (°C)</Label>
-                      <Input
-                        type="number"
-                        value={form.suhu_oven}
-                        onChange={(e) => setForm(prev => ({ ...prev, suhu_oven: e.target.value }))}
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <Label>Durasi (Jam)</Label>
-                      <Input
-                        type="number"
-                        value={form.durasi_jam}
-                        onChange={(e) => setForm(prev => ({ ...prev, durasi_jam: e.target.value }))}
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <Label>QC Off (Kg)</Label>
-                      <Input
-                        type="number"
-                        value={form.qc_off}
-                        onChange={(e) => setForm(prev => ({ ...prev, qc_off: e.target.value }))}
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Kadar Air Awal (%)</Label>
-                      <Input
-                        type="number"
-                        value={form.kadar_air_awal}
-                        onChange={(e) => setForm(prev => ({ ...prev, kadar_air_awal: e.target.value }))}
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <Label>Kadar Air Akhir (%)</Label>
-                      <Input
-                        type="number"
-                        value={form.kadar_air_akhir}
-                        onChange={(e) => setForm(prev => ({ ...prev, kadar_air_akhir: e.target.value }))}
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Shrinkage Preview */}
-                  {form.jumlah_kg_sebelum && form.jumlah_kg_sesudah && (
-                    <div className="p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-800">
-                      <h4 className="font-medium mb-2 text-orange-800 dark:text-orange-200">Perhitungan Susut</h4>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>Penyusutan:</div>
-                        <div className="font-medium">{calculateSusut().penyusutan_kg.toFixed(2)} Kg ({calculateSusut().susut_persen.toFixed(1)}%)</div>
-                        <div>Total Kering:</div>
-                        <div className="font-medium">{calculateSusut().total_kering.toFixed(2)} Kg</div>
-                        <div>Total Kering Packing:</div>
-                        <div className="font-medium">{calculateSusut().total_kering_packing.toFixed(2)} Kg</div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div>
-                    <Label>Operator</Label>
-                    <Input
-                      value={form.operator}
-                      onChange={(e) => setForm(prev => ({ ...prev, operator: e.target.value }))}
-                      placeholder="Nama operator"
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Catatan</Label>
-                    <Textarea
-                      value={form.catatan}
-                      onChange={(e) => setForm(prev => ({ ...prev, catatan: e.target.value }))}
-                      placeholder="Catatan tambahan"
-                    />
-                  </div>
-
-                  <Button 
-                    onClick={handleSubmit} 
-                    className="w-full"
-                    disabled={!selectedWeek || selectedFarmers.size === 0}
-                  >
-                    Mulai Proses Pengovenan
-                  </Button>
                 </div>
-              </ScrollArea>
+
+                {/* Selected Week Info */}
+                {selectedWeekOption && (
+                  <div className="p-3 bg-muted/50 rounded-lg border">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Calendar className="h-4 w-4" />
+                      <span className="font-medium">{selectedWeekOption.estimationName} - {selectedWeekOption.weekLabel}</span>
+                      <Badge className={selectedWeekOption.isOrganic ? 'bg-green-600' : 'bg-orange-500'}>
+                        {selectedWeekOption.isOrganic ? 'Organik' : 'Konvensional'}
+                      </Badge>
+                    </div>
+                    <div className="text-sm text-muted-foreground grid grid-cols-2 md:grid-cols-4 gap-2">
+                      <div><span className="font-medium">Lot:</span> {selectedWeekOption.lotNumber}</div>
+                      <div><span className="font-medium">Tanggal Pengambilan:</span> {format(new Date(selectedWeekOption.pickupDate), "dd MMM yyyy", { locale: localeId })}</div>
+                      <div><span className="font-medium">Sudah diproses:</span> {selectedWeekOption.processedFarmerIds.size} petani</div>
+                      <div><span className="font-medium">Tersisa:</span> {selectedWeekOption.remainingFarmers.length} petani ({selectedWeekOption.remainingKg.toLocaleString()} Kg)</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Farmer Selection */}
+                {renderFarmerSelectionTable()}
+
+                {/* Parameters - New formulas */}
+                {selectedFarmers.size > 0 && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Jumlah Bahan Baku (Kg)</Label>
+                        <Input
+                          type="number"
+                          value={selectedTotalKg}
+                          readOnly
+                          className="bg-muted"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">Dari total petani yang dipilih</p>
+                      </div>
+                      <div>
+                        <Label>Susut % *</Label>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          value={form.susut_persen}
+                          onChange={(e) => setForm(prev => ({ ...prev, susut_persen: e.target.value }))}
+                          placeholder="Contoh: 15"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Total Kering (Kg)</Label>
+                        <Input
+                          type="number"
+                          value={calculateResults.total_kering.toFixed(2)}
+                          readOnly
+                          className="bg-muted font-bold"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">= Bahan Baku - (Bahan Baku × Susut%)</p>
+                      </div>
+                      <div>
+                        <Label>Susut QC Off % *</Label>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          value={form.susut_qc_off_persen}
+                          onChange={(e) => setForm(prev => ({ ...prev, susut_qc_off_persen: e.target.value }))}
+                          placeholder="Contoh: 5"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>QC Off (Kg)</Label>
+                        <Input
+                          type="number"
+                          value={calculateResults.qc_off.toFixed(2)}
+                          readOnly
+                          className="bg-muted"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">= Total Kering × Susut QC Off%</p>
+                      </div>
+                      <div>
+                        <Label>Total Kering Packing (Kg)</Label>
+                        <Input
+                          type="number"
+                          value={calculateResults.total_kering_packing.toFixed(2)}
+                          readOnly
+                          className="bg-muted font-bold text-green-600"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">= Total Kering - QC Off (Hasil akhir ke gudang)</p>
+                      </div>
+                    </div>
+
+                    {/* Summary */}
+                    {form.susut_persen && (
+                      <div className="p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                        <h4 className="font-medium mb-2 text-orange-800 dark:text-orange-200">Ringkasan Perhitungan</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                          <div>Bahan Baku:</div>
+                          <div className="font-medium">{calculateResults.bahan_masuk.toLocaleString()} Kg</div>
+                          <div className="hidden md:block"></div>
+                          
+                          <div>Penyusutan:</div>
+                          <div className="font-medium">{calculateResults.penyusutan_kg.toFixed(2)} Kg ({calculateResults.susut_persen}%)</div>
+                          <div className="hidden md:block"></div>
+                          
+                          <div>Total Kering:</div>
+                          <div className="font-medium">{calculateResults.total_kering.toFixed(2)} Kg</div>
+                          <div className="hidden md:block"></div>
+                          
+                          <div>QC Off:</div>
+                          <div className="font-medium">{calculateResults.qc_off.toFixed(2)} Kg ({calculateResults.susut_qc_off_persen}%)</div>
+                          <div className="hidden md:block"></div>
+                          
+                          <div className="font-bold text-green-700 dark:text-green-400">Total Kering Packing:</div>
+                          <div className="font-bold text-green-700 dark:text-green-400">{calculateResults.total_kering_packing.toFixed(2)} Kg</div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <div>
+                  <Label>Operator</Label>
+                  <Input
+                    value={form.operator}
+                    onChange={(e) => setForm(prev => ({ ...prev, operator: e.target.value }))}
+                    placeholder="Nama operator"
+                  />
+                </div>
+
+                <div>
+                  <Label>Catatan</Label>
+                  <Textarea
+                    value={form.catatan}
+                    onChange={(e) => setForm(prev => ({ ...prev, catatan: e.target.value }))}
+                    placeholder="Catatan tambahan"
+                  />
+                </div>
+
+                <Button 
+                  onClick={handleSubmit} 
+                  className="w-full"
+                  disabled={!selectedWeek || selectedFarmers.size === 0 || !form.susut_persen}
+                >
+                  Mulai Proses Pengovenan
+                </Button>
+              </div>
             </DialogContent>
           </Dialog>
         </div>
@@ -736,6 +731,7 @@ export const PengovenanTab = () => {
                   <span className="font-medium text-sm">{week.estimationName} - {week.weekLabel}</span>
                 </div>
                 <div className="text-xs text-muted-foreground">
+                  <div>Lot: {week.lotNumber}</div>
                   {week.isFullyProcessed ? (
                     <span className="text-green-600 flex items-center gap-1">
                       <Check className="h-3 w-3" /> Semua petani sudah diproses
@@ -766,8 +762,10 @@ export const PengovenanTab = () => {
                 <TableHead>Lot Number</TableHead>
                 <TableHead>Tipe</TableHead>
                 <TableHead>Tanggal Mulai</TableHead>
-                <TableHead>Sebelum</TableHead>
-                <TableHead>Sesudah</TableHead>
+                <TableHead>Bahan Baku</TableHead>
+                <TableHead>Total Kering</TableHead>
+                <TableHead>QC Off</TableHead>
+                <TableHead>Total Kering Packing</TableHead>
                 <TableHead>Susut</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Aksi</TableHead>
@@ -797,7 +795,9 @@ export const PengovenanTab = () => {
                         </TableCell>
                         <TableCell>{format(new Date(p.tanggal_mulai), "dd MMM yyyy", { locale: localeId })}</TableCell>
                         <TableCell>{Number(p.jumlah_kg_sebelum).toLocaleString()} Kg</TableCell>
-                        <TableCell>{p.jumlah_kg_sesudah ? `${Number(p.jumlah_kg_sesudah).toLocaleString()} Kg` : '-'}</TableCell>
+                        <TableCell>{p.total_kering ? `${Number(p.total_kering).toLocaleString()} Kg` : '-'}</TableCell>
+                        <TableCell>{p.qc_off ? `${Number(p.qc_off).toLocaleString()} Kg` : '-'}</TableCell>
+                        <TableCell className="font-bold text-green-600">{p.total_kering_packing ? `${Number(p.total_kering_packing).toLocaleString()} Kg` : '-'}</TableCell>
                         <TableCell>
                           {p.susut_persen ? `${Number(p.susut_persen).toFixed(1)}%` : '-'}
                         </TableCell>
@@ -822,7 +822,7 @@ export const PengovenanTab = () => {
                       </TableRow>
                       <CollapsibleContent asChild>
                         <TableRow className="bg-muted/30">
-                          <TableCell colSpan={9}>
+                          <TableCell colSpan={11}>
                             <div className="p-4">
                               <h4 className="font-medium mb-2 flex items-center gap-2">
                                 <Users className="h-4 w-4" />
