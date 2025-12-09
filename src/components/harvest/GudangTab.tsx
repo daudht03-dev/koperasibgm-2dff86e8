@@ -4,16 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Warehouse, Leaf, Factory, Package, Flame, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
+import { Warehouse, Leaf, Factory, Package, Flame, ArrowDownToLine, ArrowUpFromLine, RefreshCw } from "lucide-react";
 import { useGudangStok, useBatchPanen, useProsesPengeringan, GudangStok } from "@/hooks/use-batch-panen";
+import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { TableSkeleton } from "@/components/ui/skeleton-templates";
+import { OvenReportDialog } from "./OvenReportDialog";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 
 export const GudangTab = () => {
-  const { stok, loading, addStok, refetch } = useGudangStok();
+  const { stok, loading, refetch } = useGudangStok();
   const { batches } = useBatchPanen();
-  const { proses } = useProsesPengeringan();
+  const { proses, refetch: refetchProses } = useProsesPengeringan();
+  const { profile } = useCompanyProfile();
   
   const [activeSubTab, setActiveSubTab] = useState("hasil-oven");
 
@@ -324,6 +327,16 @@ export const GudangTab = () => {
                 Stok Gudang
               </CardTitle>
               <CardDescription>Kelola stok bahan baku dan produk jadi di gudang</CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => { refetch(); refetchProses(); }}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+              <OvenReportDialog 
+                proses={proses} 
+                companyName={profile?.nama_perusahaan || "Kelapa Organik"} 
+              />
             </div>
           </div>
         </CardHeader>
