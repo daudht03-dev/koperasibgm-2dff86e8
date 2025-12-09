@@ -75,6 +75,7 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
   const { pengepulList } = usePengepul();
 
   const [selectedPengepul, setSelectedPengepul] = useState<string>("");
+  const [selectedEstimation, setSelectedEstimation] = useState<string>("all");
 
   const [form, setForm] = useState({
     warna_produk: "",
@@ -193,22 +194,45 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
     [pengepulData, selectedPengepul]
   );
 
-  // Calculate totals for selected pengepul
-  const totals = useMemo(() => {
-    if (!selectedPengepulData) return { organic: 0, conventional: 0, total: 0 };
+  // Get unique estimations from selected pengepul
+  const availableEstimations = useMemo(() => {
+    if (!selectedPengepulData) return [];
+    const estimations = new Set<string>();
+    selectedPengepulData.weeks.forEach(week => {
+      estimations.add(week.estimationName);
+    });
+    return Array.from(estimations).sort();
+  }, [selectedPengepulData]);
+
+  // Filter weeks by selected estimation
+  const filteredPengepulData = useMemo(() => {
+    if (!selectedPengepulData) return null;
+    if (selectedEstimation === "all") return selectedPengepulData;
     
-    const organic = selectedPengepulData.weeks.reduce((sum, w) => sum + w.totalOrganicKg, 0);
-    const conventional = selectedPengepulData.weeks.reduce((sum, w) => sum + w.totalConventionalKg, 0);
+    return {
+      ...selectedPengepulData,
+      weeks: selectedPengepulData.weeks.filter(w => w.estimationName === selectedEstimation),
+    };
+  }, [selectedPengepulData, selectedEstimation]);
+
+  // Calculate totals for filtered pengepul data
+  const totals = useMemo(() => {
+    if (!filteredPengepulData) return { organic: 0, conventional: 0, total: 0 };
+    
+    const organic = filteredPengepulData.weeks.reduce((sum, w) => sum + w.totalOrganicKg, 0);
+    const conventional = filteredPengepulData.weeks.reduce((sum, w) => sum + w.totalConventionalKg, 0);
     
     return { organic, conventional, total: organic + conventional };
-  }, [selectedPengepulData]);
+  }, [filteredPengepulData]);
 
   const handlePengepulChange = (pengepulId: string) => {
     setSelectedPengepul(pengepulId);
+    setSelectedEstimation("all"); // Reset estimation filter when pengepul changes
   };
 
   const resetForm = () => {
     setSelectedPengepul("");
+    setSelectedEstimation("all");
     setForm({
       warna_produk: "",
       kualitas: "grade_a",
@@ -218,15 +242,15 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
   };
 
   const handleSubmit = async (isOrganic: boolean) => {
-    if (!selectedPengepulData) return;
+    if (!filteredPengepulData) return;
 
-    // Get all weeks data
+    // Get all weeks data from filtered data
     const allPengambilanIds: string[] = [];
     const allFarmers: FarmerDetail[] = [];
     let totalKg = 0;
     let pickupDate = "";
 
-    selectedPengepulData.weeks.forEach(week => {
+    filteredPengepulData.weeks.forEach(week => {
       allPengambilanIds.push(...week.pengambilanIds);
       if (!pickupDate) pickupDate = week.pickupDate;
       
@@ -282,7 +306,7 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
   };
 
   // Render farmer table for a type
-  const renderFarmerTable = (farmers: FarmerDetail[], title: string, icon: React.ReactNode, colorClass: string) => {
+  const renderFarmerTable = (farmers: FarmerDetail[], title: string, icon: React.ReactNode, colorClass: string, pengepulNama?: string) => {
     if (farmers.length === 0) return null;
     const total = farmers.reduce((sum, f) => sum + f.total_kg, 0);
 
@@ -290,7 +314,9 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
       <div className="border rounded-lg p-4">
         <div className={`flex items-center gap-2 mb-3 ${colorClass}`}>
           {icon}
-          <Label className="text-sm font-medium">{title} ({farmers.length} petani)</Label>
+          <Label className="text-sm font-medium">
+            {pengepulNama ? `Pengepul ${pengepulNama} - ` : ""}{title} ({farmers.length} petani)
+          </Label>
           <Badge variant="secondary">{total.toLocaleString()} Kg</Badge>
         </div>
         
@@ -330,14 +356,14 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
     );
   };
 
-  // Aggregate all farmers across weeks for display
+  // Aggregate all farmers across weeks for display (using filtered data)
   const aggregatedFarmers = useMemo(() => {
-    if (!selectedPengepulData) return { organic: [], conventional: [] };
+    if (!filteredPengepulData) return { organic: [], conventional: [] };
 
     const organicMap = new Map<string, FarmerDetail>();
     const conventionalMap = new Map<string, FarmerDetail>();
 
-    selectedPengepulData.weeks.forEach(week => {
+    filteredPengepulData.weeks.forEach(week => {
       week.organicFarmers.forEach(f => {
         if (organicMap.has(f.petani_id)) {
           organicMap.get(f.petani_id)!.total_kg += f.total_kg;
@@ -359,7 +385,7 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
       organic: Array.from(organicMap.values()),
       conventional: Array.from(conventionalMap.values()),
     };
-  }, [selectedPengepulData]);
+  }, [filteredPengepulData]);
 
   return (
     <Dialog open={dialogOpen} onOpenChange={(open) => {
@@ -421,19 +447,53 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
             )}
           </div>
 
-          {/* Selected Pengepul Info with Weeks */}
+          {/* Selected Pengepul Info with Estimation Filter */}
           {selectedPengepulData && (
             <>
+              {/* Estimation Filter */}
+              {availableEstimations.length > 1 && (
+                <div className="border rounded-lg p-4">
+                  <Label className="text-sm font-medium flex items-center gap-2 mb-3">
+                    <Calendar className="h-4 w-4" />
+                    Filter Berdasarkan Estimasi
+                  </Label>
+                  <Select value={selectedEstimation} onValueChange={setSelectedEstimation}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih estimasi" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Estimasi ({availableEstimations.length})</SelectItem>
+                      {availableEstimations.map(estName => {
+                        const estWeeks = selectedPengepulData.weeks.filter(w => w.estimationName === estName);
+                        const estTotal = estWeeks.reduce((sum, w) => sum + w.totalOrganicKg + w.totalConventionalKg, 0);
+                        return (
+                          <SelectItem key={estName} value={estName}>
+                            <div className="flex items-center gap-2">
+                              <span>{estName}</span>
+                              <Badge variant="outline">{estWeeks.length} minggu</Badge>
+                              <Badge variant="secondary">{estTotal.toLocaleString()} Kg</Badge>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <div className="p-4 bg-muted/50 rounded-lg border">
                 <div className="flex items-center gap-2 mb-3">
                   <User className="h-4 w-4" />
                   <span className="font-medium">{selectedPengepulData.pengepulNama}</span>
                   <span className="text-muted-foreground">({selectedPengepulData.pengepulKode})</span>
+                  {selectedEstimation !== "all" && (
+                    <Badge variant="outline">Filter: {selectedEstimation}</Badge>
+                  )}
                 </div>
                 
-                {/* Week Summary */}
+                {/* Week Summary - Show filtered weeks */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mb-3">
-                  {selectedPengepulData.weeks.map((week, idx) => (
+                  {filteredPengepulData?.weeks.map((week, idx) => (
                     <div key={idx} className="p-2 bg-background rounded border text-sm">
                       <div className="flex items-center gap-2 mb-1">
                         <Calendar className="h-3 w-3" />
@@ -476,20 +536,22 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
                 </div>
               </div>
 
-              {/* Organic Farmers Table */}
+              {/* Organic Farmers Table - with pengepul name in title */}
               {renderFarmerTable(
                 aggregatedFarmers.organic,
-                "Petani Organik",
+                "Produk Organik",
                 <Leaf className="h-4 w-4" />,
-                "text-green-600"
+                "text-green-600",
+                selectedPengepulData.pengepulNama
               )}
 
-              {/* Conventional Farmers Table */}
+              {/* Conventional Farmers Table - with pengepul name in title */}
               {renderFarmerTable(
                 aggregatedFarmers.conventional,
-                "Petani Konvensional",
+                "Produk Konvensional",
                 <Factory className="h-4 w-4" />,
-                "text-orange-500"
+                "text-orange-500",
+                selectedPengepulData.pengepulNama
               )}
 
               {/* Form Fields */}
