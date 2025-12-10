@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Warehouse, Leaf, Factory, Package, Flame, ArrowDownToLine, ArrowUpFromLine, RefreshCw } from "lucide-react";
-import { useGudangStok, useBatchPanen, useProsesPengeringan, GudangStok } from "@/hooks/use-batch-panen";
+import { Warehouse, Leaf, Factory, Package, Flame, ArrowDownToLine, ArrowUpFromLine, RefreshCw, ShoppingCart } from "lucide-react";
+import { useGudangStok, useBatchPanen, useProsesPengeringan, usePenjualan, GudangStok } from "@/hooks/use-batch-panen";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { TableSkeleton } from "@/components/ui/skeleton-templates";
 import { OvenReportDialog } from "./OvenReportDialog";
+import { BarangKeluarGudangDialog } from "./BarangKeluarGudangDialog";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 
@@ -16,9 +17,15 @@ export const GudangTab = () => {
   const { stok, loading, refetch } = useGudangStok();
   const { batches } = useBatchPanen();
   const { proses, refetch: refetchProses } = useProsesPengeringan();
+  const { penjualan, refetch: refetchPenjualan } = usePenjualan();
   const { profile } = useCompanyProfile();
   
   const [activeSubTab, setActiveSubTab] = useState("hasil-oven");
+
+  // Filter stok tersedia (status tersimpan dan jumlah > 0)
+  const stokTersedia = useMemo(() => {
+    return stok.filter(s => s.status === 'tersimpan' && Number(s.jumlah_kg) > 0);
+  }, [stok]);
 
   // Separate stok by type and organic status
   const categorizedStok = useMemo(() => {
@@ -246,6 +253,74 @@ export const GudangTab = () => {
     );
   };
 
+  // Render penjualan/barang keluar history
+  const renderPenjualanTable = () => {
+    if (penjualan.length === 0) {
+      return (
+        <div className="text-center py-8 text-muted-foreground">
+          Belum ada data barang keluar/penjualan
+        </div>
+      );
+    }
+
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>No. Invoice</TableHead>
+            <TableHead>Tanggal</TableHead>
+            <TableHead>Pembeli</TableHead>
+            <TableHead>Jumlah</TableHead>
+            <TableHead>Harga/Kg</TableHead>
+            <TableHead>Total</TableHead>
+            <TableHead>Status</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {penjualan.map((item) => {
+            const batch = batches.find(b => b.id === item.batch_id);
+            return (
+              <TableRow key={item.id}>
+                <TableCell>
+                  <div>
+                    <p className="font-mono font-medium">{item.nomor_invoice}</p>
+                    {batch && (
+                      <p className="text-xs text-muted-foreground">{batch.batch_number}</p>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {format(new Date(item.tanggal_penjualan), "dd MMM yyyy", { locale: localeId })}
+                </TableCell>
+                <TableCell>
+                  <div>
+                    <p className="font-medium">{item.pembeli}</p>
+                    {item.alamat_pembeli && (
+                      <p className="text-xs text-muted-foreground">{item.alamat_pembeli}</p>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="font-medium">{Number(item.jumlah_kg).toLocaleString()} Kg</TableCell>
+                <TableCell>Rp {Number(item.harga_per_kg).toLocaleString()}</TableCell>
+                <TableCell className="font-bold text-primary">
+                  Rp {Number(item.total_harga || item.jumlah_kg * item.harga_per_kg).toLocaleString()}
+                </TableCell>
+                <TableCell>
+                  <Badge 
+                    variant={item.status_pembayaran === 'lunas' ? 'default' : 'secondary'}
+                    className={item.status_pembayaran === 'pending' ? 'bg-orange-100 text-orange-800 border-orange-200' : ''}
+                  >
+                    {item.status_pembayaran === 'lunas' ? 'Lunas' : item.status_pembayaran === 'pending' ? 'Pending' : item.status_pembayaran}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    );
+  };
+
   const renderSummaryCard = (title: string, icon: React.ReactNode, stats: { total: number; tersimpan: number; keluar: number }, isOrganic: boolean) => (
     <Card className={`border ${isOrganic ? 'border-emerald-200/50' : 'border-slate-200/50'}`}>
       <CardContent className="pt-4">
@@ -329,10 +404,14 @@ export const GudangTab = () => {
               <CardDescription>Kelola stok bahan baku dan produk jadi di gudang</CardDescription>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => { refetch(); refetchProses(); }}>
+              <Button variant="outline" size="sm" onClick={() => { refetch(); refetchProses(); refetchPenjualan(); }}>
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
+              <BarangKeluarGudangDialog 
+                stokTersedia={stokTersedia}
+                onSuccess={() => { refetch(); refetchPenjualan(); }}
+              />
               <OvenReportDialog 
                 proses={proses} 
                 companyName={profile?.nama_perusahaan || "Kelapa Organik"} 
@@ -342,31 +421,39 @@ export const GudangTab = () => {
         </CardHeader>
         <CardContent>
           <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
-            <TabsList className="grid grid-cols-5 w-full mb-4">
+            <TabsList className="grid grid-cols-6 w-full mb-4">
               <TabsTrigger value="hasil-oven" className="flex items-center gap-1">
                 <Flame className="h-3 w-3 text-orange-600" />
                 <span className="hidden sm:inline">Hasil</span> Oven
               </TabsTrigger>
+              <TabsTrigger value="barang-keluar" className="flex items-center gap-1">
+                <ShoppingCart className="h-3 w-3 text-blue-600" />
+                <span className="hidden sm:inline">Brg</span> Keluar
+              </TabsTrigger>
               <TabsTrigger value="bahan-baku-organik" className="flex items-center gap-1">
                 <Leaf className="h-3 w-3 text-emerald-600" />
-                <span className="hidden sm:inline">BB</span> Organik
+                <span className="hidden sm:inline">BB</span> Org
               </TabsTrigger>
               <TabsTrigger value="bahan-baku-konv" className="flex items-center gap-1">
                 <Factory className="h-3 w-3 text-slate-600" />
-                <span className="hidden sm:inline">BB</span> Konv.
+                <span className="hidden sm:inline">BB</span> Konv
               </TabsTrigger>
               <TabsTrigger value="produk-organik" className="flex items-center gap-1">
                 <Leaf className="h-3 w-3 text-emerald-600" />
-                <span className="hidden sm:inline">Produk</span> Org.
+                <span className="hidden sm:inline">Prd</span> Org
               </TabsTrigger>
               <TabsTrigger value="produk-konv" className="flex items-center gap-1">
                 <Factory className="h-3 w-3 text-slate-600" />
-                <span className="hidden sm:inline">Produk</span> Konv.
+                <span className="hidden sm:inline">Prd</span> Konv
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="hasil-oven">
               {renderOvenResultsTable()}
+            </TabsContent>
+
+            <TabsContent value="barang-keluar">
+              {renderPenjualanTable()}
             </TabsContent>
 
             <TabsContent value="bahan-baku-organik">
