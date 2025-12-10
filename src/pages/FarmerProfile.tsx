@@ -191,13 +191,14 @@ const FarmerProfile = () => {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
-                    <div className="flex items-center space-x-2 text-muted-foreground">
-                      <MapPin className="h-4 w-4" />
-                      <span className="text-sm">Alamat</span>
-                    </div>
-                    <p className="text-foreground">
-                      {petani.alamat || "-"}
+                    <p className="text-muted-foreground text-sm">
+                      Petani terdaftar dengan kode <span className="font-medium text-foreground">{petani.kode_petani}</span>
                     </p>
+                    {petani.is_organic && (
+                      <Badge variant="outline" className="border-organic-green text-organic-green">
+                        Petani Organik
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </CardContent>
