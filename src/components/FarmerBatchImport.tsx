@@ -6,8 +6,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Download, Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Loader2, Users } from "lucide-react";
+import { Download, Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Loader2, Users, RefreshCw, MapPin } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -21,10 +22,14 @@ interface ParsedFarmer {
   kode_petani: string;
   nama: string;
   alamat: string;
-  no_telepon: string;
   is_organic: boolean;
+  nama_lahan: string;
+  lokasi_lahan: string;
+  luas_lahan: number | null;
   error?: string;
   isValid: boolean;
+  isUpdate: boolean;
+  existingId?: string;
 }
 
 interface FarmerBatchImportProps {
@@ -44,40 +49,55 @@ export const FarmerBatchImport = ({
   const [parsedData, setParsedData] = useState<ParsedFarmer[]>([]);
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
-  const [importResults, setImportResults] = useState<{ success: number; failed: number } | null>(null);
+  const [importResults, setImportResults] = useState<{ success: number; failed: number; updated: number } | null>(null);
   const [pengepulList, setPengepulList] = useState<Pengepul[]>([]);
   const [selectedPengepulId, setSelectedPengepulId] = useState<string>("");
   const [loadingPengepul, setLoadingPengepul] = useState(true);
+  const [updateMode, setUpdateMode] = useState(true);
+  const [existingFarmers, setExistingFarmers] = useState<Map<string, string>>(new Map());
 
-  // Fetch pengepul list on mount
+  // Fetch pengepul list and existing farmers on mount
   useEffect(() => {
-    const fetchPengepul = async () => {
+    const fetchData = async () => {
       try {
         setLoadingPengepul(true);
-        const { data, error } = await supabase
+        
+        // Fetch pengepul
+        const { data: pengepulData, error: pengepulError } = await supabase
           .from("pengepul")
           .select("id, kode_pengepul, nama")
           .eq("status", "aktif")
           .order("nama");
 
-        if (error) throw error;
-        setPengepulList(data || []);
+        if (pengepulError) throw pengepulError;
+        setPengepulList(pengepulData || []);
+
+        // Fetch existing farmers for update mode
+        const { data: farmersData, error: farmersError } = await supabase
+          .from("petani")
+          .select("id, kode_petani");
+
+        if (farmersError) throw farmersError;
+        
+        const farmersMap = new Map<string, string>();
+        farmersData?.forEach(f => farmersMap.set(f.kode_petani.toUpperCase(), f.id));
+        setExistingFarmers(farmersMap);
       } catch (error) {
-        console.error("Error fetching pengepul:", error);
+        console.error("Error fetching data:", error);
       } finally {
         setLoadingPengepul(false);
       }
     };
 
     if (open) {
-      fetchPengepul();
+      fetchData();
     }
   }, [open]);
 
   const downloadTemplate = () => {
-    const template = `kode_petani,nama,alamat,no_telepon,is_organic
-P001,Nama Petani 1,Alamat Petani 1,08123456789,true
-P002,Nama Petani 2,Alamat Petani 2,08987654321,false`;
+    const template = `kode_petani,nama,alamat,is_organic,nama_lahan,lokasi_lahan,luas_lahan
+P001,Nama Petani 1,Alamat Petani 1,true,Lahan Utama,Desa ABC,1.5
+P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0`;
     
     const blob = new Blob([template], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
@@ -112,8 +132,10 @@ P002,Nama Petani 2,Alamat Petani 2,08987654321,false`;
     const codeIndex = headers.indexOf("kode_petani");
     const namaIndex = headers.indexOf("nama");
     const alamatIndex = headers.indexOf("alamat");
-    const teleponIndex = headers.indexOf("no_telepon");
     const organicIndex = headers.indexOf("is_organic");
+    const namaLahanIndex = headers.indexOf("nama_lahan");
+    const lokasiLahanIndex = headers.indexOf("lokasi_lahan");
+    const luasLahanIndex = headers.indexOf("luas_lahan");
 
     const seenCodes = new Set<string>();
     const parsed: ParsedFarmer[] = [];
@@ -128,12 +150,17 @@ P002,Nama Petani 2,Alamat Petani 2,08987654321,false`;
       const kode_petani = values[codeIndex]?.trim() || "";
       const nama = values[namaIndex]?.trim() || "";
       const alamat = alamatIndex >= 0 ? values[alamatIndex]?.trim() || "" : "";
-      const no_telepon = teleponIndex >= 0 ? values[teleponIndex]?.trim() || "" : "";
       const is_organic_raw = organicIndex >= 0 ? values[organicIndex]?.trim().toLowerCase() : "true";
       const is_organic = is_organic_raw === "true" || is_organic_raw === "1" || is_organic_raw === "ya" || is_organic_raw === "yes";
+      const nama_lahan = namaLahanIndex >= 0 ? values[namaLahanIndex]?.trim() || "" : "";
+      const lokasi_lahan = lokasiLahanIndex >= 0 ? values[lokasiLahanIndex]?.trim() || "" : "";
+      const luas_raw = luasLahanIndex >= 0 ? values[luasLahanIndex]?.trim() || "" : "";
+      const luas_lahan = luas_raw ? parseFloat(luas_raw.replace(",", ".")) : null;
 
       let error: string | undefined;
       let isValid = true;
+      const existingId = existingFarmers.get(kode_petani.toUpperCase());
+      const isUpdate = !!existingId;
 
       if (!kode_petani) {
         error = "Kode petani wajib diisi";
@@ -144,8 +171,8 @@ P002,Nama Petani 2,Alamat Petani 2,08987654321,false`;
       } else if (seenCodes.has(kode_petani.toUpperCase())) {
         error = "Kode petani duplikat di file";
         isValid = false;
-      } else if (existingCodes.map(c => c.toUpperCase()).includes(kode_petani.toUpperCase())) {
-        error = "Kode petani sudah ada di database";
+      } else if (existingId && !updateMode) {
+        error = "Kode petani sudah ada (aktifkan mode update)";
         isValid = false;
       }
 
@@ -155,10 +182,14 @@ P002,Nama Petani 2,Alamat Petani 2,08987654321,false`;
         kode_petani,
         nama,
         alamat,
-        no_telepon,
         is_organic,
+        nama_lahan,
+        lokasi_lahan,
+        luas_lahan,
         error,
         isValid,
+        isUpdate,
+        existingId,
       });
     }
 
@@ -224,6 +255,30 @@ P002,Nama Petani 2,Alamat Petani 2,08987654321,false`;
     }
   };
 
+  // Re-parse when update mode changes
+  useEffect(() => {
+    if (parsedData.length > 0) {
+      // Re-validate based on new update mode
+      setParsedData(prev => prev.map(farmer => {
+        const existingId = existingFarmers.get(farmer.kode_petani.toUpperCase());
+        const isUpdate = !!existingId;
+        
+        let error = farmer.error;
+        let isValid = farmer.isValid;
+        
+        if (existingId && !updateMode) {
+          error = "Kode petani sudah ada (aktifkan mode update)";
+          isValid = false;
+        } else if (farmer.error === "Kode petani sudah ada (aktifkan mode update)" && updateMode) {
+          error = undefined;
+          isValid = !!farmer.kode_petani && !!farmer.nama;
+        }
+        
+        return { ...farmer, isUpdate, existingId, error, isValid };
+      }));
+    }
+  }, [updateMode, existingFarmers]);
+
   const handleImport = async () => {
     const validData = parsedData.filter(d => d.isValid);
     if (validData.length === 0) {
@@ -239,38 +294,102 @@ P002,Nama Petani 2,Alamat Petani 2,08987654321,false`;
     setImportProgress(0);
     let success = 0;
     let failed = 0;
+    let updated = 0;
 
     for (let i = 0; i < validData.length; i++) {
       const farmer = validData[i];
       
-      const { error } = await supabase
-        .from("petani")
-        .insert({
-          kode_petani: farmer.kode_petani,
-          nama: farmer.nama,
-          alamat: farmer.alamat || null,
-          no_telepon: farmer.no_telepon || null,
-          is_organic: farmer.is_organic,
-          pengepul_id: selectedPengepulId || null,
-        });
+      try {
+        if (farmer.isUpdate && farmer.existingId) {
+          // Update existing farmer
+          const { error } = await supabase
+            .from("petani")
+            .update({
+              nama: farmer.nama,
+              alamat: farmer.alamat || null,
+              is_organic: farmer.is_organic,
+              pengepul_id: selectedPengepulId || null,
+            })
+            .eq("id", farmer.existingId);
 
-      if (error) {
-        console.error("Error inserting farmer:", error);
+          if (error) throw error;
+
+          // Update or create lahan if provided
+          if (farmer.nama_lahan) {
+            // Check if lahan exists for this farmer
+            const { data: existingLahan } = await supabase
+              .from("lahan")
+              .select("id")
+              .eq("petani_id", farmer.existingId)
+              .maybeSingle();
+
+            if (existingLahan) {
+              await supabase
+                .from("lahan")
+                .update({
+                  nama_lahan: farmer.nama_lahan,
+                  lokasi: farmer.lokasi_lahan || null,
+                  luas: farmer.luas_lahan,
+                })
+                .eq("id", existingLahan.id);
+            } else {
+              await supabase
+                .from("lahan")
+                .insert({
+                  petani_id: farmer.existingId,
+                  nama_lahan: farmer.nama_lahan,
+                  lokasi: farmer.lokasi_lahan || null,
+                  luas: farmer.luas_lahan,
+                });
+            }
+          }
+
+          updated++;
+        } else {
+          // Insert new farmer
+          const { data: newFarmer, error } = await supabase
+            .from("petani")
+            .insert({
+              kode_petani: farmer.kode_petani,
+              nama: farmer.nama,
+              alamat: farmer.alamat || null,
+              is_organic: farmer.is_organic,
+              pengepul_id: selectedPengepulId || null,
+            })
+            .select("id")
+            .single();
+
+          if (error) throw error;
+
+          // Create lahan if provided
+          if (newFarmer && farmer.nama_lahan) {
+            await supabase
+              .from("lahan")
+              .insert({
+                petani_id: newFarmer.id,
+                nama_lahan: farmer.nama_lahan,
+                lokasi: farmer.lokasi_lahan || null,
+                luas: farmer.luas_lahan,
+              });
+          }
+
+          success++;
+        }
+      } catch (error) {
+        console.error("Error processing farmer:", error);
         failed++;
-      } else {
-        success++;
       }
 
       setImportProgress(Math.round(((i + 1) / validData.length) * 100));
     }
 
     setImporting(false);
-    setImportResults({ success, failed });
+    setImportResults({ success, failed, updated });
 
-    if (success > 0) {
+    if (success > 0 || updated > 0) {
       toast({
         title: "Import selesai",
-        description: `${success} petani berhasil diimport${failed > 0 ? `, ${failed} gagal` : ""}`,
+        description: `${success} petani baru, ${updated} diupdate${failed > 0 ? `, ${failed} gagal` : ""}`,
       });
       onImportComplete();
     } else {
@@ -287,98 +406,128 @@ P002,Nama Petani 2,Alamat Petani 2,08987654321,false`;
     setImportResults(null);
     setImportProgress(0);
     setSelectedPengepulId("");
+    setUpdateMode(true);
     onOpenChange(false);
   };
 
   const validCount = parsedData.filter(d => d.isValid).length;
   const invalidCount = parsedData.filter(d => !d.isValid).length;
+  const newCount = parsedData.filter(d => d.isValid && !d.isUpdate).length;
+  const updateCount = parsedData.filter(d => d.isValid && d.isUpdate).length;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5" />
             Import Data Petani dari File CSV
           </DialogTitle>
           <DialogDescription>
-            Download template, isi data petani, lalu upload untuk import batch
+            Download template, isi data petani & lahan, lalu upload untuk import batch
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
-          {/* Step 1: Select Pengepul */}
-          <div className="p-4 border rounded-lg bg-muted/30">
-            <div className="flex items-center gap-2 mb-2">
-              <Users className="h-4 w-4" />
-              <p className="text-sm font-medium">Langkah 1: Pilih Pengepul (Opsional)</p>
+          {/* Settings Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Pengepul Selection */}
+            <div className="p-4 border rounded-lg bg-muted/30">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="h-4 w-4" />
+                <p className="text-sm font-medium">Pengepul (Opsional)</p>
+              </div>
+              <Select
+                value={selectedPengepulId}
+                onValueChange={setSelectedPengepulId}
+                disabled={loadingPengepul || importing}
+              >
+                <SelectTrigger className="w-full bg-background">
+                  <SelectValue placeholder={loadingPengepul ? "Memuat..." : "Pilih pengepul"} />
+                </SelectTrigger>
+                <SelectContent className="bg-background">
+                  <SelectItem value="">Tidak ada pengepul</SelectItem>
+                  {pengepulList.map((pengepul) => (
+                    <SelectItem key={pengepul.id} value={pengepul.id}>
+                      {pengepul.kode_pengepul} - {pengepul.nama}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <p className="text-xs text-muted-foreground mb-3">
-              Jika dipilih, semua petani yang diimport akan otomatis terhubung ke pengepul ini
-            </p>
-            <Select
-              value={selectedPengepulId}
-              onValueChange={setSelectedPengepulId}
-              disabled={loadingPengepul || importing}
-            >
-              <SelectTrigger className="w-[300px] bg-background">
-                <SelectValue placeholder={loadingPengepul ? "Memuat..." : "Pilih pengepul (opsional)"} />
-              </SelectTrigger>
-              <SelectContent className="bg-background">
-                <SelectItem value="">Tidak ada pengepul</SelectItem>
-                {pengepulList.map((pengepul) => (
-                  <SelectItem key={pengepul.id} value={pengepul.id}>
-                    {pengepul.kode_pengepul} - {pengepul.nama}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selectedPengepulId && (
-              <Badge variant="secondary" className="mt-2">
-                Pengepul: {pengepulList.find(p => p.id === selectedPengepulId)?.nama}
-              </Badge>
-            )}
+
+            {/* Update Mode Toggle */}
+            <div className="p-4 border rounded-lg bg-muted/30">
+              <div className="flex items-center gap-2 mb-2">
+                <RefreshCw className="h-4 w-4" />
+                <p className="text-sm font-medium">Mode Update</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="update-mode"
+                  checked={updateMode}
+                  onCheckedChange={setUpdateMode}
+                  disabled={importing}
+                />
+                <Label htmlFor="update-mode" className="text-sm text-muted-foreground">
+                  {updateMode ? "Update data jika kode petani sudah ada" : "Skip jika kode petani sudah ada"}
+                </Label>
+              </div>
+            </div>
           </div>
 
-          {/* Step 2: Download Template */}
-          <div className="p-4 border rounded-lg bg-muted/30">
-            <p className="text-sm font-medium mb-2">Langkah 2: Download Template CSV</p>
-            <Button variant="outline" onClick={downloadTemplate}>
-              <Download className="h-4 w-4 mr-2" />
-              Download Template
-            </Button>
-          </div>
+          {/* Download & Upload Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 border rounded-lg bg-muted/30">
+              <p className="text-sm font-medium mb-2">Download Template CSV</p>
+              <p className="text-xs text-muted-foreground mb-3">
+                Kolom: kode_petani, nama, alamat, is_organic, nama_lahan, lokasi_lahan, luas_lahan
+              </p>
+              <Button variant="outline" onClick={downloadTemplate}>
+                <Download className="h-4 w-4 mr-2" />
+                Download Template
+              </Button>
+            </div>
 
-          {/* Step 3: Upload File */}
-          <div className="p-4 border rounded-lg bg-muted/30">
-            <p className="text-sm font-medium mb-2">Langkah 3: Upload File CSV</p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-            <Button
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={importing}
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Pilih File CSV
-            </Button>
+            <div className="p-4 border rounded-lg bg-muted/30">
+              <p className="text-sm font-medium mb-2">Upload File CSV</p>
+              <p className="text-xs text-muted-foreground mb-3">
+                Format: CSV (max 1MB)
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={importing}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Pilih File CSV
+              </Button>
+            </div>
           </div>
 
           {/* Preview Data */}
           {parsedData.length > 0 && (
             <div className="flex-1 overflow-hidden flex flex-col border rounded-lg">
-              <div className="p-3 border-b bg-muted/30 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-medium">Preview Data ({parsedData.length} baris)</span>
-                  {validCount > 0 && (
+              <div className="p-3 border-b bg-muted/30 flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-medium">Preview ({parsedData.length} baris)</span>
+                  {newCount > 0 && (
                     <Badge variant="default" className="bg-green-600">
                       <CheckCircle className="h-3 w-3 mr-1" />
-                      {validCount} valid
+                      {newCount} baru
+                    </Badge>
+                  )}
+                  {updateCount > 0 && (
+                    <Badge variant="secondary" className="bg-blue-600 text-white">
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                      {updateCount} update
                     </Badge>
                   )}
                   {invalidCount > 0 && (
@@ -395,37 +544,52 @@ P002,Nama Petani 2,Alamat Petani 2,08987654321,false`;
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-12">Status</TableHead>
-                      <TableHead>Kode Petani</TableHead>
+                      <TableHead>Kode</TableHead>
                       <TableHead>Nama</TableHead>
                       <TableHead>Alamat</TableHead>
-                      <TableHead>No. Telepon</TableHead>
                       <TableHead>Organik</TableHead>
+                      <TableHead>Lahan</TableHead>
+                      <TableHead>Lokasi</TableHead>
+                      <TableHead>Luas (Ha)</TableHead>
                       <TableHead>Keterangan</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {parsedData.map((farmer, index) => (
-                      <TableRow key={index} className={!farmer.isValid ? "bg-destructive/5" : ""}>
+                      <TableRow 
+                        key={index} 
+                        className={
+                          !farmer.isValid 
+                            ? "bg-destructive/5" 
+                            : farmer.isUpdate 
+                              ? "bg-blue-500/5" 
+                              : ""
+                        }
+                      >
                         <TableCell>
-                          {farmer.isValid ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          ) : (
+                          {!farmer.isValid ? (
                             <AlertCircle className="h-4 w-4 text-destructive" />
+                          ) : farmer.isUpdate ? (
+                            <RefreshCw className="h-4 w-4 text-blue-600" />
+                          ) : (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
                           )}
                         </TableCell>
-                        <TableCell className="font-mono">{farmer.kode_petani || "-"}</TableCell>
+                        <TableCell className="font-mono text-xs">{farmer.kode_petani || "-"}</TableCell>
                         <TableCell>{farmer.nama || "-"}</TableCell>
-                        <TableCell className="max-w-[150px] truncate">{farmer.alamat || "-"}</TableCell>
-                        <TableCell>{farmer.no_telepon || "-"}</TableCell>
+                        <TableCell className="max-w-[100px] truncate text-xs">{farmer.alamat || "-"}</TableCell>
                         <TableCell>
                           {farmer.is_organic ? (
-                            <Badge variant="default" className="bg-green-600">Organik</Badge>
+                            <Badge variant="default" className="bg-green-600 text-xs">Organik</Badge>
                           ) : (
-                            <Badge variant="secondary">Konvensional</Badge>
+                            <Badge variant="secondary" className="text-xs">Konv.</Badge>
                           )}
                         </TableCell>
-                        <TableCell className="text-destructive text-sm">
-                          {farmer.error || ""}
+                        <TableCell className="text-xs">{farmer.nama_lahan || "-"}</TableCell>
+                        <TableCell className="max-w-[80px] truncate text-xs">{farmer.lokasi_lahan || "-"}</TableCell>
+                        <TableCell className="text-xs">{farmer.luas_lahan ?? "-"}</TableCell>
+                        <TableCell className="text-destructive text-xs">
+                          {farmer.error || (farmer.isUpdate ? "Update" : "")}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -450,11 +614,19 @@ P002,Nama Petani 2,Alamat Petani 2,08987654321,false`;
           {importResults && (
             <div className="p-4 border rounded-lg bg-muted/30">
               <p className="text-sm font-medium mb-2">Hasil Import:</p>
-              <div className="flex gap-4">
-                <Badge variant="default" className="bg-green-600">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  {importResults.success} berhasil
-                </Badge>
+              <div className="flex gap-4 flex-wrap">
+                {importResults.success > 0 && (
+                  <Badge variant="default" className="bg-green-600">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    {importResults.success} baru
+                  </Badge>
+                )}
+                {importResults.updated > 0 && (
+                  <Badge variant="secondary" className="bg-blue-600 text-white">
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    {importResults.updated} diupdate
+                  </Badge>
+                )}
                 {importResults.failed > 0 && (
                   <Badge variant="destructive">
                     <XCircle className="h-3 w-3 mr-1" />
