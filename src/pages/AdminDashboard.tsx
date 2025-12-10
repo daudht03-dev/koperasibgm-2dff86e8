@@ -19,7 +19,8 @@ import { useProducts } from "@/hooks/use-products";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { useHarvests } from "@/hooks/use-harvests";
 import { useNavigate, Link } from "react-router-dom";
-import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode, Printer, Upload } from "lucide-react";
+import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode, Printer, Upload, Map as MapIcon } from "lucide-react";
+import { LandMapViewer } from "@/components/LandMapViewer";
 import { FarmerBatchImport } from "@/components/FarmerBatchImport";
 import { toast } from "@/hooks/use-toast";
 import { 
@@ -74,6 +75,7 @@ const AdminDashboard = () => {
   const [landErrors, setLandErrors] = useState<Record<string, string>>({});
   const [editingLand, setEditingLand] = useState<string | null>(null);
   const [landDialogOpen, setLandDialogOpen] = useState(false);
+  const [landMapDialogOpen, setLandMapDialogOpen] = useState(false);
 
   // Form states for harvest
   const [harvestForm, setHarvestForm] = useState({
@@ -847,19 +849,27 @@ const AdminDashboard = () => {
                 <CardTitle className="text-foreground">Daftar Lahan</CardTitle>
                 <CardDescription>Kelola data lahan yang terdaftar</CardDescription>
               </div>
-              <Dialog open={landDialogOpen} onOpenChange={setLandDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button 
-                    onClick={() => {
-                      setEditingLand(null);
-                      setLandForm({ nama_lahan: "", lokasi: "", petani_id: "" });
-                    }}
-                    className="bg-gradient-organic shadow-organic hover:shadow-warm"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Tambah Lahan
-                  </Button>
-                </DialogTrigger>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setLandMapDialogOpen(true)}
+                >
+                  <MapIcon className="h-4 w-4 mr-2" />
+                  Lihat Peta Lahan
+                </Button>
+                <Dialog open={landDialogOpen} onOpenChange={setLandDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      onClick={() => {
+                        setEditingLand(null);
+                        setLandForm({ nama_lahan: "", lokasi: "", petani_id: "" });
+                      }}
+                      className="bg-gradient-organic shadow-organic hover:shadow-warm"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Tambah Lahan
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>{editingLand ? "Edit Lahan" : "Tambah Lahan"}</DialogTitle>
@@ -931,7 +941,9 @@ const AdminDashboard = () => {
                   </div>
                 </DialogContent>
               </Dialog>
+              </div>
             </CardHeader>
+            <LandMapViewer open={landMapDialogOpen} onOpenChange={setLandMapDialogOpen} />
             <CardContent>
               {!lands ? (
                 <TableSkeleton rows={8} columns={4} />
