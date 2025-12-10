@@ -339,7 +339,7 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0,"-6.789,106
               nama: farmer.nama,
               alamat: farmer.alamat || null,
               is_organic: farmer.is_organic,
-              pengepul_id: selectedPengepulId || null,
+              pengepul_id: selectedPengepulId && selectedPengepulId !== "none" ? selectedPengepulId : null,
             })
             .eq("id", farmer.existingId);
 
@@ -391,7 +391,7 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0,"-6.789,106
               nama: farmer.nama,
               alamat: farmer.alamat || null,
               is_organic: farmer.is_organic,
-              pengepul_id: selectedPengepulId || null,
+              pengepul_id: selectedPengepulId && selectedPengepulId !== "none" ? selectedPengepulId : null,
             })
             .select("id")
             .single();
@@ -497,7 +497,7 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0,"-6.789,106
                   <SelectValue placeholder={loadingPengepul ? "Memuat..." : "Pilih pengepul"} />
                 </SelectTrigger>
                 <SelectContent className="bg-background">
-                  <SelectItem value="">Tidak ada pengepul</SelectItem>
+                  <SelectItem value="none">Tidak ada pengepul</SelectItem>
                   {pengepulList.map((pengepul) => (
                     <SelectItem key={pengepul.id} value={pengepul.id}>
                       {pengepul.kode_pengepul} - {pengepul.nama}
