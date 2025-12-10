@@ -103,9 +103,9 @@ export const FarmerBatchImport = ({
   }, [open]);
 
   const downloadTemplate = () => {
-    const template = `kode_petani,nama,alamat,is_organic,nama_lahan,lokasi_lahan,koordinat,status_lahan
-P001,Nama Petani 1,Alamat Petani 1,true,Lahan Utama,Desa ABC,"-6.123,106.456",aktif
-P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,"-6.789,106.123",aktif`;
+    const template = `kode_petani,nama,alamat,is_organic,nama_lahan,lokasi_lahan,lat,long,status_lahan
+P001,Nama Petani 1,Alamat Petani 1,true,Lahan Utama,Desa ABC,-6.123,106.456,aktif
+P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,-6.789,106.123,aktif`;
     
     const blob = new Blob([template], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
@@ -143,7 +143,8 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,"-6.789,106.123
     const organicIndex = headers.indexOf("is_organic");
     const namaLahanIndex = headers.indexOf("nama_lahan");
     const lokasiLahanIndex = headers.indexOf("lokasi_lahan");
-    const koordinatIndex = headers.indexOf("koordinat");
+    const latIndex = headers.indexOf("lat");
+    const longIndex = headers.indexOf("long");
     const statusLahanIndex = headers.indexOf("status_lahan");
 
     const seenCodes = new Set<string>();
@@ -163,14 +164,36 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,"-6.789,106.123
       const is_organic = is_organic_raw === "true" || is_organic_raw === "1" || is_organic_raw === "ya" || is_organic_raw === "yes";
       const nama_lahan = namaLahanIndex >= 0 ? values[namaLahanIndex]?.trim() || "" : "";
       const lokasi_lahan = lokasiLahanIndex >= 0 ? values[lokasiLahanIndex]?.trim() || "" : "";
-      const koordinat = koordinatIndex >= 0 ? values[koordinatIndex]?.trim() || "" : "";
+      const latRaw = latIndex >= 0 ? values[latIndex]?.trim() || "" : "";
+      const longRaw = longIndex >= 0 ? values[longIndex]?.trim() || "" : "";
       const status_lahan = statusLahanIndex >= 0 ? values[statusLahanIndex]?.trim() || "aktif" : "aktif";
 
-      // Validate coordinates
-      const coordResult = parseCoordinate(koordinat);
-      const koordinat_lat = coordResult.isValid ? coordResult.lat : null;
-      const koordinat_lng = coordResult.isValid ? coordResult.lng : null;
-      const koordinat_error = coordResult.error;
+      // Parse and validate coordinates from separate lat/long columns
+      let koordinat_lat: number | null = null;
+      let koordinat_lng: number | null = null;
+      let koordinat_error: string | undefined;
+      let koordinat = "";
+
+      if (latRaw || longRaw) {
+        const latNum = parseFloat(latRaw);
+        const longNum = parseFloat(longRaw);
+        
+        if (latRaw && isNaN(latNum)) {
+          koordinat_error = "Lat tidak valid";
+        } else if (longRaw && isNaN(longNum)) {
+          koordinat_error = "Long tidak valid";
+        } else if (latRaw && (latNum < -90 || latNum > 90)) {
+          koordinat_error = "Lat harus antara -90 dan 90";
+        } else if (longRaw && (longNum < -180 || longNum > 180)) {
+          koordinat_error = "Long harus antara -180 dan 180";
+        } else {
+          koordinat_lat = latRaw ? latNum : null;
+          koordinat_lng = longRaw ? longNum : null;
+          if (koordinat_lat !== null && koordinat_lng !== null) {
+            koordinat = `${koordinat_lat},${koordinat_lng}`;
+          }
+        }
+      }
 
       let error: string | undefined;
       let isValid = true;
