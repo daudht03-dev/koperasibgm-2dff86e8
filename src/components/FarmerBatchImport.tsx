@@ -103,9 +103,9 @@ export const FarmerBatchImport = ({
   }, [open]);
 
   const downloadTemplate = () => {
-    const template = `kode_petani,nama,alamat,is_organic,nama_lahan,lokasi_lahan,lat,long,status_lahan
-P001,Nama Petani 1,Alamat Petani 1,true,Lahan Utama,Desa ABC,-6.123,106.456,aktif
-P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,-6.789,106.123,aktif`;
+    const template = `kode_petani;nama;alamat;is_organic;nama_lahan;lokasi_lahan;lat;long;status_lahan
+P001;Nama Petani 1;Alamat Petani 1;true;Lahan Utama;Desa ABC;-6,123;106,456;aktif
+P002;Nama Petani 2;Alamat Petani 2;false;Kebun Belakang;Desa XYZ;-6,789;106,123;aktif`;
     
     const blob = new Blob([template], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
@@ -124,7 +124,11 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,-6.789,106.123,
     const lines = content.trim().split("\n");
     if (lines.length < 2) return [];
 
-    const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+    // Detect separator: semicolon or comma
+    const firstLine = lines[0];
+    const separator = firstLine.includes(";") ? ";" : ",";
+    
+    const headers = firstLine.split(separator).map(h => h.trim().toLowerCase());
     const requiredHeaders = ["kode_petani", "nama"];
     
     const hasRequiredHeaders = requiredHeaders.every(h => headers.includes(h));
@@ -155,7 +159,7 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,-6.789,106.123,
       if (!line) continue;
 
       // Handle CSV with quoted values
-      const values = parseCSVLine(line);
+      const values = parseCSVLine(line, separator);
       
       const kode_petani = values[codeIndex]?.trim() || "";
       const nama = values[namaIndex]?.trim() || "";
@@ -169,14 +173,15 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,-6.789,106.123,
       const status_lahan = statusLahanIndex >= 0 ? values[statusLahanIndex]?.trim() || "aktif" : "aktif";
 
       // Parse and validate coordinates from separate lat/long columns
+      // Handle both dot and comma as decimal separator
       let koordinat_lat: number | null = null;
       let koordinat_lng: number | null = null;
       let koordinat_error: string | undefined;
       let koordinat = "";
 
       if (latRaw || longRaw) {
-        const latNum = parseFloat(latRaw);
-        const longNum = parseFloat(longRaw);
+        const latNum = parseFloat(latRaw.replace(",", "."));
+        const longNum = parseFloat(longRaw.replace(",", "."));
         
         if (latRaw && isNaN(latNum)) {
           koordinat_error = "Lat tidak valid";
@@ -241,7 +246,7 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,-6.789,106.123,
     return parsed;
   };
 
-  const parseCSVLine = (line: string): string[] => {
+  const parseCSVLine = (line: string, separator: string = ","): string[] => {
     const result: string[] = [];
     let current = "";
     let inQuotes = false;
@@ -251,7 +256,7 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,-6.789,106.123,
       
       if (char === '"') {
         inQuotes = !inQuotes;
-      } else if (char === "," && !inQuotes) {
+      } else if (char === separator && !inQuotes) {
         result.push(current);
         current = "";
       } else {
