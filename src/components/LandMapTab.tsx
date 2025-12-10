@@ -727,36 +727,33 @@ export const LandMapTab: React.FC = () => {
                 Keluar Mode Edit
               </Button>
             ) : (
-              <Select
-                value=""
-                onValueChange={(landId) => {
-                  const land = allLands.find(l => l.id === landId);
-                  if (land) {
-                    setSelectedLandForEdit(land);
-                    setEditMode(true);
-                    toast({
-                      title: "Mode Edit Aktif",
-                      description: `Klik pada peta untuk mengatur koordinat baru untuk "${land.nama_lahan}"`,
-                    });
-                  }
-                }}
-              >
-                <SelectTrigger className="w-[200px] h-9 bg-background">
-                  <div className="flex items-center gap-1">
-                    <MousePointer className="h-4 w-4" />
-                    <span>Edit Koordinat...</span>
-                  </div>
-                </SelectTrigger>
-                <SelectContent className="bg-background">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 w-[200px] justify-start">
+                    <MousePointer className="h-4 w-4 mr-1" />
+                    Edit Koordinat...
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-background w-[250px] max-h-[300px] overflow-y-auto">
                   {allLands
                     .filter((land) => land.id && land.id.trim() !== "")
                     .map((land) => (
-                      <SelectItem key={land.id} value={land.id}>
+                      <DropdownMenuItem
+                        key={land.id}
+                        onClick={() => {
+                          setSelectedLandForEdit(land);
+                          setEditMode(true);
+                          toast({
+                            title: "Mode Edit Aktif",
+                            description: `Klik pada peta untuk mengatur koordinat baru untuk "${land.nama_lahan}"`,
+                          });
+                        }}
+                      >
                         {land.nama_lahan} {land.parsedCoord ? "" : "(belum ada koordinat)"}
-                      </SelectItem>
+                      </DropdownMenuItem>
                     ))}
-                </SelectContent>
-              </Select>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
 
