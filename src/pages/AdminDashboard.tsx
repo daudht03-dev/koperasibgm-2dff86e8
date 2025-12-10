@@ -19,7 +19,8 @@ import { useProducts } from "@/hooks/use-products";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { useHarvests } from "@/hooks/use-harvests";
 import { useNavigate, Link } from "react-router-dom";
-import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode, Printer } from "lucide-react";
+import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode, Printer, Upload } from "lucide-react";
+import { FarmerBatchImport } from "@/components/FarmerBatchImport";
 import { toast } from "@/hooks/use-toast";
 import { 
   farmerSchema, 
@@ -39,7 +40,7 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState<"farmers" | "lands" | "products" | "statistics" | "profile" | "labels">("farmers");
 
   // Hooks for data management
-  const { farmers, addFarmer, updateFarmer, deleteFarmer } = useFarmers();
+  const { farmers, addFarmer, updateFarmer, deleteFarmer, refetch: refetchFarmers } = useFarmers();
   const { lands, addLand, updateLand, deleteLand } = useLands();
   const { products, createProduct, updateProduct, deleteProduct, uploadImage } = useProducts();
   const { profile, updateProfile, uploadLogo } = useCompanyProfile();
@@ -54,6 +55,7 @@ const AdminDashboard = () => {
   const [farmerErrors, setFarmerErrors] = useState<Record<string, string>>({});
   const [editingFarmer, setEditingFarmer] = useState<string | null>(null);
   const [farmerDialogOpen, setFarmerDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   
   // QR Preview Dialog state
   const [qrPreviewOpen, setQrPreviewOpen] = useState(false);
@@ -648,6 +650,14 @@ const AdminDashboard = () => {
               </div>
               <div className="flex gap-2">
                 <Button 
+                  variant="outline"
+                  className="border-organic-green/30"
+                  onClick={() => setImportDialogOpen(true)}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import CSV
+                </Button>
+                <Button 
                   asChild
                   variant="outline"
                   className="border-organic-green/30"
@@ -731,6 +741,14 @@ const AdminDashboard = () => {
                   </div>
                 </DialogContent>
               </Dialog>
+              
+              {/* Import Dialog */}
+              <FarmerBatchImport
+                open={importDialogOpen}
+                onOpenChange={setImportDialogOpen}
+                onImportComplete={refetchFarmers}
+                existingCodes={farmers?.map(f => f.kode_petani) || []}
+              />
               </div>
             </CardHeader>
             <CardContent>
