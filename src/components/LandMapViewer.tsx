@@ -15,7 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, Printer, Map, Satellite, Globe, Loader2, AlertCircle, Filter, MousePointer, Leaf, X } from "lucide-react";
+import { Download, Printer, Map, Satellite, Globe, Loader2, AlertCircle, Filter, MousePointer, Leaf, X, FileSpreadsheet, FileJson } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useReactToPrint } from "react-to-print";
 import html2canvas from "html2canvas";
 import { toast } from "@/hooks/use-toast";
@@ -409,6 +410,101 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
     }
   };
 
+  // Export to CSV
+  const handleExportCSV = () => {
+    const validLands = filteredLands.filter(l => l.parsedCoord);
+    if (validLands.length === 0) {
+      toast({
+        title: "Tidak ada data",
+        description: "Tidak ada lahan dengan koordinat untuk diekspor",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // CSV Header
+    const headers = ["No", "Nama Lahan", "Petani", "Kode Petani", "Status", "Lokasi", "Latitude", "Longitude", "Luas (ha)"];
+    
+    // CSV Rows
+    const rows = validLands.map((land, index) => [
+      index + 1,
+      `"${(land.nama_lahan || "").replace(/"/g, '""')}"`,
+      `"${(land.petani?.nama || "-").replace(/"/g, '""')}"`,
+      land.petani?.kode_petani || "-",
+      land.petani?.is_organic ? "Organik" : "Konvensional",
+      `"${(land.lokasi || "-").replace(/"/g, '""')}"`,
+      land.parsedCoord?.lat.toFixed(6) || "",
+      land.parsedCoord?.lng.toFixed(6) || "",
+      land.luas || "-",
+    ]);
+
+    const csvContent = [
+      headers.join(";"),
+      ...rows.map(row => row.join(";"))
+    ].join("\n");
+
+    // Add BOM for Excel compatibility
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `data-lahan-${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+
+    toast({
+      title: "Berhasil",
+      description: `${validLands.length} data lahan berhasil diekspor ke CSV`,
+    });
+  };
+
+  // Export to GeoJSON
+  const handleExportGeoJSON = () => {
+    const validLands = filteredLands.filter(l => l.parsedCoord);
+    if (validLands.length === 0) {
+      toast({
+        title: "Tidak ada data",
+        description: "Tidak ada lahan dengan koordinat untuk diekspor",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const geojson = {
+      type: "FeatureCollection",
+      features: validLands.map((land, index) => ({
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [land.parsedCoord!.lng, land.parsedCoord!.lat],
+        },
+        properties: {
+          id: land.id,
+          number: index + 1,
+          nama_lahan: land.nama_lahan,
+          lokasi: land.lokasi || null,
+          luas_ha: land.luas || null,
+          petani_nama: land.petani?.nama || null,
+          petani_kode: land.petani?.kode_petani || null,
+          is_organic: land.petani?.is_organic ?? null,
+          latitude: land.parsedCoord!.lat,
+          longitude: land.parsedCoord!.lng,
+        },
+      })),
+    };
+
+    const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: "application/geo+json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `data-lahan-${new Date().toISOString().split("T")[0]}.geojson`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+
+    toast({
+      title: "Berhasil",
+      description: `${validLands.length} data lahan berhasil diekspor ke GeoJSON`,
+    });
+  };
+
   // Download map as PNG
   const handleDownload = async () => {
     if (!printRef.current) return;
@@ -562,6 +658,30 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
             </div>
             
             <div className="flex-1" />
+
+            {/* Export Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={loading || filteredLands.length === 0}
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Export Data
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportCSV}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Export ke CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportGeoJSON}>
+                  <FileJson className="h-4 w-4 mr-2" />
+                  Export ke GeoJSON
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             
             <Button
               variant="outline"
