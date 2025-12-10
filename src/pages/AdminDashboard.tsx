@@ -41,7 +41,7 @@ const AdminDashboard = () => {
 
   // Hooks for data management
   const { farmers, addFarmer, updateFarmer, deleteFarmer, refetch: refetchFarmers } = useFarmers();
-  const { lands, addLand, updateLand, deleteLand } = useLands();
+  const { lands, addLand, updateLand, deleteLand, refetch: refetchLands } = useLands();
   const { products, createProduct, updateProduct, deleteProduct, uploadImage } = useProducts();
   const { profile, updateProfile, uploadLogo } = useCompanyProfile();
   const { harvests, addHarvest, deleteHarvest } = useHarvests();
@@ -747,6 +747,7 @@ const AdminDashboard = () => {
                 open={importDialogOpen}
                 onOpenChange={setImportDialogOpen}
                 onImportComplete={refetchFarmers}
+                onLandsUpdated={refetchLands}
                 existingCodes={farmers?.map(f => f.kode_petani) || []}
               />
               </div>

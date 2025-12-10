@@ -26,6 +26,9 @@ interface ParsedFarmer {
   nama_lahan: string;
   lokasi_lahan: string;
   luas_lahan: number | null;
+  koordinat: string;
+  jenis_tanah: string;
+  status_lahan: string;
   error?: string;
   isValid: boolean;
   isUpdate: boolean;
@@ -36,6 +39,7 @@ interface FarmerBatchImportProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImportComplete: () => void;
+  onLandsUpdated?: () => void;
   existingCodes: string[];
 }
 
@@ -43,6 +47,7 @@ export const FarmerBatchImport = ({
   open,
   onOpenChange,
   onImportComplete,
+  onLandsUpdated,
   existingCodes,
 }: FarmerBatchImportProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -95,9 +100,9 @@ export const FarmerBatchImport = ({
   }, [open]);
 
   const downloadTemplate = () => {
-    const template = `kode_petani,nama,alamat,is_organic,nama_lahan,lokasi_lahan,luas_lahan
-P001,Nama Petani 1,Alamat Petani 1,true,Lahan Utama,Desa ABC,1.5
-P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0`;
+    const template = `kode_petani,nama,alamat,is_organic,nama_lahan,lokasi_lahan,luas_lahan,koordinat,jenis_tanah,status_lahan
+P001,Nama Petani 1,Alamat Petani 1,true,Lahan Utama,Desa ABC,1.5,"-6.123,106.456",Lempung,aktif
+P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0,"-6.789,106.123",Berpasir,aktif`;
     
     const blob = new Blob([template], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
@@ -136,6 +141,9 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0`;
     const namaLahanIndex = headers.indexOf("nama_lahan");
     const lokasiLahanIndex = headers.indexOf("lokasi_lahan");
     const luasLahanIndex = headers.indexOf("luas_lahan");
+    const koordinatIndex = headers.indexOf("koordinat");
+    const jenisTanahIndex = headers.indexOf("jenis_tanah");
+    const statusLahanIndex = headers.indexOf("status_lahan");
 
     const seenCodes = new Set<string>();
     const parsed: ParsedFarmer[] = [];
@@ -156,6 +164,9 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0`;
       const lokasi_lahan = lokasiLahanIndex >= 0 ? values[lokasiLahanIndex]?.trim() || "" : "";
       const luas_raw = luasLahanIndex >= 0 ? values[luasLahanIndex]?.trim() || "" : "";
       const luas_lahan = luas_raw ? parseFloat(luas_raw.replace(",", ".")) : null;
+      const koordinat = koordinatIndex >= 0 ? values[koordinatIndex]?.trim() || "" : "";
+      const jenis_tanah = jenisTanahIndex >= 0 ? values[jenisTanahIndex]?.trim() || "" : "";
+      const status_lahan = statusLahanIndex >= 0 ? values[statusLahanIndex]?.trim() || "aktif" : "aktif";
 
       let error: string | undefined;
       let isValid = true;
@@ -186,6 +197,9 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0`;
         nama_lahan,
         lokasi_lahan,
         luas_lahan,
+        koordinat,
+        jenis_tanah,
+        status_lahan,
         error,
         isValid,
         isUpdate,
@@ -330,6 +344,9 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0`;
                   nama_lahan: farmer.nama_lahan,
                   lokasi: farmer.lokasi_lahan || null,
                   luas: farmer.luas_lahan,
+                  koordinat: farmer.koordinat || null,
+                  jenis_tanah: farmer.jenis_tanah || null,
+                  status: farmer.status_lahan || "aktif",
                 })
                 .eq("id", existingLahan.id);
             } else {
@@ -340,6 +357,9 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0`;
                   nama_lahan: farmer.nama_lahan,
                   lokasi: farmer.lokasi_lahan || null,
                   luas: farmer.luas_lahan,
+                  koordinat: farmer.koordinat || null,
+                  jenis_tanah: farmer.jenis_tanah || null,
+                  status: farmer.status_lahan || "aktif",
                 });
             }
           }
@@ -370,6 +390,9 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0`;
                 nama_lahan: farmer.nama_lahan,
                 lokasi: farmer.lokasi_lahan || null,
                 luas: farmer.luas_lahan,
+                koordinat: farmer.koordinat || null,
+                jenis_tanah: farmer.jenis_tanah || null,
+                status: farmer.status_lahan || "aktif",
               });
           }
 
@@ -392,6 +415,7 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0`;
         description: `${success} petani baru, ${updated} diupdate${failed > 0 ? `, ${failed} gagal` : ""}`,
       });
       onImportComplete();
+      onLandsUpdated?.();
     } else {
       toast({
         title: "Import gagal",
@@ -481,7 +505,7 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0`;
             <div className="p-4 border rounded-lg bg-muted/30">
               <p className="text-sm font-medium mb-2">Download Template CSV</p>
               <p className="text-xs text-muted-foreground mb-3">
-                Kolom: kode_petani, nama, alamat, is_organic, nama_lahan, lokasi_lahan, luas_lahan
+                Kolom: kode_petani, nama, alamat, is_organic, nama_lahan, lokasi_lahan, luas_lahan, koordinat, jenis_tanah, status_lahan
               </p>
               <Button variant="outline" onClick={downloadTemplate}>
                 <Download className="h-4 w-4 mr-2" />
@@ -550,7 +574,10 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0`;
                       <TableHead>Organik</TableHead>
                       <TableHead>Lahan</TableHead>
                       <TableHead>Lokasi</TableHead>
-                      <TableHead>Luas (Ha)</TableHead>
+                      <TableHead>Luas</TableHead>
+                      <TableHead>Koordinat</TableHead>
+                      <TableHead>Jenis Tanah</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Keterangan</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -586,8 +613,11 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0`;
                           )}
                         </TableCell>
                         <TableCell className="text-xs">{farmer.nama_lahan || "-"}</TableCell>
-                        <TableCell className="max-w-[80px] truncate text-xs">{farmer.lokasi_lahan || "-"}</TableCell>
+                        <TableCell className="max-w-[60px] truncate text-xs">{farmer.lokasi_lahan || "-"}</TableCell>
                         <TableCell className="text-xs">{farmer.luas_lahan ?? "-"}</TableCell>
+                        <TableCell className="max-w-[60px] truncate text-xs">{farmer.koordinat || "-"}</TableCell>
+                        <TableCell className="text-xs">{farmer.jenis_tanah || "-"}</TableCell>
+                        <TableCell className="text-xs">{farmer.status_lahan || "-"}</TableCell>
                         <TableCell className="text-destructive text-xs">
                           {farmer.error || (farmer.isUpdate ? "Update" : "")}
                         </TableCell>
