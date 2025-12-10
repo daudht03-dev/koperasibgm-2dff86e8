@@ -8,9 +8,10 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Download, Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Loader2, Users, RefreshCw, MapPin } from "lucide-react";
+import { Download, Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Loader2, Users, RefreshCw, MapPin, Map as MapIcon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { LandMapPreview, parseCoordinate } from "@/components/LandMapPreview";
 
 interface Pengepul {
   id: string;
@@ -27,6 +28,9 @@ interface ParsedFarmer {
   lokasi_lahan: string;
   luas_lahan: number | null;
   koordinat: string;
+  koordinat_lat: number | null;
+  koordinat_lng: number | null;
+  koordinat_error?: string;
   jenis_tanah: string;
   status_lahan: string;
   error?: string;
@@ -60,6 +64,7 @@ export const FarmerBatchImport = ({
   const [loadingPengepul, setLoadingPengepul] = useState(true);
   const [updateMode, setUpdateMode] = useState(true);
   const [existingFarmers, setExistingFarmers] = useState<Map<string, string>>(new Map());
+  const [mapPreviewOpen, setMapPreviewOpen] = useState(false);
 
   // Fetch pengepul list and existing farmers on mount
   useEffect(() => {
@@ -168,6 +173,12 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0,"-6.789,106
       const jenis_tanah = jenisTanahIndex >= 0 ? values[jenisTanahIndex]?.trim() || "" : "";
       const status_lahan = statusLahanIndex >= 0 ? values[statusLahanIndex]?.trim() || "aktif" : "aktif";
 
+      // Validate coordinates
+      const coordResult = parseCoordinate(koordinat);
+      const koordinat_lat = coordResult.isValid ? coordResult.lat : null;
+      const koordinat_lng = coordResult.isValid ? coordResult.lng : null;
+      const koordinat_error = coordResult.error;
+
       let error: string | undefined;
       let isValid = true;
       const existingId = existingFarmers.get(kode_petani.toUpperCase());
@@ -185,6 +196,9 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0,"-6.789,106
       } else if (existingId && !updateMode) {
         error = "Kode petani sudah ada (aktifkan mode update)";
         isValid = false;
+      } else if (koordinat_error) {
+        error = koordinat_error;
+        isValid = false;
       }
 
       seenCodes.add(kode_petani.toUpperCase());
@@ -198,6 +212,9 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0,"-6.789,106
         lokasi_lahan,
         luas_lahan,
         koordinat,
+        koordinat_lat,
+        koordinat_lng,
+        koordinat_error,
         jenis_tanah,
         status_lahan,
         error,
@@ -438,6 +455,16 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0,"-6.789,106
   const invalidCount = parsedData.filter(d => !d.isValid).length;
   const newCount = parsedData.filter(d => d.isValid && !d.isUpdate).length;
   const updateCount = parsedData.filter(d => d.isValid && d.isUpdate).length;
+  
+  // Get valid coordinates for map preview
+  const mapCoordinates = parsedData
+    .filter(d => d.koordinat_lat !== null && d.koordinat_lng !== null && d.koordinat_lat !== 0 && d.koordinat_lng !== 0)
+    .map(d => ({
+      lat: d.koordinat_lat!,
+      lng: d.koordinat_lng!,
+      label: `${d.nama_lahan || d.nama} (${d.kode_petani})`,
+      lokasi: d.lokasi_lahan,
+    }));
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -561,6 +588,17 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0,"-6.789,106
                     </Badge>
                   )}
                 </div>
+                {/* Map Preview Button */}
+                {mapCoordinates.length > 0 && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setMapPreviewOpen(true)}
+                  >
+                    <MapIcon className="h-4 w-4 mr-1" />
+                    Lihat di Peta ({mapCoordinates.length})
+                  </Button>
+                )}
               </div>
               
               <ScrollArea className="flex-1">
@@ -690,6 +728,13 @@ P002,Nama Petani 2,Alamat Petani 2,false,Kebun Belakang,Desa XYZ,2.0,"-6.789,106
           )}
         </div>
       </DialogContent>
+      
+      {/* Map Preview Dialog */}
+      <LandMapPreview
+        open={mapPreviewOpen}
+        onOpenChange={setMapPreviewOpen}
+        coordinates={mapCoordinates}
+      />
     </Dialog>
   );
 };
