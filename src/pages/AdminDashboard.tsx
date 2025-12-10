@@ -945,6 +945,7 @@ const AdminDashboard = () => {
                       <TableHead>Nama Lahan</TableHead>
                       <TableHead>Petani</TableHead>
                       <TableHead>Lokasi</TableHead>
+                      <TableHead>Koordinat</TableHead>
                       <TableHead>Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -959,6 +960,9 @@ const AdminDashboard = () => {
                         }
                       </TableCell>
                       <TableCell className="max-w-md">{land.lokasi || "-"}</TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground max-w-[200px] truncate" title={land.koordinat || ""}>
+                        {land.koordinat || "-"}
+                      </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
                           <Button
