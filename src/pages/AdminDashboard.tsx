@@ -40,6 +40,7 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"farmers" | "lands" | "map" | "products" | "statistics" | "profile" | "labels">("farmers");
   const [farmerSortOrder, setFarmerSortOrder] = useState<"asc" | "desc" | null>(null);
+  const [landSortOrder, setLandSortOrder] = useState<"asc" | "desc" | null>(null);
 
   // Hooks for data management
   const { farmers, addFarmer, updateFarmer, deleteFarmer, refetch: refetchFarmers } = useFarmers();
@@ -967,7 +968,23 @@ const AdminDashboard = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nama Lahan</TableHead>
+                      <TableHead>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 -ml-2 font-medium"
+                          onClick={() => {
+                            if (landSortOrder === null) setLandSortOrder("asc");
+                            else if (landSortOrder === "asc") setLandSortOrder("desc");
+                            else setLandSortOrder(null);
+                          }}
+                        >
+                          Nama Lahan
+                          {landSortOrder === "asc" && <ArrowUp className="ml-1 h-4 w-4" />}
+                          {landSortOrder === "desc" && <ArrowDown className="ml-1 h-4 w-4" />}
+                          {landSortOrder === null && <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />}
+                        </Button>
+                      </TableHead>
                       <TableHead>Petani</TableHead>
                       <TableHead>Lokasi</TableHead>
                       <TableHead>Koordinat</TableHead>
@@ -975,7 +992,15 @@ const AdminDashboard = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {lands.map((land) => (
+                    {[...lands]
+                      .sort((a, b) => {
+                        if (landSortOrder === null) return 0;
+                        const nameA = a.nama_lahan.toLowerCase();
+                        const nameB = b.nama_lahan.toLowerCase();
+                        if (landSortOrder === "asc") return nameA.localeCompare(nameB);
+                        return nameB.localeCompare(nameA);
+                      })
+                      .map((land) => (
                     <TableRow key={land.id}>
                       <TableCell className="font-medium">{land.nama_lahan}</TableCell>
                       <TableCell>
