@@ -19,7 +19,7 @@ import { useProducts } from "@/hooks/use-products";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { useHarvests } from "@/hooks/use-harvests";
 import { useNavigate, Link } from "react-router-dom";
-import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode, Printer, Upload, Map as MapIcon, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode, Printer, Upload, Map as MapIcon, ArrowUpDown, ArrowUp, ArrowDown, Search } from "lucide-react";
 import { LandMapTab } from "@/components/LandMapTab";
 import { FarmerBatchImport } from "@/components/FarmerBatchImport";
 import { toast } from "@/hooks/use-toast";
@@ -41,6 +41,13 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState<"farmers" | "lands" | "map" | "products" | "statistics" | "profile" | "labels">("farmers");
   const [farmerSortOrder, setFarmerSortOrder] = useState<"asc" | "desc" | null>(null);
   const [landSortOrder, setLandSortOrder] = useState<"asc" | "desc" | null>(null);
+  const [farmerSearch, setFarmerSearch] = useState("");
+  const [landSearch, setLandSearch] = useState("");
+
+  // Natural alphanumeric sort function (BN6 before BN12)
+  const naturalSort = (a: string, b: string): number => {
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+  };
 
   // Hooks for data management
   const { farmers, addFarmer, updateFarmer, deleteFarmer, refetch: refetchFarmers } = useFarmers();
@@ -758,6 +765,18 @@ const AdminDashboard = () => {
               </div>
             </CardHeader>
             <CardContent>
+              {/* Search Input */}
+              <div className="mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Cari berdasarkan kode atau nama petani..."
+                    value={farmerSearch}
+                    onChange={(e) => setFarmerSearch(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
               {!farmers ? (
                 <TableSkeleton rows={8} columns={4} />
               ) : (
@@ -788,12 +807,18 @@ const AdminDashboard = () => {
                   </TableHeader>
                   <TableBody>
                     {[...farmers]
+                      .filter((farmer) => {
+                        if (!farmerSearch) return true;
+                        const searchLower = farmerSearch.toLowerCase();
+                        return (
+                          farmer.kode_petani.toLowerCase().includes(searchLower) ||
+                          farmer.nama.toLowerCase().includes(searchLower)
+                        );
+                      })
                       .sort((a, b) => {
                         if (farmerSortOrder === null) return 0;
-                        const codeA = a.kode_petani.toLowerCase();
-                        const codeB = b.kode_petani.toLowerCase();
-                        if (farmerSortOrder === "asc") return codeA.localeCompare(codeB);
-                        return codeB.localeCompare(codeA);
+                        if (farmerSortOrder === "asc") return naturalSort(a.kode_petani, b.kode_petani);
+                        return naturalSort(b.kode_petani, a.kode_petani);
                       })
                       .map((farmer) => (
                     <TableRow key={farmer.id}>
@@ -962,6 +987,18 @@ const AdminDashboard = () => {
               </Dialog>
             </CardHeader>
             <CardContent>
+              {/* Search Input */}
+              <div className="mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Cari berdasarkan nama lahan atau petani..."
+                    value={landSearch}
+                    onChange={(e) => setLandSearch(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
               {!lands ? (
                 <TableSkeleton rows={8} columns={4} />
               ) : (
@@ -993,12 +1030,21 @@ const AdminDashboard = () => {
                   </TableHeader>
                   <TableBody>
                     {[...lands]
+                      .filter((land) => {
+                        if (!landSearch) return true;
+                        const searchLower = landSearch.toLowerCase();
+                        const farmerName = land.petani_id 
+                          ? farmers.find(f => f.id === land.petani_id)?.nama?.toLowerCase() || ""
+                          : "";
+                        return (
+                          land.nama_lahan.toLowerCase().includes(searchLower) ||
+                          farmerName.includes(searchLower)
+                        );
+                      })
                       .sort((a, b) => {
                         if (landSortOrder === null) return 0;
-                        const nameA = a.nama_lahan.toLowerCase();
-                        const nameB = b.nama_lahan.toLowerCase();
-                        if (landSortOrder === "asc") return nameA.localeCompare(nameB);
-                        return nameB.localeCompare(nameA);
+                        if (landSortOrder === "asc") return naturalSort(a.nama_lahan, b.nama_lahan);
+                        return naturalSort(b.nama_lahan, a.nama_lahan);
                       })
                       .map((land) => (
                     <TableRow key={land.id}>
