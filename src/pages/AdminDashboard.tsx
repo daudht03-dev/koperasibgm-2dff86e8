@@ -19,7 +19,7 @@ import { useProducts } from "@/hooks/use-products";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { useHarvests } from "@/hooks/use-harvests";
 import { useNavigate, Link } from "react-router-dom";
-import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode, Printer, Upload, Map as MapIcon } from "lucide-react";
+import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode, Printer, Upload, Map as MapIcon, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { LandMapTab } from "@/components/LandMapTab";
 import { FarmerBatchImport } from "@/components/FarmerBatchImport";
 import { toast } from "@/hooks/use-toast";
@@ -39,6 +39,7 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"farmers" | "lands" | "map" | "products" | "statistics" | "profile" | "labels">("farmers");
+  const [farmerSortOrder, setFarmerSortOrder] = useState<"asc" | "desc" | null>(null);
 
   // Hooks for data management
   const { farmers, addFarmer, updateFarmer, deleteFarmer, refetch: refetchFarmers } = useFarmers();
@@ -762,14 +763,38 @@ const AdminDashboard = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Kode</TableHead>
+                      <TableHead>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 -ml-2 font-medium"
+                          onClick={() => {
+                            if (farmerSortOrder === null) setFarmerSortOrder("asc");
+                            else if (farmerSortOrder === "asc") setFarmerSortOrder("desc");
+                            else setFarmerSortOrder(null);
+                          }}
+                        >
+                          Kode
+                          {farmerSortOrder === "asc" && <ArrowUp className="ml-1 h-4 w-4" />}
+                          {farmerSortOrder === "desc" && <ArrowDown className="ml-1 h-4 w-4" />}
+                          {farmerSortOrder === null && <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />}
+                        </Button>
+                      </TableHead>
                       <TableHead>Nama</TableHead>
                       <TableHead>Alamat</TableHead>
                       <TableHead>Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {farmers.map((farmer) => (
+                    {[...farmers]
+                      .sort((a, b) => {
+                        if (farmerSortOrder === null) return 0;
+                        const codeA = a.kode_petani.toLowerCase();
+                        const codeB = b.kode_petani.toLowerCase();
+                        if (farmerSortOrder === "asc") return codeA.localeCompare(codeB);
+                        return codeB.localeCompare(codeA);
+                      })
+                      .map((farmer) => (
                     <TableRow key={farmer.id}>
                       <TableCell className="font-medium">{farmer.kode_petani}</TableCell>
                       <TableCell>{farmer.nama}</TableCell>
