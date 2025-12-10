@@ -790,11 +790,13 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
                   </div>
                 </SelectTrigger>
                 <SelectContent>
-                  {allLands.map((land) => (
-                    <SelectItem key={land.id} value={land.id}>
-                      {land.nama_lahan} {land.parsedCoord ? "" : "(belum ada koordinat)"}
-                    </SelectItem>
-                  ))}
+                  {allLands
+                    .filter((land) => land.id && land.id.trim() !== "")
+                    .map((land) => (
+                      <SelectItem key={land.id} value={land.id}>
+                        {land.nama_lahan} {land.parsedCoord ? "" : "(belum ada koordinat)"}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             )}
