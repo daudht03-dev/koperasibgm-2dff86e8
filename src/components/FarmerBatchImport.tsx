@@ -23,7 +23,6 @@ interface Pengepul {
 interface ParsedLand {
   kode_lahan: string;
   kode_petani: string; // Auto-detected from kode_lahan
-  nama_lahan: string;
   lokasi_lahan: string;
   koordinat: string;
   koordinat_lat: number | null;
@@ -138,10 +137,10 @@ PK2;Nama Petani 2;Alamat Petani 2;false`;
   };
 
   const downloadLandTemplate = () => {
-    const template = `kode_lahan;nama_lahan;lokasi_lahan;lat;long;status_lahan
-PK1A;Lahan Utama;Desa ABC;-6,123;106,456;aktif
-PK1B;Lahan Kedua;Desa ABC;-6,125;106,458;aktif
-PK2A;Kebun Belakang;Desa XYZ;-6,789;106,123;aktif`;
+    const template = `kode_lahan;lokasi_lahan;lat;long;status_lahan
+PK1A;Desa ABC;-6,123;106,456;aktif
+PK1B;Desa ABC;-6,125;106,458;aktif
+PK2A;Desa XYZ;-6,789;106,123;aktif`;
     
     const blob = new Blob([template], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
@@ -152,7 +151,7 @@ PK2A;Kebun Belakang;Desa XYZ;-6,789;106,123;aktif`;
     
     toast({
       title: "Template Lahan didownload",
-      description: "Format kode_lahan: kode_petani + huruf (contoh: PK1A, PK1B untuk petani PK1)",
+      description: "Format kode_lahan: kode_petani + huruf (contoh: PK1A, PK1B untuk petani PK1). Kode lahan akan menjadi nama lahan.",
     });
   };
 
@@ -262,20 +261,19 @@ PK2A;Kebun Belakang;Desa XYZ;-6,789;106,123;aktif`;
     const separator = firstLine.includes(";") ? ";" : ",";
     
     const headers = firstLine.split(separator).map(h => h.trim().toLowerCase());
-    const requiredHeaders = ["kode_lahan", "nama_lahan"];
+    const requiredHeaders = ["kode_lahan"];
     
     const hasRequiredHeaders = requiredHeaders.every(h => headers.includes(h));
     if (!hasRequiredHeaders) {
       toast({
         title: "Format tidak valid",
-        description: "File harus memiliki kolom: kode_lahan, nama_lahan",
+        description: "File harus memiliki kolom: kode_lahan",
         variant: "destructive",
       });
       return [];
     }
 
     const kodeLahanIndex = headers.indexOf("kode_lahan");
-    const namaLahanIndex = headers.indexOf("nama_lahan");
     const lokasiLahanIndex = headers.indexOf("lokasi_lahan");
     const latIndex = headers.indexOf("lat");
     const longIndex = headers.indexOf("long");
@@ -291,7 +289,6 @@ PK2A;Kebun Belakang;Desa XYZ;-6,789;106,123;aktif`;
       const values = parseCSVLine(line, separator);
       
       const kode_lahan = values[kodeLahanIndex]?.trim() || "";
-      const nama_lahan = values[namaLahanIndex]?.trim() || "";
       const lokasi_lahan = lokasiLahanIndex >= 0 ? values[lokasiLahanIndex]?.trim() || "" : "";
       const latRaw = latIndex >= 0 ? values[latIndex]?.trim() || "" : "";
       const longRaw = longIndex >= 0 ? values[longIndex]?.trim() || "" : "";
@@ -334,9 +331,6 @@ PK2A;Kebun Belakang;Desa XYZ;-6,789;106,123;aktif`;
       if (!kode_lahan) {
         error = "Kode lahan wajib diisi";
         isValid = false;
-      } else if (!nama_lahan) {
-        error = "Nama lahan wajib diisi";
-        isValid = false;
       } else if (seenCodes.has(kode_lahan.toUpperCase())) {
         error = "Kode lahan duplikat di file";
         isValid = false;
@@ -353,14 +347,12 @@ PK2A;Kebun Belakang;Desa XYZ;-6,789;106,123;aktif`;
       // Get farmer name for display
       let farmerName = "";
       if (farmerId) {
-        // Will need to fetch this, for now just show code
         farmerName = kode_petani;
       }
 
       parsed.push({
         kode_lahan,
         kode_petani,
-        nama_lahan,
         lokasi_lahan,
         koordinat,
         koordinat_lat,
@@ -573,12 +565,12 @@ PK2A;Kebun Belakang;Desa XYZ;-6,789;106,123;aktif`;
       
       try {
         if (land.farmerId) {
-          // Check if land already exists by checking nama_lahan for the farmer
+          // Check if land already exists by checking kode_lahan (nama_lahan) for the farmer
           const { data: existingLand } = await supabase
             .from("lahan")
             .select("id")
             .eq("petani_id", land.farmerId)
-            .eq("nama_lahan", land.nama_lahan)
+            .eq("nama_lahan", land.kode_lahan)
             .maybeSingle();
 
           if (existingLand) {
@@ -593,12 +585,12 @@ PK2A;Kebun Belakang;Desa XYZ;-6,789;106,123;aktif`;
               .eq("id", existingLand.id);
             updated++;
           } else {
-            // Insert new land
+            // Insert new land - use kode_lahan as nama_lahan
             await supabase
               .from("lahan")
               .insert({
                 petani_id: land.farmerId,
-                nama_lahan: land.nama_lahan,
+                nama_lahan: land.kode_lahan,
                 lokasi: land.lokasi_lahan || null,
                 koordinat: land.koordinat || null,
                 status: land.status_lahan || "aktif",
@@ -665,7 +657,7 @@ PK2A;Kebun Belakang;Desa XYZ;-6,789;106,123;aktif`;
         .map(d => ({
           lat: d.koordinat_lat!,
           lng: d.koordinat_lng!,
-          label: `${d.nama_lahan} (${d.kode_lahan})`,
+          label: `${d.kode_lahan} (${d.kode_petani})`,
           lokasi: d.lokasi_lahan,
         }))
     : parsedData
@@ -812,7 +804,7 @@ PK2A;Kebun Belakang;Desa XYZ;-6,789;106,123;aktif`;
                 <div className="p-4 border rounded-lg bg-muted/30">
                   <p className="text-sm font-medium mb-2">Download Template Lahan</p>
                   <p className="text-xs text-muted-foreground mb-3">
-                    Kolom: kode_lahan, nama_lahan, lokasi_lahan, lat, long, status_lahan
+                    Kolom: kode_lahan, lokasi_lahan, lat, long, status_lahan
                   </p>
                   <Button variant="outline" onClick={downloadLandTemplate}>
                     <Download className="h-4 w-4 mr-2" />
@@ -965,7 +957,6 @@ PK2A;Kebun Belakang;Desa XYZ;-6,789;106,123;aktif`;
                       <TableHead className="w-12">Status</TableHead>
                       <TableHead>Kode Lahan</TableHead>
                       <TableHead>Petani</TableHead>
-                      <TableHead>Nama Lahan</TableHead>
                       <TableHead>Lokasi</TableHead>
                       <TableHead>Lat</TableHead>
                       <TableHead>Long</TableHead>
@@ -986,7 +977,7 @@ PK2A;Kebun Belakang;Desa XYZ;-6,789;106,123;aktif`;
                             <CheckCircle className="h-4 w-4 text-green-600" />
                           )}
                         </TableCell>
-                        <TableCell className="font-mono text-xs">{land.kode_lahan || "-"}</TableCell>
+                        <TableCell className="font-mono text-xs font-medium">{land.kode_lahan || "-"}</TableCell>
                         <TableCell className="font-mono text-xs">
                           {land.farmerId ? (
                             <Badge variant="outline" className="text-xs">{land.kode_petani}</Badge>
@@ -994,7 +985,6 @@ PK2A;Kebun Belakang;Desa XYZ;-6,789;106,123;aktif`;
                             <span className="text-destructive">{land.kode_petani}</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-xs">{land.nama_lahan || "-"}</TableCell>
                         <TableCell className="max-w-[100px] truncate text-xs">{land.lokasi_lahan || "-"}</TableCell>
                         <TableCell className="text-xs font-mono">{land.koordinat_lat?.toFixed(4) || "-"}</TableCell>
                         <TableCell className="text-xs font-mono">{land.koordinat_lng?.toFixed(4) || "-"}</TableCell>
