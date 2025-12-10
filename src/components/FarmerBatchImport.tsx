@@ -912,7 +912,7 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
                 </div>
               </div>
               
-              <ScrollArea className="flex-1">
+              <ScrollArea className="flex-1 max-h-[300px]">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -998,7 +998,7 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
                 )}
               </div>
               
-              <ScrollArea className="flex-1">
+              <ScrollArea className="flex-1 max-h-[300px]">
                 <Table>
                   <TableHeader>
                     <TableRow>
