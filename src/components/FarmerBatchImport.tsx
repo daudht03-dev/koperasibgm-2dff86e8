@@ -1,13 +1,21 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Download, Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Download, Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Loader2, Users } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+
+interface Pengepul {
+  id: string;
+  kode_pengepul: string;
+  nama: string;
+}
 
 interface ParsedFarmer {
   kode_petani: string;
@@ -37,6 +45,34 @@ export const FarmerBatchImport = ({
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [importResults, setImportResults] = useState<{ success: number; failed: number } | null>(null);
+  const [pengepulList, setPengepulList] = useState<Pengepul[]>([]);
+  const [selectedPengepulId, setSelectedPengepulId] = useState<string>("");
+  const [loadingPengepul, setLoadingPengepul] = useState(true);
+
+  // Fetch pengepul list on mount
+  useEffect(() => {
+    const fetchPengepul = async () => {
+      try {
+        setLoadingPengepul(true);
+        const { data, error } = await supabase
+          .from("pengepul")
+          .select("id, kode_pengepul, nama")
+          .eq("status", "aktif")
+          .order("nama");
+
+        if (error) throw error;
+        setPengepulList(data || []);
+      } catch (error) {
+        console.error("Error fetching pengepul:", error);
+      } finally {
+        setLoadingPengepul(false);
+      }
+    };
+
+    if (open) {
+      fetchPengepul();
+    }
+  }, [open]);
 
   const downloadTemplate = () => {
     const template = `kode_petani,nama,alamat,no_telepon,is_organic
@@ -215,6 +251,7 @@ P002,Nama Petani 2,Alamat Petani 2,08987654321,false`;
           alamat: farmer.alamat || null,
           no_telepon: farmer.no_telepon || null,
           is_organic: farmer.is_organic,
+          pengepul_id: selectedPengepulId || null,
         });
 
       if (error) {
@@ -249,6 +286,7 @@ P002,Nama Petani 2,Alamat Petani 2,08987654321,false`;
     setParsedData([]);
     setImportResults(null);
     setImportProgress(0);
+    setSelectedPengepulId("");
     onOpenChange(false);
   };
 
@@ -269,18 +307,51 @@ P002,Nama Petani 2,Alamat Petani 2,08987654321,false`;
         </DialogHeader>
 
         <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
-          {/* Step 1: Download Template */}
+          {/* Step 1: Select Pengepul */}
           <div className="p-4 border rounded-lg bg-muted/30">
-            <p className="text-sm font-medium mb-2">Langkah 1: Download Template CSV</p>
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="h-4 w-4" />
+              <p className="text-sm font-medium">Langkah 1: Pilih Pengepul (Opsional)</p>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              Jika dipilih, semua petani yang diimport akan otomatis terhubung ke pengepul ini
+            </p>
+            <Select
+              value={selectedPengepulId}
+              onValueChange={setSelectedPengepulId}
+              disabled={loadingPengepul || importing}
+            >
+              <SelectTrigger className="w-[300px] bg-background">
+                <SelectValue placeholder={loadingPengepul ? "Memuat..." : "Pilih pengepul (opsional)"} />
+              </SelectTrigger>
+              <SelectContent className="bg-background">
+                <SelectItem value="">Tidak ada pengepul</SelectItem>
+                {pengepulList.map((pengepul) => (
+                  <SelectItem key={pengepul.id} value={pengepul.id}>
+                    {pengepul.kode_pengepul} - {pengepul.nama}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedPengepulId && (
+              <Badge variant="secondary" className="mt-2">
+                Pengepul: {pengepulList.find(p => p.id === selectedPengepulId)?.nama}
+              </Badge>
+            )}
+          </div>
+
+          {/* Step 2: Download Template */}
+          <div className="p-4 border rounded-lg bg-muted/30">
+            <p className="text-sm font-medium mb-2">Langkah 2: Download Template CSV</p>
             <Button variant="outline" onClick={downloadTemplate}>
               <Download className="h-4 w-4 mr-2" />
               Download Template
             </Button>
           </div>
 
-          {/* Step 2: Upload File */}
+          {/* Step 3: Upload File */}
           <div className="p-4 border rounded-lg bg-muted/30">
-            <p className="text-sm font-medium mb-2">Langkah 2: Upload File CSV</p>
+            <p className="text-sm font-medium mb-2">Langkah 3: Upload File CSV</p>
             <input
               ref={fileInputRef}
               type="file"
