@@ -20,7 +20,7 @@ import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { useHarvests } from "@/hooks/use-harvests";
 import { useNavigate, Link } from "react-router-dom";
 import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode, Printer, Upload, Map as MapIcon } from "lucide-react";
-import { LandMapViewer } from "@/components/LandMapViewer";
+import { LandMapTab } from "@/components/LandMapTab";
 import { FarmerBatchImport } from "@/components/FarmerBatchImport";
 import { toast } from "@/hooks/use-toast";
 import { 
@@ -38,7 +38,7 @@ const AdminDashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"farmers" | "lands" | "products" | "statistics" | "profile" | "labels">("farmers");
+  const [activeTab, setActiveTab] = useState<"farmers" | "lands" | "map" | "products" | "statistics" | "profile" | "labels">("farmers");
 
   // Hooks for data management
   const { farmers, addFarmer, updateFarmer, deleteFarmer, refetch: refetchFarmers } = useFarmers();
@@ -75,7 +75,7 @@ const AdminDashboard = () => {
   const [landErrors, setLandErrors] = useState<Record<string, string>>({});
   const [editingLand, setEditingLand] = useState<string | null>(null);
   const [landDialogOpen, setLandDialogOpen] = useState(false);
-  const [landMapDialogOpen, setLandMapDialogOpen] = useState(false);
+  
 
   // Form states for harvest
   const [harvestForm, setHarvestForm] = useState({
@@ -621,6 +621,7 @@ const AdminDashboard = () => {
             {[
               { key: "farmers", label: "Petani", icon: Users },
               { key: "lands", label: "Lahan", icon: MapPin },
+              { key: "map", label: "Peta", icon: MapIcon },
               { key: "products", label: "Produk", icon: Package },
               { key: "statistics", label: "Statistik", icon: BarChart3 },
               { key: "profile", label: "Profil", icon: Building },
@@ -849,15 +850,7 @@ const AdminDashboard = () => {
                 <CardTitle className="text-foreground">Daftar Lahan</CardTitle>
                 <CardDescription>Kelola data lahan yang terdaftar</CardDescription>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setLandMapDialogOpen(true)}
-                >
-                  <MapIcon className="h-4 w-4 mr-2" />
-                  Lihat Peta Lahan
-                </Button>
-                <Dialog open={landDialogOpen} onOpenChange={setLandDialogOpen}>
+              <Dialog open={landDialogOpen} onOpenChange={setLandDialogOpen}>
                   <DialogTrigger asChild>
                     <Button 
                       onClick={() => {
@@ -941,9 +934,7 @@ const AdminDashboard = () => {
                   </div>
                 </DialogContent>
               </Dialog>
-              </div>
             </CardHeader>
-            <LandMapViewer open={landMapDialogOpen} onOpenChange={setLandMapDialogOpen} />
             <CardContent>
               {!lands ? (
                 <TableSkeleton rows={8} columns={4} />
@@ -1011,6 +1002,9 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Map Tab */}
+        {activeTab === "map" && <LandMapTab />}
 
         {/* Products Tab */}
         {activeTab === "products" && (

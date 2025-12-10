@@ -1,27 +1,20 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { Download, Printer, Map, Satellite, Globe, Loader2, AlertCircle, Filter, MousePointer, Leaf, X, FileSpreadsheet, FileJson } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useReactToPrint } from "react-to-print";
 import html2canvas from "html2canvas";
 import { toast } from "@/hooks/use-toast";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
-import { useFarmers } from "@/hooks/use-farmers";
 
 interface LandWithFarmer {
   id: string;
@@ -39,11 +32,6 @@ interface LandWithFarmer {
     lat: number;
     lng: number;
   };
-}
-
-interface LandMapViewerProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
 }
 
 type MapStyle = "streets" | "satellite" | "hybrid";
@@ -81,7 +69,7 @@ const mapStyles: Record<MapStyle, string> = {
   hybrid: "mapbox://styles/mapbox/satellite-streets-v12",
 };
 
-export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange }) => {
+export const LandMapTab: React.FC = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const printRef = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -108,7 +96,6 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
   const [saving, setSaving] = useState(false);
   
   const { profile } = useCompanyProfile();
-  const { farmers } = useFarmers();
 
   // Fetch lands with farmer data
   const fetchLands = useCallback(async () => {
@@ -185,9 +172,8 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
 
       mapboxgl.accessToken = data.token;
 
-      // Calculate center
       const validLands = filteredLands.filter((l) => l.parsedCoord);
-      let center: [number, number] = [106.8456, -6.2088]; // Default: Jakarta
+      let center: [number, number] = [106.8456, -6.2088];
       let zoom = 10;
 
       if (validLands.length > 0) {
@@ -216,10 +202,8 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
         map.current!.on("load", () => resolve());
       });
 
-      // Add markers
       updateMarkers();
 
-      // Fit bounds
       if (validLands.length > 1) {
         const bounds = new mapboxgl.LngLatBounds();
         validLands.forEach((land) => {
@@ -228,13 +212,11 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
         map.current.fitBounds(bounds, { padding: 50 });
       }
 
-      // Click handler for edit mode
       map.current.on("click", (e) => {
         if (editMode && selectedLandForEdit) {
           const { lat, lng } = e.lngLat;
           setNewCoordinates({ lat, lng });
           
-          // Show click marker
           if (clickMarker.current) {
             clickMarker.current.remove();
           }
@@ -269,9 +251,8 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
     } finally {
       setMapLoading(false);
     }
-  }, [mapStyle, editMode, selectedLandForEdit]);
+  }, [mapStyle, editMode, selectedLandForEdit, filteredLands]);
 
-  // Update markers when filtered lands change
   const updateMarkers = useCallback(() => {
     if (!map.current) return;
 
@@ -344,7 +325,6 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
     });
   }, [filteredLands]);
 
-  // Save new coordinates
   const handleSaveCoordinates = async () => {
     if (!selectedLandForEdit || !newCoordinates) return;
 
@@ -365,10 +345,8 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
         description: `Koordinat lahan "${selectedLandForEdit.nama_lahan}" berhasil diperbarui`,
       });
 
-      // Refresh data
       await fetchLands();
       
-      // Reset edit state
       setEditDialogOpen(false);
       setEditMode(false);
       setSelectedLandForEdit(null);
@@ -389,7 +367,6 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
     }
   };
 
-  // Cancel edit
   const handleCancelEdit = () => {
     setEditDialogOpen(false);
     setNewCoordinates(null);
@@ -399,7 +376,6 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
     }
   };
 
-  // Exit edit mode
   const handleExitEditMode = () => {
     setEditMode(false);
     setSelectedLandForEdit(null);
@@ -410,7 +386,6 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
     }
   };
 
-  // Export to CSV
   const handleExportCSV = () => {
     const validLands = filteredLands.filter(l => l.parsedCoord);
     if (validLands.length === 0) {
@@ -422,10 +397,8 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
       return;
     }
 
-    // CSV Header
     const headers = ["No", "Nama Lahan", "Petani", "Kode Petani", "Status", "Lokasi", "Latitude", "Longitude", "Luas (ha)"];
     
-    // CSV Rows
     const rows = validLands.map((land, index) => [
       index + 1,
       `"${(land.nama_lahan || "").replace(/"/g, '""')}"`,
@@ -443,7 +416,6 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
       ...rows.map(row => row.join(";"))
     ].join("\n");
 
-    // Add BOM for Excel compatibility
     const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -457,7 +429,6 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
     });
   };
 
-  // Export to GeoJSON
   const handleExportGeoJSON = () => {
     const validLands = filteredLands.filter(l => l.parsedCoord);
     if (validLands.length === 0) {
@@ -505,7 +476,6 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
     });
   };
 
-  // Download map as PNG
   const handleDownload = async () => {
     if (!printRef.current) return;
     
@@ -545,34 +515,27 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
     documentTitle: `Peta Lahan - ${profile?.nama_perusahaan || "Petani"}`,
   });
 
-  // Effects
   useEffect(() => {
-    if (open) {
-      fetchLands();
-    } else {
-      handleExitEditMode();
-    }
-  }, [open, fetchLands]);
+    fetchLands();
+  }, [fetchLands]);
 
   useEffect(() => {
-    if (open && !loading) {
+    if (!loading && allLands.length > 0) {
       initializeMap();
     }
     
     return () => {
-      if (!open && map.current) {
+      if (map.current) {
         map.current.remove();
         map.current = null;
       }
     };
-  }, [open, loading, initializeMap]);
+  }, [loading, initializeMap]);
 
-  // Update markers when filters change
   useEffect(() => {
     if (map.current && !loading) {
       updateMarkers();
       
-      // Fit bounds to filtered lands
       const validLands = filteredLands.filter((l) => l.parsedCoord);
       if (validLands.length > 1) {
         const bounds = new mapboxgl.LngLatBounds();
@@ -601,35 +564,82 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
     year: "numeric",
   });
 
-  // Get unique farmers for filter
   const farmerOptions = allLands
-    .filter(l => l.petani)
+    .filter(l => l.petani && l.petani_id)
     .reduce((acc, land) => {
-      if (land.petani && !acc.find(f => f.id === land.petani_id)) {
-        acc.push({ id: land.petani_id!, nama: land.petani.nama, kode: land.petani.kode_petani });
+      if (land.petani && land.petani_id && !acc.find(f => f.id === land.petani_id)) {
+        acc.push({ id: land.petani_id, nama: land.petani.nama, kode: land.petani.kode_petani });
       }
       return acc;
     }, [] as { id: string; nama: string; kode: string }[]);
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
-          <DialogHeader className="flex-shrink-0">
-            <DialogTitle className="flex items-center gap-2">
-              <Map className="h-5 w-5 text-primary" />
-              Peta Lokasi Lahan
-              {editMode && (
-                <Badge variant="destructive" className="ml-2">
-                  Mode Edit Koordinat
-                </Badge>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-
+      <Card className="shadow-gentle border-border/50">
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-foreground">
+                <Map className="h-5 w-5 text-primary" />
+                Peta Lokasi Lahan
+                {editMode && (
+                  <Badge variant="destructive" className="ml-2">
+                    Mode Edit Koordinat
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription>Lihat dan kelola lokasi lahan petani pada peta</CardDescription>
+            </div>
+            
+            <div className="flex flex-wrap gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={loading || filteredLands.length === 0}>
+                    <Download className="h-4 w-4 mr-1" />
+                    Export Data
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-background">
+                  <DropdownMenuItem onClick={handleExportCSV}>
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Export ke CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportGeoJSON}>
+                    <FileJson className="h-4 w-4 mr-2" />
+                    Export ke GeoJSON
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownload}
+                disabled={downloading || loading || filteredLands.length === 0}
+              >
+                {downloading ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-1" />
+                )}
+                Download PNG
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePrint()}
+                disabled={loading || filteredLands.length === 0}
+              >
+                <Printer className="h-4 w-4 mr-1" />
+                Cetak
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        
+        <CardContent className="space-y-4">
           {/* Toolbar */}
-          <div className="flex flex-wrap items-center gap-2 pb-4 border-b flex-shrink-0">
-            {/* Map Style Buttons */}
+          <div className="flex flex-wrap items-center gap-2 pb-4 border-b">
             <div className="flex gap-1">
               <Button
                 variant={mapStyle === "streets" ? "default" : "outline"}
@@ -656,70 +666,20 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
                 Hybrid
               </Button>
             </div>
-            
-            <div className="flex-1" />
-
-            {/* Export Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={loading || filteredLands.length === 0}
-                >
-                  <Download className="h-4 w-4 mr-1" />
-                  Export Data
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleExportCSV}>
-                  <FileSpreadsheet className="h-4 w-4 mr-2" />
-                  Export ke CSV
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportGeoJSON}>
-                  <FileJson className="h-4 w-4 mr-2" />
-                  Export ke GeoJSON
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownload}
-              disabled={downloading || loading || filteredLands.length === 0}
-            >
-              {downloading ? (
-                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4 mr-1" />
-              )}
-              Download PNG
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePrint()}
-              disabled={loading || filteredLands.length === 0}
-            >
-              <Printer className="h-4 w-4 mr-1" />
-              Cetak
-            </Button>
           </div>
 
-          {/* Filters Row */}
-          <div className="flex flex-wrap items-center gap-3 pb-4 border-b flex-shrink-0">
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-3 pb-4 border-b">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">Filter:</span>
             </div>
             
-            {/* Farmer Filter */}
             <Select value={farmerFilter} onValueChange={setFarmerFilter}>
-              <SelectTrigger className="w-[200px] h-9">
+              <SelectTrigger className="w-[200px] h-9 bg-background">
                 <SelectValue placeholder="Semua Petani" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background">
                 <SelectItem value="all">Semua Petani</SelectItem>
                 {farmerOptions.map((farmer) => (
                   <SelectItem key={farmer.id} value={farmer.id}>
@@ -729,12 +689,11 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
               </SelectContent>
             </Select>
 
-            {/* Organic Filter */}
             <Select value={organicFilter} onValueChange={(v) => setOrganicFilter(v as OrganicFilter)}>
-              <SelectTrigger className="w-[160px] h-9">
+              <SelectTrigger className="w-[160px] h-9 bg-background">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background">
                 <SelectItem value="all">Semua Status</SelectItem>
                 <SelectItem value="organic">
                   <span className="flex items-center gap-1">
@@ -762,7 +721,6 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
 
             <div className="flex-1" />
 
-            {/* Edit Mode Toggle */}
             {editMode ? (
               <Button variant="destructive" size="sm" onClick={handleExitEditMode}>
                 <X className="h-4 w-4 mr-1" />
@@ -783,13 +741,13 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
                   }
                 }}
               >
-                <SelectTrigger className="w-[200px] h-9">
+                <SelectTrigger className="w-[200px] h-9 bg-background">
                   <div className="flex items-center gap-1">
                     <MousePointer className="h-4 w-4" />
                     <span>Edit Koordinat...</span>
                   </div>
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background">
                   {allLands
                     .filter((land) => land.id && land.id.trim() !== "")
                     .map((land) => (
@@ -804,7 +762,7 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
 
           {/* Edit Mode Instructions */}
           {editMode && selectedLandForEdit && (
-            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 flex items-center gap-3 flex-shrink-0">
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 flex items-center gap-3">
               <MousePointer className="h-5 w-5 text-amber-600" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
@@ -819,141 +777,139 @@ export const LandMapViewer: React.FC<LandMapViewerProps> = ({ open, onOpenChange
             </div>
           )}
 
-          {/* Map & Legend Container */}
-          <div className="flex-1 overflow-auto">
-            <div ref={printRef} className="bg-background">
-              {/* Print Header */}
-              <div className="hidden print:block mb-4 text-center border-b pb-4">
-                <h1 className="text-2xl font-bold text-foreground">PETA LAHAN PETANI</h1>
-                <p className="text-lg text-muted-foreground">{profile?.nama_perusahaan || ""}</p>
-                <p className="text-sm text-muted-foreground">Tanggal: {currentDate}</p>
+          {/* Map */}
+          <div ref={printRef} className="bg-background">
+            <div className="hidden print:block mb-4 text-center border-b pb-4">
+              <h1 className="text-2xl font-bold text-foreground">PETA LAHAN PETANI</h1>
+              <p className="text-lg text-muted-foreground">{profile?.nama_perusahaan || ""}</p>
+              <p className="text-sm text-muted-foreground">Tanggal: {currentDate}</p>
+            </div>
+
+            {loading ? (
+              <div className="h-[500px] flex items-center justify-center bg-muted/30 rounded-lg">
+                <div className="text-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+                  <p className="text-muted-foreground">Memuat data lahan...</p>
+                </div>
               </div>
+            ) : error ? (
+              <div className="h-[500px] flex items-center justify-center bg-muted/30 rounded-lg">
+                <div className="text-center text-destructive">
+                  <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                  <p>{error}</p>
+                  <Button variant="outline" className="mt-4" onClick={fetchLands}>
+                    Coba Lagi
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {mapLoading && (
+                  <div className="absolute inset-0 bg-background/50 z-10 flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                )}
+                <div 
+                  ref={mapContainer} 
+                  className={`h-[500px] rounded-lg border ${editMode ? 'cursor-crosshair' : ''}`}
+                />
+              </>
+            )}
 
-              {/* Loading / Error / Map */}
-              {loading ? (
-                <div className="h-[400px] flex items-center justify-center bg-muted/30 rounded-lg">
-                  <div className="text-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
-                    <p className="text-muted-foreground">Memuat data lahan...</p>
+            {/* Legend */}
+            {filteredLands.length > 0 && (
+              <div className="mt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-foreground">
+                    Daftar Lokasi Lahan ({filteredLands.length} lokasi)
+                  </h3>
+                  <div className="flex gap-3 text-xs">
+                    <span className="flex items-center gap-1">
+                      <span className="w-3 h-3 rounded-full bg-green-600" />
+                      Organik
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-3 h-3 rounded-full bg-orange-500" />
+                      Konvensional
+                    </span>
                   </div>
                 </div>
-              ) : error ? (
-                <div className="h-[400px] flex items-center justify-center bg-muted/30 rounded-lg">
-                  <div className="text-center text-destructive">
-                    <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-                    <p>{error}</p>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {mapLoading && (
-                    <div className="absolute inset-0 bg-background/50 z-10 flex items-center justify-center">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                  )}
-                  <div 
-                    ref={mapContainer} 
-                    className={`h-[400px] rounded-lg border ${editMode ? 'cursor-crosshair' : ''}`}
-                  />
-                </>
-              )}
-
-              {/* Legend */}
-              {filteredLands.length > 0 && (
-                <div className="mt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-foreground">
-                      Daftar Lokasi Lahan ({filteredLands.length} lokasi)
-                    </h3>
-                    <div className="flex gap-3 text-xs">
-                      <span className="flex items-center gap-1">
-                        <span className="w-3 h-3 rounded-full bg-green-600" />
-                        Organik
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="w-3 h-3 rounded-full bg-orange-500" />
-                        Konvensional
-                      </span>
-                    </div>
-                  </div>
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted">
-                        <tr>
-                          <th className="px-3 py-2 text-left font-medium">No</th>
-                          <th className="px-3 py-2 text-left font-medium">Nama Lahan</th>
-                          <th className="px-3 py-2 text-left font-medium">Petani</th>
-                          <th className="px-3 py-2 text-left font-medium">Status</th>
-                          <th className="px-3 py-2 text-left font-medium">Koordinat</th>
-                          <th className="px-3 py-2 text-left font-medium">Luas</th>
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-medium">No</th>
+                        <th className="px-3 py-2 text-left font-medium">Nama Lahan</th>
+                        <th className="px-3 py-2 text-left font-medium">Petani</th>
+                        <th className="px-3 py-2 text-left font-medium">Status</th>
+                        <th className="px-3 py-2 text-left font-medium">Koordinat</th>
+                        <th className="px-3 py-2 text-left font-medium">Luas</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredLands.map((land, index) => (
+                        <tr 
+                          key={land.id} 
+                          className="border-t hover:bg-muted/50 cursor-pointer"
+                          onClick={() => {
+                            if (map.current && land.parsedCoord) {
+                              map.current.flyTo({
+                                center: [land.parsedCoord.lng, land.parsedCoord.lat],
+                                zoom: 15,
+                              });
+                              markers.current[index]?.togglePopup();
+                            }
+                          }}
+                        >
+                          <td className="px-3 py-2">
+                            <span 
+                              className="inline-flex items-center justify-center w-6 h-6 rounded-full text-white text-xs font-bold"
+                              style={{ 
+                                background: land.petani?.is_organic 
+                                  ? 'linear-gradient(135deg, hsl(142, 76%, 36%), hsl(142, 71%, 45%))'
+                                  : 'linear-gradient(135deg, hsl(25, 95%, 53%), hsl(21, 90%, 48%))'
+                              }}
+                            >
+                              {index + 1}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 font-medium">{land.nama_lahan}</td>
+                          <td className="px-3 py-2">
+                            {land.petani ? `${land.petani.nama} (${land.petani.kode_petani})` : "-"}
+                          </td>
+                          <td className="px-3 py-2">
+                            {land.petani && (
+                              <Badge variant={land.petani.is_organic ? "default" : "secondary"} className="text-xs">
+                                {land.petani.is_organic ? "🌿 Organik" : "Konvensional"}
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 font-mono text-xs">
+                            {land.parsedCoord?.lat.toFixed(6)}, {land.parsedCoord?.lng.toFixed(6)}
+                          </td>
+                          <td className="px-3 py-2">{land.luas ? `${land.luas} ha` : "-"}</td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {filteredLands.map((land, index) => (
-                          <tr 
-                            key={land.id} 
-                            className="border-t hover:bg-muted/50 cursor-pointer"
-                            onClick={() => {
-                              if (map.current && land.parsedCoord) {
-                                map.current.flyTo({
-                                  center: [land.parsedCoord.lng, land.parsedCoord.lat],
-                                  zoom: 15,
-                                });
-                                markers.current[index]?.togglePopup();
-                              }
-                            }}
-                          >
-                            <td className="px-3 py-2">
-                              <span 
-                                className="inline-flex items-center justify-center w-6 h-6 rounded-full text-white text-xs font-bold"
-                                style={{ 
-                                  background: land.petani?.is_organic 
-                                    ? 'linear-gradient(135deg, hsl(142, 76%, 36%), hsl(142, 71%, 45%))'
-                                    : 'linear-gradient(135deg, hsl(25, 95%, 53%), hsl(21, 90%, 48%))'
-                                }}
-                              >
-                                {index + 1}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2 font-medium">{land.nama_lahan}</td>
-                            <td className="px-3 py-2">
-                              {land.petani ? `${land.petani.nama} (${land.petani.kode_petani})` : "-"}
-                            </td>
-                            <td className="px-3 py-2">
-                              {land.petani && (
-                                <Badge variant={land.petani.is_organic ? "default" : "secondary"} className="text-xs">
-                                  {land.petani.is_organic ? "🌿 Organik" : "Konvensional"}
-                                </Badge>
-                              )}
-                            </td>
-                            <td className="px-3 py-2 font-mono text-xs">
-                              {land.parsedCoord?.lat.toFixed(6)}, {land.parsedCoord?.lng.toFixed(6)}
-                            </td>
-                            <td className="px-3 py-2">{land.luas ? `${land.luas} ha` : "-"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              )}
-
-              {filteredLands.length === 0 && !loading && (
-                <div className="mt-4 text-center text-muted-foreground py-8 border rounded-lg">
-                  <Map className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>Tidak ada lahan yang sesuai dengan filter</p>
-                </div>
-              )}
-
-              {/* Print Footer */}
-              <div className="hidden print:block mt-4 pt-4 border-t text-center text-sm text-muted-foreground">
-                <p>Dokumen ini dicetak untuk keperluan perdata petani dan lahan.</p>
-                <p>© {profile?.nama_perusahaan || ""} - {currentDate}</p>
               </div>
+            )}
+
+            {filteredLands.length === 0 && !loading && (
+              <div className="mt-4 text-center text-muted-foreground py-8 border rounded-lg">
+                <Map className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>Tidak ada lahan dengan koordinat yang sesuai filter</p>
+              </div>
+            )}
+
+            <div className="hidden print:block mt-4 pt-4 border-t text-center text-sm text-muted-foreground">
+              <p>Dokumen ini dicetak untuk keperluan perdata petani dan lahan.</p>
+              <p>© {profile?.nama_perusahaan || ""} - {currentDate}</p>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </CardContent>
+      </Card>
 
       {/* Confirm Edit Coordinates Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
