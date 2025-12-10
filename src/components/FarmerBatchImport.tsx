@@ -80,6 +80,25 @@ export const FarmerBatchImport = ({
   const [existingFarmers, setExistingFarmers] = useState<Map<string, string>>(new Map());
   const [mapPreviewOpen, setMapPreviewOpen] = useState(false);
 
+  // Function to refresh existing farmers map
+  const refreshExistingFarmers = async () => {
+    try {
+      const { data: farmersData, error: farmersError } = await supabase
+        .from("petani")
+        .select("id, kode_petani");
+
+      if (farmersError) throw farmersError;
+      
+      const farmersMap = new Map<string, string>();
+      farmersData?.forEach(f => farmersMap.set(f.kode_petani.toUpperCase(), f.id));
+      setExistingFarmers(farmersMap);
+      return farmersMap;
+    } catch (error) {
+      console.error("Error refreshing farmers:", error);
+      return existingFarmers;
+    }
+  };
+
   // Fetch pengepul list and existing farmers on mount
   useEffect(() => {
     const fetchData = async () => {
@@ -97,15 +116,7 @@ export const FarmerBatchImport = ({
         setPengepulList(pengepulData || []);
 
         // Fetch existing farmers for update mode
-        const { data: farmersData, error: farmersError } = await supabase
-          .from("petani")
-          .select("id, kode_petani");
-
-        if (farmersError) throw farmersError;
-        
-        const farmersMap = new Map<string, string>();
-        farmersData?.forEach(f => farmersMap.set(f.kode_petani.toUpperCase(), f.id));
-        setExistingFarmers(farmersMap);
+        await refreshExistingFarmers();
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -459,6 +470,39 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
     }
   }, [updateMode, existingFarmers]);
 
+  // Re-validate lands when existingFarmers changes (after farmer import)
+  useEffect(() => {
+    if (parsedLands.length > 0) {
+      setParsedLands(prev => prev.map(land => {
+        const kode_petani = extractFarmerCodeFromLandCode(land.kode_lahan);
+        const farmerId = existingFarmers.get(kode_petani);
+        
+        let error: string | undefined;
+        let isValid = true;
+        
+        if (!land.kode_lahan) {
+          error = "Kode lahan wajib diisi";
+          isValid = false;
+        } else if (!farmerId) {
+          error = `Petani ${kode_petani} tidak ditemukan`;
+          isValid = false;
+        } else if (land.koordinat_error) {
+          error = land.koordinat_error;
+          isValid = false;
+        }
+        
+        return { 
+          ...land, 
+          kode_petani,
+          farmerId, 
+          farmerName: farmerId ? kode_petani : "",
+          error, 
+          isValid 
+        };
+      }));
+    }
+  }, [existingFarmers]);
+
   const handleImport = async () => {
     if (importMode === 'land') {
       await handleImportLands();
@@ -533,6 +577,10 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
         title: "Import selesai",
         description: `${success} petani baru, ${updated} diupdate${failed > 0 ? `, ${failed} gagal` : ""}`,
       });
+      
+      // Refresh existing farmers map so land import can find newly imported farmers
+      await refreshExistingFarmers();
+      
       onImportComplete();
     } else {
       toast({
