@@ -79,6 +79,7 @@ export const FarmerBatchImport = ({
   const [updateMode, setUpdateMode] = useState(true);
   const [existingFarmers, setExistingFarmers] = useState<Map<string, string>>(new Map());
   const [mapPreviewOpen, setMapPreviewOpen] = useState(false);
+  const [showOnlyErrors, setShowOnlyErrors] = useState(false);
 
   // Function to refresh existing farmers map
   const refreshExistingFarmers = async () => {
@@ -904,9 +905,13 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
                     </Badge>
                   )}
                   {invalidCount > 0 && (
-                    <Badge variant="destructive">
+                    <Badge 
+                      variant="destructive" 
+                      className="cursor-pointer hover:opacity-80"
+                      onClick={() => setShowOnlyErrors(!showOnlyErrors)}
+                    >
                       <XCircle className="h-3 w-3 mr-1" />
-                      {invalidCount} error
+                      {invalidCount} error {showOnlyErrors ? "(klik untuk semua)" : "(klik untuk filter)"}
                     </Badge>
                   )}
                 </div>
@@ -925,7 +930,9 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {parsedData.map((farmer, index) => (
+                    {parsedData
+                      .filter(farmer => !showOnlyErrors || !farmer.isValid)
+                      .map((farmer, index) => (
                       <TableRow 
                         key={index} 
                         className={
@@ -979,9 +986,13 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
                     </Badge>
                   )}
                   {invalidCount > 0 && (
-                    <Badge variant="destructive">
+                    <Badge 
+                      variant="destructive" 
+                      className="cursor-pointer hover:opacity-80"
+                      onClick={() => setShowOnlyErrors(!showOnlyErrors)}
+                    >
                       <XCircle className="h-3 w-3 mr-1" />
-                      {invalidCount} error
+                      {invalidCount} error {showOnlyErrors ? "(klik untuk semua)" : "(klik untuk filter)"}
                     </Badge>
                   )}
                 </div>
@@ -1013,7 +1024,9 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {parsedLands.map((land, index) => (
+                    {parsedLands
+                      .filter(land => !showOnlyErrors || !land.isValid)
+                      .map((land, index) => (
                       <TableRow 
                         key={index} 
                         className={!land.isValid ? "bg-destructive/5" : ""}
