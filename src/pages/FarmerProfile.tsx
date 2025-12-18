@@ -62,11 +62,13 @@ const FarmerProfile = () => {
         nama: data.nama,
         alamat: data.alamat,
         created_at: data.created_at || new Date().toISOString(),
+        is_organic: data.is_organic,
         lands: (landsData || []).map(l => ({
           id: l.id,
           nama_lahan: l.nama_lahan,
           lokasi: l.lokasi,
           created_at: l.created_at || new Date().toISOString(),
+          is_organic: l.is_organic,
         })),
         saved_at: new Date().toISOString(),
       });
@@ -91,7 +93,7 @@ const FarmerProfile = () => {
           status: null as any,
           tanggal_bergabung: null as any,
           pengepul_id: null as any,
-          is_organic: true,
+          is_organic: offlineFarmer.is_organic ?? true,
         });
         setLands(offlineFarmer.lands.map(l => ({
           id: l.id,
@@ -104,7 +106,7 @@ const FarmerProfile = () => {
           koordinat: null,
           luas: null,
           status: null,
-          is_organic: null,
+          is_organic: l.is_organic ?? null,
         })));
         setIsOffline(true);
         toast({

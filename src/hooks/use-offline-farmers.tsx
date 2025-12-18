@@ -8,11 +8,13 @@ export interface OfflineFarmer {
   nama: string;
   alamat: string | null;
   created_at: string;
+  is_organic?: boolean | null;
   lands: Array<{
     id: string;
     nama_lahan: string;
     lokasi: string | null;
     created_at: string;
+    is_organic?: boolean | null;
   }>;
   saved_at: string;
 }
@@ -111,7 +113,7 @@ export const useOfflineFarmers = () => {
           // Fetch fresh data from database
           const { data: petaniData, error: petaniError } = await supabase
             .from("petani")
-            .select("id, kode_petani, nama, alamat, created_at")
+            .select("id, kode_petani, nama, alamat, created_at, is_organic")
             .eq("id", farmer.id)
             .single();
 
@@ -120,7 +122,7 @@ export const useOfflineFarmers = () => {
           // Fetch fresh lands data
           const { data: landsData, error: landsError } = await supabase
             .from("lahan")
-            .select("id, nama_lahan, lokasi, created_at")
+            .select("id, nama_lahan, lokasi, created_at, is_organic")
             .eq("petani_id", farmer.id)
             .order("created_at", { ascending: false });
 
@@ -133,11 +135,13 @@ export const useOfflineFarmers = () => {
             nama: petaniData.nama,
             alamat: petaniData.alamat,
             created_at: petaniData.created_at || new Date().toISOString(),
+            is_organic: petaniData.is_organic,
             lands: (landsData || []).map(l => ({
               id: l.id,
               nama_lahan: l.nama_lahan,
               lokasi: l.lokasi,
               created_at: l.created_at || new Date().toISOString(),
+              is_organic: l.is_organic,
             })),
             saved_at: new Date().toISOString(),
           });
