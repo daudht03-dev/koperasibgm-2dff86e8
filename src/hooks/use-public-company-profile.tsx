@@ -5,6 +5,9 @@ export type PublicCompanyProfile = {
   id: string;
   nama_perusahaan: string | null;
   logo_url: string | null;
+  deskripsi: string | null;
+  alamat: string | null;
+  kontak: string | null;
   updated_at: string | null;
 };
 

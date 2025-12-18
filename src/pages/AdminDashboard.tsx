@@ -35,12 +35,13 @@ import {
 } from "@/lib/validation-schemas";
 import { TableSkeleton, StatsSkeleton, CardSkeleton } from "@/components/ui/skeleton-templates";
 import { LabelManagement } from "@/pages/LabelManagement";
+import PublicProfileSettings from "@/components/PublicProfileSettings";
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"farmers" | "lands" | "map" | "products" | "statistics" | "profile" | "labels">("farmers");
+  const [activeTab, setActiveTab] = useState<"farmers" | "lands" | "map" | "products" | "statistics" | "profile" | "labels" | "public-profile">("farmers");
   const [farmerSortOrder, setFarmerSortOrder] = useState<"asc" | "desc" | null>(null);
   const [landSortOrder, setLandSortOrder] = useState<"asc" | "desc" | null>(null);
   const [farmerSearch, setFarmerSearch] = useState("");
@@ -641,6 +642,7 @@ const AdminDashboard = () => {
               { key: "statistics", label: "Statistik", icon: BarChart3 },
               { key: "profile", label: "Profil", icon: Building },
               { key: "labels", label: "Label Kemasan", icon: Printer },
+              { key: "public-profile", label: "Profil Publik", icon: Eye },
             ].map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -1675,6 +1677,11 @@ const AdminDashboard = () => {
         {/* Labels Tab */}
         {activeTab === "labels" && (
           <LabelManagement />
+        )}
+
+        {/* Public Profile Settings Tab */}
+        {activeTab === "public-profile" && (
+          <PublicProfileSettings />
         )}
 
         {/* Statistics */}
