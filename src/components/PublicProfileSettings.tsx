@@ -330,7 +330,7 @@ const PublicProfileSettings = () => {
               </div>
               {selectedFarmer && (
                 <Button variant="outline" size="sm" asChild>
-                  <a href={`/farmer/${selectedFarmerId}`} target="_blank" rel="noopener noreferrer">
+                  <a href={`/profil-petani/${selectedFarmerId}`} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="h-4 w-4 mr-2" />
                     Buka di Tab Baru
                   </a>
@@ -348,7 +348,7 @@ const PublicProfileSettings = () => {
                   >
                     <iframe
                       key={previewKey}
-                      src={`/farmer/${selectedFarmerId}`}
+                      src={`/profil-petani/${selectedFarmerId}`}
                       className="w-full border-0"
                       style={{ height: "600px" }}
                       title="Preview Profil Petani"
