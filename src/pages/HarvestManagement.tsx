@@ -29,6 +29,7 @@ import { BatchPenerimaanForm } from "@/components/harvest/BatchPenerimaanForm";
 import { GudangTab } from "@/components/harvest/GudangTab";
 import { PengovenanTab } from "@/components/harvest/PengovenanTab";
 import { BatchSummaryView } from "@/components/harvest/BatchSummaryView";
+import { FarmerPengepulManager } from "@/components/FarmerPengepulManager";
 import { usePengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
@@ -504,8 +505,9 @@ const HarvestManagement = () => {
           </ScrollArea>
 
           {/* Pengepul Tab */}
-          <TabsContent value="pengepul">
+          <TabsContent value="pengepul" className="space-y-6">
             <PengepulTab />
+            <FarmerPengepulManager />
           </TabsContent>
 
           {/* Barang Masuk Tab */}
