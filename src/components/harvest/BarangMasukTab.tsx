@@ -162,6 +162,7 @@ export const BarangMasukTab = () => {
   };
 
   // Process estimations into week-based structure
+  // Process estimations into week-based structure - use estimation data directly without strict filtering
   const weeklyEstimationData = useMemo((): WeekData[] => {
     const weeks: WeekData[] = [];
 
@@ -174,30 +175,36 @@ export const BarangMasukTab = () => {
         holidays: number[];
       }>;
 
-      if (!panenData) return;
+      if (!panenData || !Array.isArray(panenData)) return;
 
       panenData.forEach(week => {
+        if (!week.farmersData || !Array.isArray(week.farmersData)) return;
+
         const farmersOrganic: FarmerWeekEntry[] = [];
         const farmersConventional: FarmerWeekEntry[] = [];
 
         week.farmersData.forEach(farmerData => {
+          if (!farmerData.dailySales || !Array.isArray(farmerData.dailySales)) return;
+
+          // Get farmer info - use estimation data as primary, lookup as fallback
           const farmer = farmers.find(f => f.id === farmerData.farmerId);
-          if (!farmer || !farmer.pengepul_id) return;
+          const pengepulId = farmer?.pengepul_id || '';
+          const pengepul = pengepulId ? pengepulList.find(p => p.id === pengepulId) : null;
 
-          const pengepul = pengepulList.find(p => p.id === farmer.pengepul_id);
-          if (!pengepul) return;
-
-          const dailyValues = farmerData.dailySales.map(d => d.value);
+          const dailyValues = farmerData.dailySales.map(d => d.value || 0);
           const dailyDates = farmerData.dailySales.map(d => d.date);
           const total = dailyValues.reduce((sum, v) => sum + v, 0);
           const isOrganic = farmerData.isOrganic !== false;
 
+          // Only skip if no valid sales data at all
+          if (total === 0) return;
+
           const entry: FarmerWeekEntry = {
             farmerId: farmerData.farmerId,
-            farmerName: farmerData.farmerName,
-            farmerCode: farmerData.farmerCode,
-            pengepulId: farmer.pengepul_id,
-            pengepulName: pengepul.nama,
+            farmerName: farmerData.farmerName || farmer?.nama || 'Unknown',
+            farmerCode: farmerData.farmerCode || farmer?.kode_petani || '-',
+            pengepulId: pengepulId,
+            pengepulName: pengepul?.nama || 'Tidak Ada Pengepul',
             dailyValues,
             dailyDates,
             total,
@@ -211,8 +218,9 @@ export const BarangMasukTab = () => {
           }
         });
 
-        // Check if this week is already processed
-        const isProcessed = farmersOrganic.concat(farmersConventional).some(entry => {
+        // Check if this week is already processed (any matching entry in penjualan)
+        const allEntries = farmersOrganic.concat(farmersConventional);
+        const isProcessed = allEntries.length > 0 && allEntries.some(entry => {
           return entry.dailyDates.some(date => {
             return penjualanList.some(p => 
               p.petani_id === entry.farmerId && 
@@ -222,19 +230,22 @@ export const BarangMasukTab = () => {
           });
         });
 
-        weeks.push({
-          estimationId: estimation.id,
-          estimationName: estimation.nama_estimasi,
-          weekIndex: week.weekIndex,
-          weekLabel: `Minggu ${week.weekIndex + 1}`,
-          startDate: week.startDate,
-          endDate: week.endDate,
-          farmersOrganic,
-          farmersConventional,
-          totalOrganic: farmersOrganic.reduce((sum, f) => sum + f.total, 0),
-          totalConventional: farmersConventional.reduce((sum, f) => sum + f.total, 0),
-          isProcessed,
-        });
+        // Only add weeks that have at least one farmer with data
+        if (farmersOrganic.length > 0 || farmersConventional.length > 0) {
+          weeks.push({
+            estimationId: estimation.id,
+            estimationName: estimation.nama_estimasi,
+            weekIndex: week.weekIndex,
+            weekLabel: `Minggu ${week.weekIndex + 1}`,
+            startDate: week.startDate,
+            endDate: week.endDate,
+            farmersOrganic,
+            farmersConventional,
+            totalOrganic: farmersOrganic.reduce((sum, f) => sum + f.total, 0),
+            totalConventional: farmersConventional.reduce((sum, f) => sum + f.total, 0),
+            isProcessed,
+          });
+        }
       });
     });
 
@@ -302,6 +313,8 @@ export const BarangMasukTab = () => {
       is_organic: boolean;
     }> = [];
 
+    const skippedFarmers: string[] = [];
+
     for (const weekKey of selectedWeeks) {
       const week = weeklyEstimationData.find(w => `${w.estimationId}-${w.weekIndex}` === weekKey);
       if (!week) continue;
@@ -309,8 +322,29 @@ export const BarangMasukTab = () => {
       const allFarmers = [...week.farmersOrganic, ...week.farmersConventional];
 
       for (const farmerEntry of allFarmers) {
-        const pengepul = pengepulList.find(p => p.id === farmerEntry.pengepulId);
-        if (!pengepul) continue;
+        // Try to find pengepul - if not in farmerEntry, try to find from farmer's pengepul_id
+        let pengepulId = farmerEntry.pengepulId;
+        let hargaBeli = 0;
+
+        if (pengepulId) {
+          const pengepul = pengepulList.find(p => p.id === pengepulId);
+          if (pengepul) {
+            hargaBeli = pengepul.harga_beli;
+          }
+        }
+
+        // Skip if no pengepul_id - it's required for penjualan_petani
+        if (!pengepulId) {
+          if (!skippedFarmers.includes(farmerEntry.farmerName)) {
+            skippedFarmers.push(farmerEntry.farmerName);
+          }
+          continue;
+        }
+
+        // Use default price if not found
+        if (hargaBeli === 0) {
+          hargaBeli = 10000; // Default price
+        }
 
         // Create entry for each day with value > 0
         for (let i = 0; i < farmerEntry.dailyValues.length; i++) {
@@ -329,11 +363,11 @@ export const BarangMasukTab = () => {
           if (exists) continue;
 
           dataToInsert.push({
-            pengepul_id: farmerEntry.pengepulId,
+            pengepul_id: pengepulId,
             petani_id: farmerEntry.farmerId,
             tanggal_jual: date,
             jumlah_kg: value,
-            harga_per_kg: pengepul.harga_beli,
+            harga_per_kg: hargaBeli,
             warna_produk: null,
             kualitas: "grade_a",
             catatan: `Auto-generated dari estimasi: ${week.estimationName} - ${week.weekLabel}`,
@@ -341,6 +375,15 @@ export const BarangMasukTab = () => {
           });
         }
       }
+    }
+
+    // Show warning if any farmers were skipped
+    if (skippedFarmers.length > 0) {
+      toast({
+        title: "Peringatan",
+        description: `${skippedFarmers.length} petani dilewati karena tidak memiliki pengepul: ${skippedFarmers.slice(0, 3).join(', ')}${skippedFarmers.length > 3 ? '...' : ''}`,
+        variant: "destructive",
+      });
     }
 
     if (dataToInsert.length === 0) {
