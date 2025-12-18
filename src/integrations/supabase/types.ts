@@ -283,6 +283,7 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          is_organic: boolean | null
           jenis_tanah: string | null
           koordinat: string | null
           lokasi: string | null
@@ -295,6 +296,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
+          is_organic?: boolean | null
           jenis_tanah?: string | null
           koordinat?: string | null
           lokasi?: string | null
@@ -307,6 +309,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          is_organic?: boolean | null
           jenis_tanah?: string | null
           koordinat?: string | null
           lokasi?: string | null

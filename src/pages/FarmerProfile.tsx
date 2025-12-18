@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { MapPin, TreePine, WifiOff } from "lucide-react";
+import { MapPin, TreePine, WifiOff, Award, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 import { useOfflineFarmers } from "@/hooks/use-offline-farmers";
@@ -104,6 +104,7 @@ const FarmerProfile = () => {
           koordinat: null,
           luas: null,
           status: null,
+          is_organic: null,
         })));
         setIsOffline(true);
         toast({
@@ -194,15 +195,53 @@ const FarmerProfile = () => {
                     <p className="text-muted-foreground text-sm">
                       Petani terdaftar dengan kode <span className="font-medium text-foreground">{petani.kode_petani}</span>
                     </p>
-                    {petani.is_organic && (
-                      <Badge variant="outline" className="border-organic-green text-organic-green">
-                        Petani Organik
-                      </Badge>
-                    )}
+                    <Badge 
+                      variant="outline" 
+                      className={petani.is_organic 
+                        ? "border-organic-green text-organic-green" 
+                        : "border-amber-500 text-amber-600"
+                      }
+                    >
+                      {petani.is_organic ? "Petani Organik" : "Petani Konvensional"}
+                    </Badge>
                   </div>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Informasi Sertifikasi */}
+            {petani.is_organic && (
+              <Card className="shadow-gentle border-border/50 bg-gradient-to-br from-organic-green/5 to-organic-cream/30">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <div className="bg-organic-green p-2 rounded-lg shadow-organic">
+                      <Award className="h-5 w-5 text-primary-foreground" />
+                    </div>
+                    <span>Sertifikasi Organik</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="h-5 w-5 text-organic-green mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium text-foreground">Tersertifikasi Organik</p>
+                      <p className="text-sm text-muted-foreground">
+                        Petani ini mengikuti standar pertanian organik dan tidak menggunakan pestisida atau pupuk kimia sintetis
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="h-5 w-5 text-organic-green mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium text-foreground">Praktik Berkelanjutan</p>
+                      <p className="text-sm text-muted-foreground">
+                        Menerapkan metode pertanian ramah lingkungan untuk menjaga kesuburan tanah dan ekosistem
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Sidebar Stats */}
@@ -243,22 +282,25 @@ const FarmerProfile = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {lands.map((land) => (
-                      <TableRow key={land.id}>
-                        <TableCell className="font-medium">{land.nama_lahan}</TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant="outline" 
-                            className={petani.is_organic 
-                              ? "border-organic-green text-organic-green" 
-                              : "border-amber-500 text-amber-600"
-                            }
-                          >
-                            {petani.is_organic ? "Organik" : "Konvensional"}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {lands.map((land) => {
+                      const isLandOrganic = land.is_organic ?? petani.is_organic;
+                      return (
+                        <TableRow key={land.id}>
+                          <TableCell className="font-medium">{land.nama_lahan}</TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant="outline" 
+                              className={isLandOrganic 
+                                ? "border-organic-green text-organic-green" 
+                                : "border-amber-500 text-amber-600"
+                              }
+                            >
+                              {isLandOrganic ? "Organik" : "Konvensional"}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               ) : (
