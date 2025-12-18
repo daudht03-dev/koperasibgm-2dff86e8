@@ -81,10 +81,10 @@ export const LandMapTab: React.FC = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const printRef = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const markers = useRef<mapboxgl.Marker[]>([]);
   const clickMarker = useRef<mapboxgl.Marker | null>(null);
   const mapInitialized = useRef(false);
   const tokenRef = useRef<string | null>(null);
+  const popupRef = useRef<mapboxgl.Popup | null>(null);
   
   const [allLands, setAllLands] = useState<LandWithFarmer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,6 +93,7 @@ export const LandMapTab: React.FC = () => {
   const [mapStyle, setMapStyle] = useState<MapStyle>("hybrid");
   const [downloading, setDownloading] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  const [clusteringEnabled, setClusteringEnabled] = useState(true);
   
   // Filters
   const [farmerFilter, setFarmerFilter] = useState<string>("all");
@@ -136,6 +137,29 @@ export const LandMapTab: React.FC = () => {
     return Object.values(farmersMap);
   }, [allLands]);
 
+  // Generate GeoJSON from filtered lands
+  const generateGeoJSON = useCallback(() => {
+    return {
+      type: "FeatureCollection" as const,
+      features: filteredLands.map((land) => ({
+        type: "Feature" as const,
+        geometry: {
+          type: "Point" as const,
+          coordinates: [land.parsedCoord!.lng, land.parsedCoord!.lat],
+        },
+        properties: {
+          id: land.id,
+          nama_lahan: land.nama_lahan,
+          lokasi: land.lokasi || "",
+          luas: land.luas || 0,
+          petani_nama: land.petani?.nama || "",
+          petani_kode: land.petani?.kode_petani || "",
+          is_organic: land.is_organic ?? land.petani?.is_organic ?? false,
+        },
+      })),
+    };
+  }, [filteredLands]);
+
   // Fetch lands with farmer data - only once
   const fetchLands = useCallback(async () => {
     try {
@@ -158,7 +182,7 @@ export const LandMapTab: React.FC = () => {
             is_organic
           )
         `)
-        .limit(500); // Limit to prevent too much data
+        .limit(500);
 
       if (fetchError) throw fetchError;
 
@@ -198,6 +222,95 @@ export const LandMapTab: React.FC = () => {
     }
   }, []);
 
+  // Add clustering layers to map
+  const addClusterLayers = useCallback(() => {
+    if (!map.current) return;
+
+    // Remove existing layers and source if they exist
+    const layersToRemove = ['clusters', 'cluster-count', 'unclustered-point', 'unclustered-point-label'];
+    layersToRemove.forEach(layer => {
+      if (map.current?.getLayer(layer)) {
+        map.current.removeLayer(layer);
+      }
+    });
+    if (map.current.getSource('lands')) {
+      map.current.removeSource('lands');
+    }
+
+    const geojson = generateGeoJSON();
+
+    // Add source with clustering
+    map.current.addSource('lands', {
+      type: 'geojson',
+      data: geojson,
+      cluster: clusteringEnabled,
+      clusterMaxZoom: 14,
+      clusterRadius: 50,
+    });
+
+    // Cluster circles
+    map.current.addLayer({
+      id: 'clusters',
+      type: 'circle',
+      source: 'lands',
+      filter: ['has', 'point_count'],
+      paint: {
+        'circle-color': [
+          'step',
+          ['get', 'point_count'],
+          '#16a34a', // green for small clusters
+          10, '#eab308', // yellow for medium
+          30, '#ea580c', // orange for large
+        ],
+        'circle-radius': [
+          'step',
+          ['get', 'point_count'],
+          20,
+          10, 25,
+          30, 35,
+        ],
+        'circle-stroke-width': 3,
+        'circle-stroke-color': '#ffffff',
+      },
+    });
+
+    // Cluster count labels
+    map.current.addLayer({
+      id: 'cluster-count',
+      type: 'symbol',
+      source: 'lands',
+      filter: ['has', 'point_count'],
+      layout: {
+        'text-field': ['get', 'point_count_abbreviated'],
+        'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+        'text-size': 14,
+      },
+      paint: {
+        'text-color': '#ffffff',
+      },
+    });
+
+    // Unclustered points
+    map.current.addLayer({
+      id: 'unclustered-point',
+      type: 'circle',
+      source: 'lands',
+      filter: ['!', ['has', 'point_count']],
+      paint: {
+        'circle-color': [
+          'case',
+          ['get', 'is_organic'],
+          '#16a34a',
+          '#ea580c',
+        ],
+        'circle-radius': 10,
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ffffff',
+      },
+    });
+
+  }, [generateGeoJSON, clusteringEnabled]);
+
   // Initialize map only once
   const initializeMap = useCallback(async () => {
     if (!mapContainer.current || mapInitialized.current) return;
@@ -228,6 +341,74 @@ export const LandMapTab: React.FC = () => {
         mapInitialized.current = true;
         setMapReady(true);
         setMapLoading(false);
+        addClusterLayers();
+      });
+
+      // Click on cluster to zoom
+      map.current.on('click', 'clusters', (e) => {
+        const features = map.current!.queryRenderedFeatures(e.point, { layers: ['clusters'] });
+        const clusterId = features[0]?.properties?.cluster_id;
+        if (clusterId) {
+          (map.current!.getSource('lands') as mapboxgl.GeoJSONSource).getClusterExpansionZoom(
+            clusterId,
+            (err, zoom) => {
+              if (err) return;
+              map.current!.easeTo({
+                center: (features[0].geometry as any).coordinates,
+                zoom: zoom!,
+              });
+            }
+          );
+        }
+      });
+
+      // Click on unclustered point to show popup
+      map.current.on('click', 'unclustered-point', (e) => {
+        if (editMode) return;
+        
+        const feature = e.features?.[0];
+        if (!feature) return;
+
+        const coords = (feature.geometry as any).coordinates.slice();
+        const props = feature.properties;
+        const isOrganic = props?.is_organic;
+
+        if (popupRef.current) popupRef.current.remove();
+
+        popupRef.current = new mapboxgl.Popup({ offset: 15, maxWidth: '280px' })
+          .setLngLat(coords)
+          .setHTML(`
+            <div style="padding: 6px; font-family: system-ui, sans-serif;">
+              <h3 style="font-weight: 600; font-size: 14px; margin-bottom: 6px; color: #166534;">
+                ${props?.nama_lahan || 'N/A'}
+              </h3>
+              ${props?.petani_nama ? `
+                <p style="margin: 3px 0; color: #374151; font-size: 13px;">
+                  <strong>Petani:</strong> ${props.petani_nama}
+                </p>
+                <span style="background: ${isOrganic ? '#16a34a' : '#ea580c'}; color: white; padding: 2px 6px; border-radius: 9999px; font-size: 11px;">
+                  ${isOrganic ? '🌿 Organik' : '🏭 Konvensional'}
+                </span>
+              ` : ''}
+              ${props?.lokasi ? `<p style="margin: 3px 0; color: #374151; font-size: 12px;"><strong>Lokasi:</strong> ${props.lokasi}</p>` : ''}
+              ${props?.luas ? `<p style="margin: 3px 0; color: #374151; font-size: 12px;"><strong>Luas:</strong> ${props.luas} ha</p>` : ''}
+            </div>
+          `)
+          .addTo(map.current!);
+      });
+
+      // Change cursor on hover
+      map.current.on('mouseenter', 'clusters', () => {
+        if (map.current) map.current.getCanvas().style.cursor = 'pointer';
+      });
+      map.current.on('mouseleave', 'clusters', () => {
+        if (map.current) map.current.getCanvas().style.cursor = '';
+      });
+      map.current.on('mouseenter', 'unclustered-point', () => {
+        if (map.current) map.current.getCanvas().style.cursor = 'pointer';
+      });
+      map.current.on('mouseleave', 'unclustered-point', () => {
+        if (map.current) map.current.getCanvas().style.cursor = '';
       });
 
       map.current.on("error", (e) => {
@@ -239,87 +420,40 @@ export const LandMapTab: React.FC = () => {
       setError(err.message || "Gagal memuat peta");
       setMapLoading(false);
     }
-  }, [getMapboxToken, mapStyle]);
+  }, [getMapboxToken, mapStyle, addClusterLayers, editMode]);
 
   // Update map style without reinitializing
   const updateMapStyle = useCallback((newStyle: MapStyle) => {
     if (map.current && mapReady) {
       map.current.setStyle(mapStyles[newStyle]);
       setMapStyle(newStyle);
-    }
-  }, [mapReady]);
-
-  // Update markers efficiently
-  const updateMarkers = useCallback(() => {
-    if (!map.current || !mapReady) return;
-
-    // Clear existing markers
-    markers.current.forEach((m) => m.remove());
-    markers.current = [];
-
-    const validLands = filteredLands;
-    if (validLands.length === 0) return;
-
-    // Batch create markers
-    validLands.forEach((land, index) => {
-      const isOrganic = land.is_organic ?? land.petani?.is_organic;
-      const bgColor = isOrganic 
-        ? "linear-gradient(135deg, hsl(142, 76%, 36%), hsl(142, 71%, 45%))"
-        : "linear-gradient(135deg, hsl(25, 95%, 53%), hsl(21, 90%, 48%))";
-
-      const el = document.createElement("div");
-      el.className = "land-marker";
-      el.innerHTML = `<div style="
-        background: ${bgColor};
-        color: white;
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 12px;
-        border: 2px solid white;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        cursor: pointer;
-      ">${index + 1}</div>`;
-
-      const popup = new mapboxgl.Popup({ offset: 25, maxWidth: "280px" }).setHTML(`
-        <div style="padding: 6px; font-family: system-ui, sans-serif;">
-          <h3 style="font-weight: 600; font-size: 14px; margin-bottom: 6px; color: #166534;">
-            ${land.nama_lahan}
-          </h3>
-          ${land.petani ? `
-            <p style="margin: 3px 0; color: #374151; font-size: 13px;">
-              <strong>Petani:</strong> ${land.petani.nama}
-            </p>
-            <span style="background: ${isOrganic ? '#16a34a' : '#ea580c'}; color: white; padding: 2px 6px; border-radius: 9999px; font-size: 11px;">
-              ${isOrganic ? '🌿 Organik' : '🏭 Konvensional'}
-            </span>
-          ` : ""}
-          ${land.lokasi ? `<p style="margin: 3px 0; color: #374151; font-size: 12px;"><strong>Lokasi:</strong> ${land.lokasi}</p>` : ""}
-          ${land.luas ? `<p style="margin: 3px 0; color: #374151; font-size: 12px;"><strong>Luas:</strong> ${land.luas} ha</p>` : ""}
-        </div>
-      `);
-
-      const marker = new mapboxgl.Marker(el)
-        .setLngLat([land.parsedCoord!.lng, land.parsedCoord!.lat])
-        .setPopup(popup)
-        .addTo(map.current!);
-
-      markers.current.push(marker);
-    });
-
-    // Fit bounds if multiple lands
-    if (validLands.length > 0) {
-      const bounds = new mapboxgl.LngLatBounds();
-      validLands.forEach((land) => {
-        bounds.extend([land.parsedCoord!.lng, land.parsedCoord!.lat]);
+      // Re-add layers after style change
+      map.current.once('style.load', () => {
+        addClusterLayers();
+        fitBoundsToLands();
       });
-      map.current.fitBounds(bounds, { padding: 60, maxZoom: 15 });
     }
-  }, [filteredLands, mapReady]);
+  }, [mapReady, addClusterLayers]);
+
+  // Fit bounds to lands
+  const fitBoundsToLands = useCallback(() => {
+    if (!map.current || filteredLands.length === 0) return;
+
+    const bounds = new mapboxgl.LngLatBounds();
+    filteredLands.forEach((land) => {
+      bounds.extend([land.parsedCoord!.lng, land.parsedCoord!.lat]);
+    });
+    map.current.fitBounds(bounds, { padding: 60, maxZoom: 15 });
+  }, [filteredLands]);
+
+  // Update cluster data when filters change
+  const updateClusterData = useCallback(() => {
+    if (!map.current || !mapReady) return;
+    
+    // Re-add layers to apply clustering change or filter update
+    addClusterLayers();
+    fitBoundsToLands();
+  }, [mapReady, addClusterLayers, fitBoundsToLands]);
 
   // Setup click handler for edit mode
   useEffect(() => {
@@ -375,21 +509,20 @@ export const LandMapTab: React.FC = () => {
     }
   }, [loading, allLands.length, initializeMap]);
 
-  // Update markers when filtered lands change
+  // Update cluster data when filtered lands change
   useEffect(() => {
     if (mapReady) {
-      // Debounce marker updates
       const timer = setTimeout(() => {
-        updateMarkers();
+        updateClusterData();
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [filteredLands, mapReady, updateMarkers]);
+  }, [filteredLands, mapReady, updateClusterData, clusteringEnabled]);
 
   // Cleanup
   useEffect(() => {
     return () => {
-      markers.current.forEach(m => m.remove());
+      popupRef.current?.remove();
       clickMarker.current?.remove();
       map.current?.remove();
       map.current = null;
@@ -670,6 +803,17 @@ export const LandMapTab: React.FC = () => {
               </SelectContent>
             </Select>
 
+            {/* Clustering Toggle */}
+            <Button
+              variant={clusteringEnabled ? "default" : "outline"}
+              size="sm"
+              onClick={() => setClusteringEnabled(!clusteringEnabled)}
+              className="gap-2"
+            >
+              <Layers className="h-4 w-4" />
+              Cluster
+            </Button>
+
             <div className="flex-1" />
 
             {/* Export Buttons */}
@@ -790,13 +934,31 @@ export const LandMapTab: React.FC = () => {
           <div className="flex flex-wrap items-center gap-6">
             <span className="text-sm font-medium">Legenda:</span>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-gradient-to-br from-green-600 to-green-500" />
+              <div className="w-4 h-4 rounded-full bg-green-600" />
               <span className="text-sm">Organik</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-gradient-to-br from-orange-500 to-orange-600" />
+              <div className="w-4 h-4 rounded-full bg-orange-500" />
               <span className="text-sm">Konvensional</span>
             </div>
+            {clusteringEnabled && (
+              <>
+                <div className="h-4 w-px bg-border" />
+                <span className="text-sm text-muted-foreground">Cluster:</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full bg-green-600 flex items-center justify-center text-[10px] text-white font-medium">5</div>
+                  <span className="text-sm text-muted-foreground">&lt;10</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center text-[10px] text-white font-medium">15</div>
+                  <span className="text-sm text-muted-foreground">10-30</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-xs text-white font-medium">50</div>
+                  <span className="text-sm text-muted-foreground">&gt;30</span>
+                </div>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
