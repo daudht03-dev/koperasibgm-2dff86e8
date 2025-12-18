@@ -28,6 +28,7 @@ export const landSchema = z.object({
     .optional()
     .or(z.literal("")),
   petani_id: z.string().optional().or(z.literal("")),
+  is_organic: z.boolean().optional(),
 });
 
 // Harvest validation schema

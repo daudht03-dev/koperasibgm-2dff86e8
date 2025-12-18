@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
 import { StatisticsChart } from "@/components/StatisticsChart";
@@ -80,6 +82,7 @@ const AdminDashboard = () => {
     nama_lahan: "",
     lokasi: "",
     petani_id: "",
+    is_organic: true,
   });
   const [landErrors, setLandErrors] = useState<Record<string, string>>({});
   const [editingLand, setEditingLand] = useState<string | null>(null);
@@ -222,10 +225,11 @@ const AdminDashboard = () => {
         nama_lahan: validated.nama_lahan,
         lokasi: validated.lokasi || null,
         petani_id: validated.petani_id && validated.petani_id !== "none" ? validated.petani_id : null,
+        is_organic: validated.is_organic ?? true,
       });
       
       if (success) {
-        setLandForm({ nama_lahan: "", lokasi: "", petani_id: "" });
+        setLandForm({ nama_lahan: "", lokasi: "", petani_id: "", is_organic: true });
         setLandDialogOpen(false);
       }
     } catch (error: any) {
@@ -249,6 +253,7 @@ const AdminDashboard = () => {
       nama_lahan: land.nama_lahan,
       lokasi: land.lokasi || "",
       petani_id: land.petani_id || "none",
+      is_organic: land.is_organic ?? true,
     });
     setLandErrors({});
     setEditingLand(land.id);
@@ -266,10 +271,11 @@ const AdminDashboard = () => {
         nama_lahan: validated.nama_lahan,
         lokasi: validated.lokasi || null,
         petani_id: validated.petani_id && validated.petani_id !== "none" ? validated.petani_id : null,
+        is_organic: validated.is_organic ?? true,
       });
       
       if (success) {
-        setLandForm({ nama_lahan: "", lokasi: "", petani_id: "" });
+        setLandForm({ nama_lahan: "", lokasi: "", petani_id: "", is_organic: true });
         setEditingLand(null);
         setLandDialogOpen(false);
       }
@@ -906,7 +912,7 @@ const AdminDashboard = () => {
                     <Button 
                       onClick={() => {
                         setEditingLand(null);
-                        setLandForm({ nama_lahan: "", lokasi: "", petani_id: "" });
+                        setLandForm({ nama_lahan: "", lokasi: "", petani_id: "", is_organic: true });
                       }}
                       className="bg-gradient-organic shadow-organic hover:shadow-warm"
                     >
@@ -968,6 +974,19 @@ const AdminDashboard = () => {
                         <p className="text-sm text-destructive mt-1">{landErrors.lokasi}</p>
                       )}
                     </div>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="is-organic">Status Organik</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Lahan ini menggunakan metode organik
+                        </p>
+                      </div>
+                      <Switch
+                        id="is-organic"
+                        checked={landForm.is_organic}
+                        onCheckedChange={(checked) => setLandForm(prev => ({ ...prev, is_organic: checked }))}
+                      />
+                    </div>
                     <div className="flex justify-end space-x-2">
                       <Button
                         variant="outline"
@@ -1023,6 +1042,7 @@ const AdminDashboard = () => {
                         </Button>
                       </TableHead>
                       <TableHead>Petani</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Lokasi</TableHead>
                       <TableHead>Koordinat</TableHead>
                       <TableHead>Aksi</TableHead>
@@ -1054,6 +1074,17 @@ const AdminDashboard = () => {
                           ? farmers.find(f => f.id === land.petani_id)?.nama || "-"
                           : "-"
                         }
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant="outline" 
+                          className={land.is_organic 
+                            ? "border-organic-green text-organic-green" 
+                            : "border-amber-500 text-amber-600"
+                          }
+                        >
+                          {land.is_organic ? "Organik" : "Konvensional"}
+                        </Badge>
                       </TableCell>
                       <TableCell className="max-w-md">{land.lokasi || "-"}</TableCell>
                       <TableCell className="text-xs font-mono text-muted-foreground max-w-[200px] truncate" title={land.koordinat || ""}>
