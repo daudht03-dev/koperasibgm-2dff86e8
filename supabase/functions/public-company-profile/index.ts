@@ -28,7 +28,7 @@ serve(async (req) => {
 
     const { data, error } = await supabaseAdmin
       .from("profil_perusahaan")
-      .select("id, nama_perusahaan, logo_url, deskripsi, alamat, kontak, updated_at")
+      .select("id, nama_perusahaan, logo_url, deskripsi, alamat, kontak, updated_at, template_settings")
       .limit(1)
       .maybeSingle();
 
