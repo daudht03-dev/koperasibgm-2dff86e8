@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Warehouse, Leaf, Factory, Package, Flame, ArrowDownToLine, ArrowUpFromLine, RefreshCw, ShoppingCart } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Warehouse, Leaf, Factory, Package, Flame, ArrowDownToLine, ArrowUpFromLine, RefreshCw, ShoppingCart, ChevronDown, ChevronRight, Users } from "lucide-react";
 import { useGudangStok, useBatchPanen, useProsesPengeringan, usePenjualan, GudangStok } from "@/hooks/use-batch-panen";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { TableSkeleton } from "@/components/ui/skeleton-templates";
@@ -13,19 +14,49 @@ import { BarangKeluarGudangDialog } from "./BarangKeluarGudangDialog";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 
+interface FarmerDetail {
+  petani_id: string;
+  petani_nama: string;
+  petani_kode: string;
+  jumlah_kg: number;
+  is_organic: boolean;
+  daily_values?: number[];
+}
+
 export const GudangTab = () => {
   const { stok, loading, refetch } = useGudangStok();
-  const { batches } = useBatchPanen();
+  const { batches, loading: batchesLoading } = useBatchPanen();
   const { proses, refetch: refetchProses } = useProsesPengeringan();
   const { penjualan, refetch: refetchPenjualan } = usePenjualan();
   const { profile } = useCompanyProfile();
   
-  const [activeSubTab, setActiveSubTab] = useState("hasil-oven");
+  const [activeSubTab, setActiveSubTab] = useState("bahan-masuk");
+  const [expandedBatches, setExpandedBatches] = useState<Set<string>>(new Set());
+
+  const toggleBatchExpanded = (batchId: string) => {
+    setExpandedBatches(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(batchId)) {
+        newSet.delete(batchId);
+      } else {
+        newSet.add(batchId);
+      }
+      return newSet;
+    });
+  };
 
   // Filter stok tersedia (status tersimpan dan jumlah > 0)
   const stokTersedia = useMemo(() => {
     return stok.filter(s => s.status === 'tersimpan' && Number(s.jumlah_kg) > 0);
   }, [stok]);
+
+  // Separate batches by organic status (from penerimaan/batch_panen)
+  const categorizedBatches = useMemo(() => {
+    return {
+      organik: batches.filter(b => b.is_organic === true),
+      konvensional: batches.filter(b => b.is_organic === false),
+    };
+  }, [batches]);
 
   // Separate stok by type and organic status
   const categorizedStok = useMemo(() => {
@@ -37,7 +68,23 @@ export const GudangTab = () => {
     };
   }, [stok]);
 
-  // Calculate summary stats
+  // Calculate summary stats from batches (penerimaan)
+  const batchSummary = useMemo(() => {
+    const calcTotal = (items: typeof batches) => items.reduce((sum, b) => sum + Number(b.jumlah_kg), 0);
+    
+    return {
+      organik: {
+        total: calcTotal(categorizedBatches.organik),
+        count: categorizedBatches.organik.length,
+      },
+      konvensional: {
+        total: calcTotal(categorizedBatches.konvensional),
+        count: categorizedBatches.konvensional.length,
+      },
+    };
+  }, [categorizedBatches]);
+
+  // Calculate summary stats from gudang stok
   const summary = useMemo(() => {
     const calcTotal = (items: GudangStok[]) => items.reduce((sum, s) => sum + Number(s.jumlah_kg), 0);
     const calcTersimpan = (items: GudangStok[]) => 
@@ -69,18 +116,115 @@ export const GudangTab = () => {
     };
   }, [categorizedStok]);
 
-  // Get oven process data with detailed info
-  const ovenProcessData = useMemo(() => {
-    return proses.filter(p => p.status === 'selesai').map(p => {
-      const batch = batches.find(b => b.id === p.batch_id);
-      const stokEntry = stok.find(s => s.batch_id === p.batch_id && s.tipe_stok === 'produk_jadi');
-      return {
-        ...p,
-        batch,
-        stokEntry,
-      };
-    });
-  }, [proses, batches, stok]);
+  // Render batch penerimaan table with farmer details
+  const renderBatchTable = (batchList: typeof batches, emptyMessage: string) => {
+    if (batchList.length === 0) {
+      return (
+        <div className="text-center py-8 text-muted-foreground">
+          {emptyMessage}
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-2">
+        {batchList.map((batch) => {
+          const isExpanded = expandedBatches.has(batch.id);
+          const detailPetani = (batch.detail_petani as FarmerDetail[] | null) || [];
+          const hasDetails = detailPetani.length > 0;
+
+          return (
+            <Collapsible key={batch.id} open={isExpanded} onOpenChange={() => toggleBatchExpanded(batch.id)}>
+              <Card className="border">
+                <div className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {hasDetails && (
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-6 w-6">
+                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          </Button>
+                        </CollapsibleTrigger>
+                      )}
+                      <div>
+                        <p className="font-mono font-medium">{batch.batch_number}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(batch.tanggal_penerimaan), "dd MMM yyyy", { locale: localeId })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="font-bold text-lg">{Number(batch.jumlah_kg).toLocaleString()} Kg</p>
+                        {hasDetails && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 justify-end">
+                            <Users className="h-3 w-3" />
+                            {detailPetani.length} petani
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        {batch.is_organic ? (
+                          <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+                            <Leaf className="h-3 w-3 mr-1" />
+                            Organik
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs bg-slate-50 text-slate-700 border-slate-200">
+                            <Factory className="h-3 w-3 mr-1" />
+                            Konvensional
+                          </Badge>
+                        )}
+                        <Badge variant="secondary" className="text-xs">
+                          {batch.kualitas?.replace('_', ' ').toUpperCase() || 'Grade A'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {hasDetails && (
+                  <CollapsibleContent>
+                    <div className="border-t px-4 pb-4">
+                      <p className="text-sm font-medium py-2 text-muted-foreground">Detail Petani:</p>
+                      <div className="max-h-64 overflow-y-auto border rounded-md">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="sticky top-0 bg-background">Nama Petani</TableHead>
+                              <TableHead className="sticky top-0 bg-background">Kode</TableHead>
+                              <TableHead className="sticky top-0 bg-background text-right">Jumlah (Kg)</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {detailPetani.map((farmer, idx) => (
+                              <TableRow key={`${batch.id}-${farmer.petani_id}-${idx}`}>
+                                <TableCell className="font-medium">{farmer.petani_nama}</TableCell>
+                                <TableCell className="font-mono">{farmer.petani_kode}</TableCell>
+                                <TableCell className="text-right font-medium">
+                                  {Number(farmer.jumlah_kg).toLocaleString()} Kg
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                            <TableRow className="bg-muted/50">
+                              <TableCell colSpan={2} className="font-bold">Total</TableCell>
+                              <TableCell className="text-right font-bold">
+                                {detailPetani.reduce((sum, f) => sum + Number(f.jumlah_kg), 0).toLocaleString()} Kg
+                              </TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                )}
+              </Card>
+            </Collapsible>
+          );
+        })}
+      </div>
+    );
+  };
 
   const renderStokTable = (items: GudangStok[], emptyMessage: string) => {
     if (items.length === 0) {
@@ -321,7 +465,7 @@ export const GudangTab = () => {
     );
   };
 
-  const renderSummaryCard = (title: string, icon: React.ReactNode, stats: { total: number; tersimpan: number; keluar: number }, isOrganic: boolean) => (
+  const renderSummaryCard = (title: string, icon: React.ReactNode, stats: { total: number; tersimpan?: number; keluar?: number; count?: number }, isOrganic: boolean, showStokDetails: boolean = true) => (
     <Card className={`border ${isOrganic ? 'border-emerald-200/50' : 'border-slate-200/50'}`}>
       <CardContent className="pt-4">
         <div className="flex items-center gap-2 mb-3">
@@ -333,24 +477,34 @@ export const GudangTab = () => {
             <span className="text-muted-foreground">Total:</span>
             <span className="font-medium">{stats.total.toLocaleString()} Kg</span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground flex items-center gap-1">
-              <ArrowDownToLine className="h-3 w-3" /> Tersimpan:
-            </span>
-            <span className="font-medium text-emerald-600">{stats.tersimpan.toLocaleString()} Kg</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground flex items-center gap-1">
-              <ArrowUpFromLine className="h-3 w-3" /> Keluar:
-            </span>
-            <span className="font-medium text-orange-600">{stats.keluar.toLocaleString()} Kg</span>
-          </div>
+          {stats.count !== undefined && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Batch:</span>
+              <span className="font-medium">{stats.count}</span>
+            </div>
+          )}
+          {showStokDetails && stats.tersimpan !== undefined && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground flex items-center gap-1">
+                <ArrowDownToLine className="h-3 w-3" /> Tersimpan:
+              </span>
+              <span className="font-medium text-emerald-600">{stats.tersimpan.toLocaleString()} Kg</span>
+            </div>
+          )}
+          {showStokDetails && stats.keluar !== undefined && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground flex items-center gap-1">
+                <ArrowUpFromLine className="h-3 w-3" /> Keluar:
+              </span>
+              <span className="font-medium text-orange-600">{stats.keluar.toLocaleString()} Kg</span>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
   );
 
-  if (loading) {
+  if (loading || batchesLoading) {
     return <TableSkeleton rows={5} columns={6} />;
   }
 
@@ -359,19 +513,21 @@ export const GudangTab = () => {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {renderSummaryCard(
-          "Bahan Baku Organik",
+          "Bahan Masuk Organik",
           <div className="p-2 rounded-lg bg-emerald-100">
             <Package className="h-4 w-4 text-emerald-600" />
           </div>,
-          summary.bahanBakuOrganik,
-          true
+          { ...batchSummary.organik },
+          true,
+          false
         )}
         {renderSummaryCard(
-          "Bahan Baku Konvensional",
+          "Bahan Masuk Konvensional",
           <div className="p-2 rounded-lg bg-slate-100">
             <Package className="h-4 w-4 text-slate-600" />
           </div>,
-          summary.bahanBakuKonvensional,
+          { ...batchSummary.konvensional },
+          false,
           false
         )}
         {renderSummaryCard(
@@ -422,6 +578,10 @@ export const GudangTab = () => {
         <CardContent>
           <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
             <TabsList className="grid grid-cols-6 w-full mb-4">
+              <TabsTrigger value="bahan-masuk" className="flex items-center gap-1">
+                <Package className="h-3 w-3 text-blue-600" />
+                <span className="hidden sm:inline">Bahan</span> Masuk
+              </TabsTrigger>
               <TabsTrigger value="hasil-oven" className="flex items-center gap-1">
                 <Flame className="h-3 w-3 text-orange-600" />
                 <span className="hidden sm:inline">Hasil</span> Oven
@@ -438,15 +598,56 @@ export const GudangTab = () => {
                 <Factory className="h-3 w-3 text-slate-600" />
                 <span className="hidden sm:inline">BB</span> Konv
               </TabsTrigger>
-              <TabsTrigger value="produk-organik" className="flex items-center gap-1">
-                <Leaf className="h-3 w-3 text-emerald-600" />
-                <span className="hidden sm:inline">Prd</span> Org
-              </TabsTrigger>
-              <TabsTrigger value="produk-konv" className="flex items-center gap-1">
-                <Factory className="h-3 w-3 text-slate-600" />
-                <span className="hidden sm:inline">Prd</span> Konv
+              <TabsTrigger value="produk-jadi" className="flex items-center gap-1">
+                <Package className="h-3 w-3 text-purple-600" />
+                <span className="hidden sm:inline">Produk</span> Jadi
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="bahan-masuk">
+              <div className="space-y-4">
+                <div className="flex items-center gap-4 mb-4">
+                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                    <Leaf className="h-3 w-3 mr-1" />
+                    Organik: {batchSummary.organik.total.toLocaleString()} Kg ({batchSummary.organik.count} batch)
+                  </Badge>
+                  <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200">
+                    <Factory className="h-3 w-3 mr-1" />
+                    Konvensional: {batchSummary.konvensional.total.toLocaleString()} Kg ({batchSummary.konvensional.count} batch)
+                  </Badge>
+                </div>
+                
+                {batches.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Belum ada data bahan masuk dari penerimaan
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Organic Section */}
+                    {categorizedBatches.organik.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-medium flex items-center gap-2 mb-3 text-emerald-700">
+                          <Leaf className="h-4 w-4" />
+                          Bahan Baku Organik ({categorizedBatches.organik.length} batch)
+                        </h3>
+                        {renderBatchTable(categorizedBatches.organik, "Tidak ada data")}
+                      </div>
+                    )}
+                    
+                    {/* Conventional Section */}
+                    {categorizedBatches.konvensional.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-medium flex items-center gap-2 mb-3 text-slate-700">
+                          <Factory className="h-4 w-4" />
+                          Bahan Baku Konvensional ({categorizedBatches.konvensional.length} batch)
+                        </h3>
+                        {renderBatchTable(categorizedBatches.konvensional, "Tidak ada data")}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
 
             <TabsContent value="hasil-oven">
               {renderOvenResultsTable()}
@@ -470,18 +671,23 @@ export const GudangTab = () => {
               )}
             </TabsContent>
 
-            <TabsContent value="produk-organik">
-              {renderStokTable(
-                categorizedStok.produkOvenOrganik,
-                "Belum ada data produk oven organik di gudang"
-              )}
-            </TabsContent>
-
-            <TabsContent value="produk-konv">
-              {renderStokTable(
-                categorizedStok.produkOvenKonvensional,
-                "Belum ada data produk oven konvensional di gudang"
-              )}
+            <TabsContent value="produk-jadi">
+              <div className="space-y-4">
+                <div className="flex items-center gap-4 mb-4">
+                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                    <Leaf className="h-3 w-3 mr-1" />
+                    Organik: {summary.produkOvenOrganik.tersimpan.toLocaleString()} Kg
+                  </Badge>
+                  <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200">
+                    <Factory className="h-3 w-3 mr-1" />
+                    Konvensional: {summary.produkOvenKonvensional.tersimpan.toLocaleString()} Kg
+                  </Badge>
+                </div>
+                {renderStokTable(
+                  [...categorizedStok.produkOvenOrganik, ...categorizedStok.produkOvenKonvensional],
+                  "Belum ada data produk jadi di gudang"
+                )}
+              </div>
             </TabsContent>
           </Tabs>
         </CardContent>

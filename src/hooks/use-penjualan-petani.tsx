@@ -13,6 +13,7 @@ export interface PenjualanPetani {
   warna_produk: string | null;
   kualitas: string;
   catatan: string | null;
+  is_organic?: boolean;
   created_at: string;
   updated_at: string;
   // Joined data
@@ -27,6 +28,8 @@ export interface PenjualanPetani {
     kode_pengepul: string;
   };
 }
+
+export type PenjualanPetaniInsert = Omit<PenjualanPetani, 'id' | 'total_harga' | 'created_at' | 'updated_at' | 'petani' | 'pengepul'>;
 
 export const usePenjualanPetani = (pengepulId?: string) => {
   const [penjualanList, setPenjualanList] = useState<PenjualanPetani[]>([]);
@@ -73,7 +76,7 @@ export const usePenjualanPetani = (pengepulId?: string) => {
     }
   };
 
-  const addPenjualan = async (penjualan: Omit<PenjualanPetani, 'id' | 'total_harga' | 'created_at' | 'updated_at' | 'petani' | 'pengepul'>) => {
+  const addPenjualan = async (penjualan: PenjualanPetaniInsert, showToast: boolean = true) => {
     try {
       const { data, error } = await supabase
         .from("penjualan_petani")
@@ -87,31 +90,120 @@ export const usePenjualanPetani = (pengepulId?: string) => {
 
       if (error) {
         console.error("Error adding penjualan petani:", error);
-        toast({
-          title: "Error",
-          description: "Gagal menambahkan penjualan petani",
-          variant: "destructive",
-        });
+        if (showToast) {
+          toast({
+            title: "Error",
+            description: "Gagal menambahkan penjualan petani",
+            variant: "destructive",
+          });
+        }
         return null;
       }
 
       if (data) {
         setPenjualanList(prev => [data, ...prev]);
-        toast({
-          title: "Berhasil",
-          description: "Penjualan petani berhasil ditambahkan",
-        });
+        if (showToast) {
+          toast({
+            title: "Berhasil",
+            description: "Penjualan petani berhasil ditambahkan",
+          });
+        }
       }
       return data;
     } catch (error) {
       console.error("Error adding penjualan petani:", error);
-      toast({
-        title: "Error",
-        description: "Gagal menambahkan penjualan petani",
-        variant: "destructive",
-      });
+      if (showToast) {
+        toast({
+          title: "Error",
+          description: "Gagal menambahkan penjualan petani",
+          variant: "destructive",
+        });
+      }
       return null;
     }
+  };
+
+  // Optimized batch insert - inserts multiple records at once
+  const addPenjualanBatch = async (
+    penjualanArray: PenjualanPetaniInsert[],
+    onProgress?: (progress: number, total: number) => void
+  ): Promise<{ success: number; failed: number }> => {
+    const BATCH_SIZE = 100; // Insert 100 records at a time
+    let successCount = 0;
+    let failedCount = 0;
+    const total = penjualanArray.length;
+
+    // Split into batches
+    for (let i = 0; i < penjualanArray.length; i += BATCH_SIZE) {
+      const batch = penjualanArray.slice(i, i + BATCH_SIZE);
+      
+      try {
+        const { data, error } = await supabase
+          .from("penjualan_petani")
+          .insert(batch)
+          .select();
+
+        if (error) {
+          console.error("Error in batch insert:", error);
+          failedCount += batch.length;
+        } else {
+          successCount += data?.length || 0;
+        }
+      } catch (error) {
+        console.error("Error in batch insert:", error);
+        failedCount += batch.length;
+      }
+
+      // Report progress
+      if (onProgress) {
+        onProgress(Math.min(i + BATCH_SIZE, total), total);
+      }
+
+      // Small delay to prevent rate limiting
+      if (i + BATCH_SIZE < penjualanArray.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
+    return { success: successCount, failed: failedCount };
+  };
+
+  // Delete multiple records at once
+  const deletePenjualanBatch = async (ids: string[]): Promise<{ success: number; failed: number }> => {
+    const BATCH_SIZE = 50;
+    let successCount = 0;
+    let failedCount = 0;
+
+    for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+      const batch = ids.slice(i, i + BATCH_SIZE);
+      
+      try {
+        const { error } = await supabase
+          .from("penjualan_petani")
+          .delete()
+          .in("id", batch);
+
+        if (error) {
+          console.error("Error in batch delete:", error);
+          failedCount += batch.length;
+        } else {
+          successCount += batch.length;
+        }
+      } catch (error) {
+        console.error("Error in batch delete:", error);
+        failedCount += batch.length;
+      }
+
+      // Small delay
+      if (i + BATCH_SIZE < ids.length) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    }
+
+    // Update local state
+    setPenjualanList(prev => prev.filter(p => !ids.includes(p.id)));
+
+    return { success: successCount, failed: failedCount };
   };
 
   const updatePenjualan = async (id: string, updates: Partial<PenjualanPetani>) => {
@@ -230,8 +322,10 @@ export const usePenjualanPetani = (pengepulId?: string) => {
     penjualanList,
     loading,
     addPenjualan,
+    addPenjualanBatch,
     updatePenjualan,
     deletePenjualan,
+    deletePenjualanBatch,
     getPenjualanByDateRange,
     refetch: fetchPenjualan,
   };
