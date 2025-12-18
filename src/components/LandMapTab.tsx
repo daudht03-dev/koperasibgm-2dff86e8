@@ -1,16 +1,15 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, Printer, Map, Satellite, Globe, Loader2, AlertCircle, Filter, MousePointer, Leaf, X, FileSpreadsheet, FileJson } from "lucide-react";
+import { Download, Printer, Map, Satellite, Globe, Loader2, AlertCircle, Filter, MousePointer, Leaf, X, FileSpreadsheet, FileJson, Layers } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import html2canvas from "html2canvas";
 import { toast } from "@/hooks/use-toast";
@@ -23,6 +22,7 @@ interface LandWithFarmer {
   koordinat: string | null;
   luas: number | null;
   petani_id: string | null;
+  is_organic: boolean | null;
   petani?: {
     nama: string;
     kode_petani: string;
@@ -34,7 +34,7 @@ interface LandWithFarmer {
   };
 }
 
-type MapStyle = "streets" | "satellite" | "hybrid";
+type MapStyle = "streets" | "satellite" | "hybrid" | "outdoors";
 type OrganicFilter = "all" | "organic" | "conventional";
 
 const parseCoordinate = (koordinat: string): { lat: number; lng: number; isValid: boolean } => {
@@ -67,6 +67,14 @@ const mapStyles: Record<MapStyle, string> = {
   streets: "mapbox://styles/mapbox/streets-v12",
   satellite: "mapbox://styles/mapbox/satellite-v9",
   hybrid: "mapbox://styles/mapbox/satellite-streets-v12",
+  outdoors: "mapbox://styles/mapbox/outdoors-v12",
+};
+
+const mapStyleLabels: Record<MapStyle, string> = {
+  streets: "Jalan",
+  satellite: "Satelit",
+  hybrid: "Hybrid",
+  outdoors: "Outdoor",
 };
 
 export const LandMapTab: React.FC = () => {
@@ -75,14 +83,16 @@ export const LandMapTab: React.FC = () => {
   const map = useRef<mapboxgl.Map | null>(null);
   const markers = useRef<mapboxgl.Marker[]>([]);
   const clickMarker = useRef<mapboxgl.Marker | null>(null);
+  const mapInitialized = useRef(false);
+  const tokenRef = useRef<string | null>(null);
   
   const [allLands, setAllLands] = useState<LandWithFarmer[]>([]);
-  const [filteredLands, setFilteredLands] = useState<LandWithFarmer[]>([]);
   const [loading, setLoading] = useState(true);
   const [mapLoading, setMapLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [mapStyle, setMapStyle] = useState<MapStyle>("streets");
+  const [mapStyle, setMapStyle] = useState<MapStyle>("hybrid");
   const [downloading, setDownloading] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
   
   // Filters
   const [farmerFilter, setFarmerFilter] = useState<string>("all");
@@ -97,7 +107,36 @@ export const LandMapTab: React.FC = () => {
   
   const { profile } = useCompanyProfile();
 
-  // Fetch lands with farmer data
+  // Memoized filtered lands
+  const filteredLands = useMemo(() => {
+    let result = allLands.filter(land => land.parsedCoord);
+
+    if (farmerFilter !== "all") {
+      result = result.filter(land => land.petani_id === farmerFilter);
+    }
+
+    if (organicFilter !== "all") {
+      result = result.filter(land => {
+        const isOrganic = land.is_organic ?? land.petani?.is_organic;
+        return organicFilter === "organic" ? isOrganic : !isOrganic;
+      });
+    }
+
+    return result;
+  }, [allLands, farmerFilter, organicFilter]);
+
+  // Unique farmers for filter dropdown
+  const uniqueFarmers = useMemo(() => {
+    const farmersMap: Record<string, { id: string; nama: string }> = {};
+    allLands.forEach(land => {
+      if (land.petani_id && land.petani) {
+        farmersMap[land.petani_id] = { id: land.petani_id, nama: land.petani.nama };
+      }
+    });
+    return Object.values(farmersMap);
+  }, [allLands]);
+
+  // Fetch lands with farmer data - only once
   const fetchLands = useCallback(async () => {
     try {
       setLoading(true);
@@ -112,23 +151,24 @@ export const LandMapTab: React.FC = () => {
           koordinat,
           luas,
           petani_id,
+          is_organic,
           petani:petani_id (
             nama,
             kode_petani,
             is_organic
           )
-        `);
+        `)
+        .limit(500); // Limit to prevent too much data
 
       if (fetchError) throw fetchError;
 
-      const landsWithCoords = (data || [])
-        .map((land: any) => {
-          const parsed = parseCoordinate(land.koordinat || "");
-          return {
-            ...land,
-            parsedCoord: parsed.isValid ? { lat: parsed.lat, lng: parsed.lng } : undefined,
-          };
-        });
+      const landsWithCoords = (data || []).map((land: any) => {
+        const parsed = parseCoordinate(land.koordinat || "");
+        return {
+          ...land,
+          parsedCoord: parsed.isValid ? { lat: parsed.lat, lng: parsed.lng } : undefined,
+        };
+      });
 
       setAllLands(landsWithCoords);
     } catch (err) {
@@ -139,130 +179,90 @@ export const LandMapTab: React.FC = () => {
     }
   }, []);
 
-  // Apply filters
-  useEffect(() => {
-    let result = allLands.filter(land => land.parsedCoord);
-
-    if (farmerFilter !== "all") {
-      result = result.filter(land => land.petani_id === farmerFilter);
-    }
-
-    if (organicFilter !== "all") {
-      result = result.filter(land => {
-        if (!land.petani) return false;
-        return organicFilter === "organic" ? land.petani.is_organic : !land.petani.is_organic;
-      });
-    }
-
-    setFilteredLands(result);
-  }, [allLands, farmerFilter, organicFilter]);
-
-  // Initialize map
-  const initializeMap = useCallback(async () => {
-    if (!mapContainer.current) return;
-
+  // Get Mapbox token once
+  const getMapboxToken = useCallback(async () => {
+    if (tokenRef.current) return tokenRef.current;
+    
     try {
-      setMapLoading(true);
-      
       const { data, error: funcError } = await supabase.functions.invoke("get-mapbox-token");
       
       if (funcError || !data?.token) {
         throw new Error(data?.error || "Gagal mendapatkan token Mapbox");
       }
+      
+      tokenRef.current = data.token;
+      return data.token;
+    } catch (err) {
+      console.error("Error getting token:", err);
+      throw err;
+    }
+  }, []);
 
-      mapboxgl.accessToken = data.token;
+  // Initialize map only once
+  const initializeMap = useCallback(async () => {
+    if (!mapContainer.current || mapInitialized.current) return;
 
-      const validLands = filteredLands.filter((l) => l.parsedCoord);
-      let center: [number, number] = [106.8456, -6.2088];
-      let zoom = 10;
+    try {
+      setMapLoading(true);
+      
+      const token = await getMapboxToken();
+      mapboxgl.accessToken = token;
 
-      if (validLands.length > 0) {
-        const avgLat = validLands.reduce((sum, l) => sum + l.parsedCoord!.lat, 0) / validLands.length;
-        const avgLng = validLands.reduce((sum, l) => sum + l.parsedCoord!.lng, 0) / validLands.length;
-        center = [avgLng, avgLat];
-      }
-
-      if (map.current) {
-        map.current.remove();
-        map.current = null;
-      }
+      // Default center (Indonesia)
+      const center: [number, number] = [106.8456, -6.2088];
 
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: mapStyles[mapStyle],
         center,
-        zoom,
+        zoom: 8,
         preserveDrawingBuffer: true,
+        trackResize: true,
       });
 
       map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
       map.current.addControl(new mapboxgl.ScaleControl(), "bottom-left");
+      map.current.addControl(new mapboxgl.FullscreenControl(), "top-right");
 
-      await new Promise<void>((resolve) => {
-        map.current!.on("load", () => resolve());
+      map.current.on("load", () => {
+        mapInitialized.current = true;
+        setMapReady(true);
+        setMapLoading(false);
       });
 
-      updateMarkers();
-
-      if (validLands.length > 1) {
-        const bounds = new mapboxgl.LngLatBounds();
-        validLands.forEach((land) => {
-          bounds.extend([land.parsedCoord!.lng, land.parsedCoord!.lat]);
-        });
-        map.current.fitBounds(bounds, { padding: 50 });
-      }
-
-      map.current.on("click", (e) => {
-        if (editMode && selectedLandForEdit) {
-          const { lat, lng } = e.lngLat;
-          setNewCoordinates({ lat, lng });
-          
-          if (clickMarker.current) {
-            clickMarker.current.remove();
-          }
-          
-          const el = document.createElement("div");
-          el.innerHTML = `<div style="
-            background: hsl(0, 84%, 60%);
-            color: white;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            border: 3px solid white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            cursor: pointer;
-          ">📍</div>`;
-          
-          clickMarker.current = new mapboxgl.Marker(el)
-            .setLngLat([lng, lat])
-            .addTo(map.current!);
-            
-          setEditDialogOpen(true);
-        }
+      map.current.on("error", (e) => {
+        console.error("Map error:", e);
       });
 
     } catch (err: any) {
       console.error("Error initializing map:", err);
       setError(err.message || "Gagal memuat peta");
-    } finally {
       setMapLoading(false);
     }
-  }, [mapStyle, editMode, selectedLandForEdit, filteredLands]);
+  }, [getMapboxToken, mapStyle]);
 
+  // Update map style without reinitializing
+  const updateMapStyle = useCallback((newStyle: MapStyle) => {
+    if (map.current && mapReady) {
+      map.current.setStyle(mapStyles[newStyle]);
+      setMapStyle(newStyle);
+    }
+  }, [mapReady]);
+
+  // Update markers efficiently
   const updateMarkers = useCallback(() => {
-    if (!map.current) return;
+    if (!map.current || !mapReady) return;
 
+    // Clear existing markers
     markers.current.forEach((m) => m.remove());
     markers.current = [];
 
-    const validLands = filteredLands.filter((l) => l.parsedCoord);
+    const validLands = filteredLands;
+    if (validLands.length === 0) return;
 
+    // Batch create markers
     validLands.forEach((land, index) => {
-      const isOrganic = land.petani?.is_organic;
+      const isOrganic = land.is_organic ?? land.petani?.is_organic;
       const bgColor = isOrganic 
         ? "linear-gradient(135deg, hsl(142, 76%, 36%), hsl(142, 71%, 45%))"
         : "linear-gradient(135deg, hsl(25, 95%, 53%), hsl(21, 90%, 48%))";
@@ -272,47 +272,34 @@ export const LandMapTab: React.FC = () => {
       el.innerHTML = `<div style="
         background: ${bgColor};
         color: white;
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: bold;
-        font-size: 14px;
-        border: 3px solid white;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        font-size: 12px;
+        border: 2px solid white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         cursor: pointer;
       ">${index + 1}</div>`;
 
-      const popup = new mapboxgl.Popup({ offset: 25, maxWidth: "300px" }).setHTML(`
-        <div style="padding: 8px; font-family: system-ui, sans-serif;">
-          <h3 style="font-weight: 600; font-size: 16px; margin-bottom: 8px; color: #166534;">
+      const popup = new mapboxgl.Popup({ offset: 25, maxWidth: "280px" }).setHTML(`
+        <div style="padding: 6px; font-family: system-ui, sans-serif;">
+          <h3 style="font-weight: 600; font-size: 14px; margin-bottom: 6px; color: #166534;">
             ${land.nama_lahan}
           </h3>
           ${land.petani ? `
-            <p style="margin: 4px 0; color: #374151;">
-              <strong>Petani:</strong> ${land.petani.nama} (${land.petani.kode_petani})
+            <p style="margin: 3px 0; color: #374151; font-size: 13px;">
+              <strong>Petani:</strong> ${land.petani.nama}
             </p>
-            <p style="margin: 4px 0;">
-              <span style="background: ${isOrganic ? '#16a34a' : '#ea580c'}; color: white; padding: 2px 8px; border-radius: 9999px; font-size: 12px;">
-                ${isOrganic ? '🌿 Organik' : '🏭 Konvensional'}
-              </span>
-            </p>
+            <span style="background: ${isOrganic ? '#16a34a' : '#ea580c'}; color: white; padding: 2px 6px; border-radius: 9999px; font-size: 11px;">
+              ${isOrganic ? '🌿 Organik' : '🏭 Konvensional'}
+            </span>
           ` : ""}
-          ${land.lokasi ? `
-            <p style="margin: 4px 0; color: #374151;">
-              <strong>Lokasi:</strong> ${land.lokasi}
-            </p>
-          ` : ""}
-          ${land.luas ? `
-            <p style="margin: 4px 0; color: #374151;">
-              <strong>Luas:</strong> ${land.luas} ha
-            </p>
-          ` : ""}
-          <p style="margin: 4px 0; color: #6B7280; font-size: 12px;">
-            <strong>Koordinat:</strong> ${land.parsedCoord?.lat.toFixed(6)}, ${land.parsedCoord?.lng.toFixed(6)}
-          </p>
+          ${land.lokasi ? `<p style="margin: 3px 0; color: #374151; font-size: 12px;"><strong>Lokasi:</strong> ${land.lokasi}</p>` : ""}
+          ${land.luas ? `<p style="margin: 3px 0; color: #374151; font-size: 12px;"><strong>Luas:</strong> ${land.luas} ha</p>` : ""}
         </div>
       `);
 
@@ -323,7 +310,92 @@ export const LandMapTab: React.FC = () => {
 
       markers.current.push(marker);
     });
-  }, [filteredLands]);
+
+    // Fit bounds if multiple lands
+    if (validLands.length > 0) {
+      const bounds = new mapboxgl.LngLatBounds();
+      validLands.forEach((land) => {
+        bounds.extend([land.parsedCoord!.lng, land.parsedCoord!.lat]);
+      });
+      map.current.fitBounds(bounds, { padding: 60, maxZoom: 15 });
+    }
+  }, [filteredLands, mapReady]);
+
+  // Setup click handler for edit mode
+  useEffect(() => {
+    if (!map.current || !mapReady) return;
+
+    const handleClick = (e: mapboxgl.MapMouseEvent) => {
+      if (editMode && selectedLandForEdit) {
+        const { lat, lng } = e.lngLat;
+        setNewCoordinates({ lat, lng });
+        
+        if (clickMarker.current) {
+          clickMarker.current.remove();
+        }
+        
+        const el = document.createElement("div");
+        el.innerHTML = `<div style="
+          background: hsl(0, 84%, 60%);
+          color: white;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 16px;
+          border: 2px solid white;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        ">📍</div>`;
+        
+        clickMarker.current = new mapboxgl.Marker(el)
+          .setLngLat([lng, lat])
+          .addTo(map.current!);
+          
+        setEditDialogOpen(true);
+      }
+    };
+
+    map.current.on("click", handleClick);
+    return () => {
+      map.current?.off("click", handleClick);
+    };
+  }, [mapReady, editMode, selectedLandForEdit]);
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchLands();
+  }, [fetchLands]);
+
+  // Initialize map after data is loaded
+  useEffect(() => {
+    if (!loading && allLands.length >= 0 && !mapInitialized.current) {
+      initializeMap();
+    }
+  }, [loading, allLands.length, initializeMap]);
+
+  // Update markers when filtered lands change
+  useEffect(() => {
+    if (mapReady) {
+      // Debounce marker updates
+      const timer = setTimeout(() => {
+        updateMarkers();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [filteredLands, mapReady, updateMarkers]);
+
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      markers.current.forEach(m => m.remove());
+      clickMarker.current?.remove();
+      map.current?.remove();
+      map.current = null;
+      mapInitialized.current = false;
+    };
+  }, []);
 
   const handleSaveCoordinates = async () => {
     if (!selectedLandForEdit || !newCoordinates) return;
@@ -387,7 +459,7 @@ export const LandMapTab: React.FC = () => {
   };
 
   const handleExportCSV = () => {
-    const validLands = filteredLands.filter(l => l.parsedCoord);
+    const validLands = filteredLands;
     if (validLands.length === 0) {
       toast({
         title: "Tidak ada data",
@@ -404,7 +476,7 @@ export const LandMapTab: React.FC = () => {
       `"${(land.nama_lahan || "").replace(/"/g, '""')}"`,
       `"${(land.petani?.nama || "-").replace(/"/g, '""')}"`,
       land.petani?.kode_petani || "-",
-      land.petani?.is_organic ? "Organik" : "Konvensional",
+      (land.is_organic ?? land.petani?.is_organic) ? "Organik" : "Konvensional",
       `"${(land.lokasi || "-").replace(/"/g, '""')}"`,
       land.parsedCoord?.lat.toFixed(6) || "",
       land.parsedCoord?.lng.toFixed(6) || "",
@@ -430,7 +502,7 @@ export const LandMapTab: React.FC = () => {
   };
 
   const handleExportGeoJSON = () => {
-    const validLands = filteredLands.filter(l => l.parsedCoord);
+    const validLands = filteredLands;
     if (validLands.length === 0) {
       toast({
         title: "Tidak ada data",
@@ -456,7 +528,7 @@ export const LandMapTab: React.FC = () => {
           luas_ha: land.luas || null,
           petani_nama: land.petani?.nama || null,
           petani_kode: land.petani?.kode_petani || null,
-          is_organic: land.petani?.is_organic ?? null,
+          is_organic: land.is_organic ?? land.petani?.is_organic ?? null,
           latitude: land.parsedCoord!.lat,
           longitude: land.parsedCoord!.lng,
         },
@@ -511,406 +583,278 @@ export const LandMapTab: React.FC = () => {
   };
 
   const handlePrint = useReactToPrint({
+    // @ts-ignore - react-to-print types issue
     contentRef: printRef,
-    documentTitle: `Peta Lahan - ${profile?.nama_perusahaan || "Petani"}`,
+    documentTitle: `Peta Lahan - ${profile?.nama_perusahaan || ""}`,
   });
 
-  useEffect(() => {
-    fetchLands();
-  }, [fetchLands]);
+  if (loading) {
+    return (
+      <Card className="shadow-gentle">
+        <CardContent className="flex items-center justify-center py-16">
+          <div className="text-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <p className="text-muted-foreground">Memuat data lahan...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
-  useEffect(() => {
-    if (!loading && allLands.length > 0) {
-      initializeMap();
-    }
-    
-    return () => {
-      if (map.current) {
-        map.current.remove();
-        map.current = null;
-      }
-    };
-  }, [loading, initializeMap]);
-
-  useEffect(() => {
-    if (map.current && !loading) {
-      updateMarkers();
-      
-      const validLands = filteredLands.filter((l) => l.parsedCoord);
-      if (validLands.length > 1) {
-        const bounds = new mapboxgl.LngLatBounds();
-        validLands.forEach((land) => {
-          bounds.extend([land.parsedCoord!.lng, land.parsedCoord!.lat]);
-        });
-        map.current.fitBounds(bounds, { padding: 50 });
-      } else if (validLands.length === 1) {
-        map.current.flyTo({
-          center: [validLands[0].parsedCoord!.lng, validLands[0].parsedCoord!.lat],
-          zoom: 14,
-        });
-      }
-    }
-  }, [filteredLands, updateMarkers, loading]);
-
-  useEffect(() => {
-    if (map.current) {
-      map.current.setStyle(mapStyles[mapStyle]);
-    }
-  }, [mapStyle]);
-
-  const currentDate = new Date().toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-
-  const farmerOptions = allLands
-    .filter(l => l.petani && l.petani_id)
-    .reduce((acc, land) => {
-      if (land.petani && land.petani_id && !acc.find(f => f.id === land.petani_id)) {
-        acc.push({ id: land.petani_id, nama: land.petani.nama, kode: land.petani.kode_petani });
-      }
-      return acc;
-    }, [] as { id: string; nama: string; kode: string }[]);
+  if (error && !mapReady) {
+    return (
+      <Card className="shadow-gentle">
+        <CardContent className="flex items-center justify-center py-16">
+          <div className="text-center space-y-4">
+            <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
+            <p className="text-destructive">{error}</p>
+            <Button onClick={fetchLands} variant="outline">
+              Coba Lagi
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <>
-      <Card className="shadow-gentle border-border/50">
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-foreground">
-                <Map className="h-5 w-5 text-primary" />
-                Peta Lokasi Lahan
-                {editMode && (
-                  <Badge variant="destructive" className="ml-2">
-                    Mode Edit Koordinat
-                  </Badge>
-                )}
-              </CardTitle>
-              <CardDescription>Lihat dan kelola lokasi lahan petani pada peta</CardDescription>
+    <div className="space-y-4">
+      {/* Toolbar */}
+      <Card className="shadow-gentle">
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Map Style Selector */}
+            <div className="flex items-center gap-2">
+              <Layers className="h-4 w-4 text-muted-foreground" />
+              <Select value={mapStyle} onValueChange={(v) => updateMapStyle(v as MapStyle)}>
+                <SelectTrigger className="w-[130px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(mapStyles) as MapStyle[]).map((style) => (
+                    <SelectItem key={style} value={style}>
+                      {mapStyleLabels[style]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            
-            <div className="flex flex-wrap gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" disabled={loading || filteredLands.length === 0}>
-                    <Download className="h-4 w-4 mr-1" />
-                    Export Data
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-background">
-                  <DropdownMenuItem onClick={handleExportCSV}>
-                    <FileSpreadsheet className="h-4 w-4 mr-2" />
-                    Export ke CSV
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportGeoJSON}>
-                    <FileJson className="h-4 w-4 mr-2" />
-                    Export ke GeoJSON
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDownload}
-                disabled={downloading || loading || filteredLands.length === 0}
-              >
-                {downloading ? (
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4 mr-1" />
-                )}
-                Download PNG
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePrint()}
-                disabled={loading || filteredLands.length === 0}
-              >
-                <Printer className="h-4 w-4 mr-1" />
-                Cetak
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        
-        <CardContent className="space-y-4">
-          {/* Toolbar */}
-          <div className="flex flex-wrap items-center gap-2 pb-4 border-b">
-            <div className="flex gap-1">
-              <Button
-                variant={mapStyle === "streets" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setMapStyle("streets")}
-              >
-                <Map className="h-4 w-4 mr-1" />
-                Streets
-              </Button>
-              <Button
-                variant={mapStyle === "satellite" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setMapStyle("satellite")}
-              >
-                <Satellite className="h-4 w-4 mr-1" />
-                Satellite
-              </Button>
-              <Button
-                variant={mapStyle === "hybrid" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setMapStyle("hybrid")}
-              >
-                <Globe className="h-4 w-4 mr-1" />
-                Hybrid
-              </Button>
-            </div>
-          </div>
 
-          {/* Filters */}
-          <div className="flex flex-wrap items-center gap-3 pb-4 border-b">
+            <div className="h-6 w-px bg-border" />
+
+            {/* Farmer Filter */}
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Filter:</span>
+              <Select value={farmerFilter} onValueChange={setFarmerFilter}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Semua Petani" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Petani</SelectItem>
+                  {uniqueFarmers.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>{f.nama}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            
-            <Select value={farmerFilter} onValueChange={setFarmerFilter}>
-              <SelectTrigger className="w-[200px] h-9 bg-background">
-                <SelectValue placeholder="Semua Petani" />
-              </SelectTrigger>
-              <SelectContent className="bg-background">
-                <SelectItem value="all">Semua Petani</SelectItem>
-                {farmerOptions.map((farmer) => (
-                  <SelectItem key={farmer.id} value={farmer.id}>
-                    {farmer.nama} ({farmer.kode})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
 
+            {/* Organic Filter */}
             <Select value={organicFilter} onValueChange={(v) => setOrganicFilter(v as OrganicFilter)}>
-              <SelectTrigger className="w-[160px] h-9 bg-background">
-                <SelectValue placeholder="Status" />
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-background">
+              <SelectContent>
                 <SelectItem value="all">Semua Status</SelectItem>
-                <SelectItem value="organic">
-                  <span className="flex items-center gap-1">
-                    <Leaf className="h-3 w-3 text-green-600" />
-                    Organik
-                  </span>
-                </SelectItem>
-                <SelectItem value="conventional">Konvensional</SelectItem>
+                <SelectItem value="organic">🌿 Organik</SelectItem>
+                <SelectItem value="conventional">🏭 Konvensional</SelectItem>
               </SelectContent>
             </Select>
-
-            {(farmerFilter !== "all" || organicFilter !== "all") && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setFarmerFilter("all");
-                  setOrganicFilter("all");
-                }}
-              >
-                <X className="h-4 w-4 mr-1" />
-                Reset
-              </Button>
-            )}
 
             <div className="flex-1" />
 
-            {editMode ? (
-              <Button variant="destructive" size="sm" onClick={handleExitEditMode}>
-                <X className="h-4 w-4 mr-1" />
-                Keluar Mode Edit
-              </Button>
-            ) : (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 w-[200px] justify-start">
-                    <MousePointer className="h-4 w-4 mr-1" />
-                    Edit Koordinat...
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-background w-[250px] max-h-[300px] overflow-y-auto">
-                  {allLands
-                    .filter((land) => land.id && land.id.trim() !== "")
-                    .map((land) => (
-                      <DropdownMenuItem
-                        key={land.id}
-                        onClick={() => {
-                          setSelectedLandForEdit(land);
-                          setEditMode(true);
-                          toast({
-                            title: "Mode Edit Aktif",
-                            description: `Klik pada peta untuk mengatur koordinat baru untuk "${land.nama_lahan}"`,
-                          });
-                        }}
-                      >
-                        {land.nama_lahan} {land.parsedCoord ? "" : "(belum ada koordinat)"}
-                      </DropdownMenuItem>
-                    ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+            {/* Export Buttons */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportCSV}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Export CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportGeoJSON}>
+                  <FileJson className="h-4 w-4 mr-2" />
+                  Export GeoJSON
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDownload} disabled={downloading}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Gambar
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button variant="outline" size="sm" onClick={() => handlePrint()}>
+              <Printer className="h-4 w-4 mr-2" />
+              Print
+            </Button>
           </div>
+        </CardContent>
+      </Card>
 
-          {/* Edit Mode Instructions */}
-          {editMode && selectedLandForEdit && (
-            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 flex items-center gap-3">
-              <MousePointer className="h-5 w-5 text-amber-600" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                  Klik pada peta untuk memilih lokasi baru untuk: <strong>{selectedLandForEdit.nama_lahan}</strong>
-                </p>
-                {selectedLandForEdit.parsedCoord && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                    Koordinat saat ini: {selectedLandForEdit.parsedCoord.lat.toFixed(6)}, {selectedLandForEdit.parsedCoord.lng.toFixed(6)}
-                  </p>
-                )}
+      {/* Map Container */}
+      <Card className="shadow-gentle overflow-hidden">
+        <div ref={printRef}>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Map className="h-5 w-5" />
+                  Peta Lahan
+                </CardTitle>
+                <CardDescription>
+                  {filteredLands.length} lahan ditampilkan
+                </CardDescription>
               </div>
-            </div>
-          )}
-
-          {/* Map */}
-          <div ref={printRef} className="bg-background">
-            <div className="hidden print:block mb-4 text-center border-b pb-4">
-              <h1 className="text-2xl font-bold text-foreground">PETA LAHAN PETANI</h1>
-              <p className="text-lg text-muted-foreground">{profile?.nama_perusahaan || ""}</p>
-              <p className="text-sm text-muted-foreground">Tanggal: {currentDate}</p>
-            </div>
-
-            {loading ? (
-              <div className="h-[500px] flex items-center justify-center bg-muted/30 rounded-lg">
-                <div className="text-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
-                  <p className="text-muted-foreground">Memuat data lahan...</p>
-                </div>
-              </div>
-            ) : error ? (
-              <div className="h-[500px] flex items-center justify-center bg-muted/30 rounded-lg">
-                <div className="text-center text-destructive">
-                  <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-                  <p>{error}</p>
-                  <Button variant="outline" className="mt-4" onClick={fetchLands}>
-                    Coba Lagi
+              
+              {/* Edit Mode Toggle */}
+              {!editMode ? (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setEditMode(true)}
+                >
+                  <MousePointer className="h-4 w-4 mr-2" />
+                  Edit Koordinat
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Select 
+                    value={selectedLandForEdit?.id || ""} 
+                    onValueChange={(id) => {
+                      const land = allLands.find(l => l.id === id);
+                      setSelectedLandForEdit(land || null);
+                    }}
+                  >
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Pilih lahan..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allLands.map((land) => (
+                        <SelectItem key={land.id} value={land.id}>
+                          {land.nama_lahan}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="ghost" size="sm" onClick={handleExitEditMode}>
+                    <X className="h-4 w-4" />
                   </Button>
                 </div>
-              </div>
-            ) : (
-              <>
-                {mapLoading && (
-                  <div className="absolute inset-0 bg-background/50 z-10 flex items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  </div>
-                )}
-                <div 
-                  ref={mapContainer} 
-                  className={`h-[500px] rounded-lg border ${editMode ? 'cursor-crosshair' : ''}`}
-                />
-              </>
+              )}
+            </div>
+            
+            {editMode && selectedLandForEdit && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Klik pada peta untuk memilih koordinat baru untuk "{selectedLandForEdit.nama_lahan}"
+              </p>
             )}
-
-            {/* Legend */}
-            {filteredLands.length > 0 && (
-              <div className="mt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-foreground">
-                    Daftar Lokasi Lahan ({filteredLands.length} lokasi)
-                  </h3>
-                  <div className="flex gap-3 text-xs">
-                    <span className="flex items-center gap-1">
-                      <span className="w-3 h-3 rounded-full bg-green-600" />
-                      Organik
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="w-3 h-3 rounded-full bg-orange-500" />
-                      Konvensional
-                    </span>
+          </CardHeader>
+          
+          <CardContent className="p-0">
+            <div className="relative">
+              <div 
+                ref={mapContainer} 
+                className="w-full h-[500px] bg-muted"
+                style={{ minHeight: "400px" }}
+              />
+              
+              {mapLoading && (
+                <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                  <div className="text-center space-y-2">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                    <p className="text-sm text-muted-foreground">Memuat peta...</p>
                   </div>
                 </div>
-                <div className="border rounded-lg overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted">
-                      <tr>
-                        <th className="px-3 py-2 text-left font-medium">No</th>
-                        <th className="px-3 py-2 text-left font-medium">Nama Lahan</th>
-                        <th className="px-3 py-2 text-left font-medium">Petani</th>
-                        <th className="px-3 py-2 text-left font-medium">Status</th>
-                        <th className="px-3 py-2 text-left font-medium">Koordinat</th>
-                        <th className="px-3 py-2 text-left font-medium">Luas</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredLands.map((land, index) => (
-                        <tr 
-                          key={land.id} 
-                          className="border-t hover:bg-muted/50 cursor-pointer"
-                          onClick={() => {
-                            if (map.current && land.parsedCoord) {
-                              map.current.flyTo({
-                                center: [land.parsedCoord.lng, land.parsedCoord.lat],
-                                zoom: 15,
-                              });
-                              markers.current[index]?.togglePopup();
-                            }
-                          }}
-                        >
-                          <td className="px-3 py-2">
-                            <span 
-                              className="inline-flex items-center justify-center w-6 h-6 rounded-full text-white text-xs font-bold"
-                              style={{ 
-                                background: land.petani?.is_organic 
-                                  ? 'linear-gradient(135deg, hsl(142, 76%, 36%), hsl(142, 71%, 45%))'
-                                  : 'linear-gradient(135deg, hsl(25, 95%, 53%), hsl(21, 90%, 48%))'
-                              }}
-                            >
-                              {index + 1}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 font-medium">{land.nama_lahan}</td>
-                          <td className="px-3 py-2">
-                            {land.petani ? `${land.petani.nama} (${land.petani.kode_petani})` : "-"}
-                          </td>
-                          <td className="px-3 py-2">
-                            {land.petani && (
-                              <Badge variant={land.petani.is_organic ? "default" : "secondary"} className="text-xs">
-                                {land.petani.is_organic ? "🌿 Organik" : "Konvensional"}
-                              </Badge>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 font-mono text-xs">
-                            {land.parsedCoord?.lat.toFixed(6)}, {land.parsedCoord?.lng.toFixed(6)}
-                          </td>
-                          <td className="px-3 py-2">{land.luas ? `${land.luas} ha` : "-"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
+          </CardContent>
+        </div>
+      </Card>
 
-            {filteredLands.length === 0 && !loading && (
-              <div className="mt-4 text-center text-muted-foreground py-8 border rounded-lg">
-                <Map className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>Tidak ada lahan dengan koordinat yang sesuai filter</p>
-              </div>
-            )}
-
-            <div className="hidden print:block mt-4 pt-4 border-t text-center text-sm text-muted-foreground">
-              <p>Dokumen ini dicetak untuk keperluan perdata petani dan lahan.</p>
-              <p>© {profile?.nama_perusahaan || ""} - {currentDate}</p>
+      {/* Legend */}
+      <Card className="shadow-gentle">
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-center gap-6">
+            <span className="text-sm font-medium">Legenda:</span>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full bg-gradient-to-br from-green-600 to-green-500" />
+              <span className="text-sm">Organik</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full bg-gradient-to-br from-orange-500 to-orange-600" />
+              <span className="text-sm">Konvensional</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Confirm Edit Coordinates Dialog */}
+      {/* Land List */}
+      {filteredLands.length > 0 && (
+        <Card className="shadow-gentle">
+          <CardHeader>
+            <CardTitle className="text-base">Daftar Lahan</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2 px-3">No</th>
+                    <th className="text-left py-2 px-3">Nama Lahan</th>
+                    <th className="text-left py-2 px-3">Petani</th>
+                    <th className="text-left py-2 px-3">Status</th>
+                    <th className="text-left py-2 px-3">Luas</th>
+                    <th className="text-left py-2 px-3">Koordinat</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLands.slice(0, 50).map((land, idx) => {
+                    const isOrganic = land.is_organic ?? land.petani?.is_organic;
+                    return (
+                      <tr key={land.id} className="border-b hover:bg-muted/50">
+                        <td className="py-2 px-3">{idx + 1}</td>
+                        <td className="py-2 px-3 font-medium">{land.nama_lahan}</td>
+                        <td className="py-2 px-3">{land.petani?.nama || "-"}</td>
+                        <td className="py-2 px-3">
+                          <Badge variant={isOrganic ? "default" : "secondary"} className="text-xs">
+                            {isOrganic ? "Organik" : "Konvensional"}
+                          </Badge>
+                        </td>
+                        <td className="py-2 px-3">{land.luas ? `${land.luas} ha` : "-"}</td>
+                        <td className="py-2 px-3 text-muted-foreground text-xs">
+                          {land.parsedCoord ? `${land.parsedCoord.lat.toFixed(4)}, ${land.parsedCoord.lng.toFixed(4)}` : "-"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {filteredLands.length > 50 && (
+                <p className="text-sm text-muted-foreground text-center py-2">
+                  Menampilkan 50 dari {filteredLands.length} lahan
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Konfirmasi Koordinat Baru</DialogTitle>
             <DialogDescription>
@@ -918,45 +862,34 @@ export const LandMapTab: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Latitude</Label>
-                <Input 
-                  value={newCoordinates?.lat.toFixed(6) || ""} 
-                  readOnly 
-                  className="font-mono"
-                />
-              </div>
-              <div>
-                <Label>Longitude</Label>
-                <Input 
-                  value={newCoordinates?.lng.toFixed(6) || ""} 
-                  readOnly 
-                  className="font-mono"
-                />
+          {newCoordinates && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">Latitude</Label>
+                  <p className="font-mono">{newCoordinates.lat.toFixed(6)}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Longitude</Label>
+                  <p className="font-mono">{newCoordinates.lng.toFixed(6)}</p>
+                </div>
               </div>
             </div>
-            
-            {selectedLandForEdit?.parsedCoord && (
-              <div className="text-sm text-muted-foreground bg-muted/50 rounded p-2">
-                <strong>Koordinat sebelumnya:</strong><br />
-                {selectedLandForEdit.parsedCoord.lat.toFixed(6)}, {selectedLandForEdit.parsedCoord.lng.toFixed(6)}
-              </div>
-            )}
-          </div>
-
+          )}
+          
           <DialogFooter>
-            <Button variant="outline" onClick={handleCancelEdit} disabled={saving}>
+            <Button variant="outline" onClick={handleCancelEdit}>
               Batal
             </Button>
             <Button onClick={handleSaveCoordinates} disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Simpan Koordinat
+              Simpan
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 };
+
+export default LandMapTab;
