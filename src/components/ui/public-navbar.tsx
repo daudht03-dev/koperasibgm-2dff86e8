@@ -12,8 +12,8 @@ const PublicNavbar = () => {
             <div className="flex items-center space-x-2">
               {profile?.logo_url ? (
                 <img 
-                  src={profile.logo_url} 
-                  alt={profile.nama_perusahaan}
+                  src={profile.logo_url.includes('?') ? profile.logo_url : `${profile.logo_url}?t=${Date.now()}`} 
+                  alt={profile.nama_perusahaan || 'Logo'}
                   className="h-10 w-10 object-contain"
                 />
               ) : (
