@@ -9,6 +9,7 @@ export type PublicCompanyProfile = {
   alamat: string | null;
   kontak: string | null;
   updated_at: string | null;
+  template_settings: Record<string, unknown> | null;
 };
 
 const QUERY_KEY = ["public-company-profile"];

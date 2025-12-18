@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { MapPin, TreePine, WifiOff, Award, CheckCircle, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOfflineFarmers } from "@/hooks/use-offline-farmers";
+import { usePublicCompanyProfile } from "@/hooks/use-public-company-profile";
 import { toast } from "@/hooks/use-toast";
 import PublicNavbar from "@/components/ui/public-navbar";
 import PublicFooter from "@/components/ui/public-footer";
@@ -29,6 +30,24 @@ type PublicLahan = {
   created_at?: string | null;
 };
 
+type ProfileSettings = {
+  show_certification_info: boolean;
+  certification_title: string;
+  certification_description: string;
+  show_company_footer: boolean;
+  organic_badge_text: string;
+  conventional_badge_text: string;
+};
+
+const defaultSettings: ProfileSettings = {
+  show_certification_info: true,
+  certification_title: "Sertifikasi Organik",
+  certification_description: "Petani ini mengikuti standar pertanian organik dan tidak menggunakan pestisida atau pupuk kimia sintetis",
+  show_company_footer: true,
+  organic_badge_text: "Petani Organik",
+  conventional_badge_text: "Petani Konvensional",
+};
+
 const FarmerProfile = () => {
   const { id } = useParams<{ id: string }>();
   const [petani, setPetani] = useState<PublicPetani | null>(null);
@@ -38,6 +57,13 @@ const FarmerProfile = () => {
   const [isOffline, setIsOffline] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const { saveFarmer, getFarmer } = useOfflineFarmers();
+  const { profile: companyProfile } = usePublicCompanyProfile();
+  
+  // Get settings from company profile
+  const settings: ProfileSettings = {
+    ...defaultSettings,
+    ...(companyProfile?.template_settings as Partial<ProfileSettings> || {}),
+  };
 
   const handleSyncData = async () => {
     if (!id) return;
@@ -237,7 +263,7 @@ const FarmerProfile = () => {
                         : "border-amber-500 text-amber-600"
                       }
                     >
-                      {petani.is_organic ? "Petani Organik" : "Petani Konvensional"}
+                      {petani.is_organic ? settings.organic_badge_text : settings.conventional_badge_text}
                     </Badge>
                   </div>
                 </div>
@@ -245,14 +271,14 @@ const FarmerProfile = () => {
             </Card>
 
             {/* Informasi Sertifikasi */}
-            {petani.is_organic && (
+            {petani.is_organic && settings.show_certification_info && (
               <Card className="shadow-gentle border-border/50 bg-gradient-to-br from-organic-green/5 to-organic-cream/30">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <div className="bg-organic-green p-2 rounded-lg shadow-organic">
                       <Award className="h-5 w-5 text-primary-foreground" />
                     </div>
-                    <span>Sertifikasi Organik</span>
+                    <span>{settings.certification_title}</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -261,7 +287,7 @@ const FarmerProfile = () => {
                     <div>
                       <p className="font-medium text-foreground">Tersertifikasi Organik</p>
                       <p className="text-sm text-muted-foreground">
-                        Petani ini mengikuti standar pertanian organik dan tidak menggunakan pestisida atau pupuk kimia sintetis
+                        {settings.certification_description}
                       </p>
                     </div>
                   </div>
