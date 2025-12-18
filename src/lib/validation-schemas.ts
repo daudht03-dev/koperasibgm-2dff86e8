@@ -27,7 +27,7 @@ export const landSchema = z.object({
     .max(500, "Lokasi maksimal 500 karakter")
     .optional()
     .or(z.literal("")),
-  petani_id: z.string().optional().or(z.literal("")),
+  petani_id: z.string().optional().or(z.literal("")).or(z.literal("none")),
   is_organic: z.boolean().optional(),
 });
 

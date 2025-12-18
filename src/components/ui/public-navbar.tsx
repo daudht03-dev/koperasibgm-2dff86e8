@@ -1,8 +1,8 @@
 import { Leaf } from "lucide-react";
-import { useCompanyProfile } from "@/hooks/use-company-profile";
+import { usePublicCompanyProfile } from "@/hooks/use-public-company-profile";
 
 const PublicNavbar = () => {
-  const { profile } = useCompanyProfile();
+  const { profile } = usePublicCompanyProfile();
 
   return (
     <nav className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b border-border/50">
@@ -12,8 +12,8 @@ const PublicNavbar = () => {
             <div className="flex items-center space-x-2">
               {profile?.logo_url ? (
                 <img 
-                  src={profile.logo_url.includes('?') ? profile.logo_url : `${profile.logo_url}?t=${Date.now()}`} 
-                  alt={profile.nama_perusahaan || 'Logo'}
+                  src={profile.logo_url} 
+                  alt={profile.nama_perusahaan || "Logo perusahaan"}
                   className="h-10 w-10 object-contain"
                 />
               ) : (

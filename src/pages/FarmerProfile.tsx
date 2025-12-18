@@ -6,19 +6,32 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { MapPin, TreePine, WifiOff, Award, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Tables } from "@/integrations/supabase/types";
 import { useOfflineFarmers } from "@/hooks/use-offline-farmers";
 import { toast } from "@/hooks/use-toast";
 import PublicNavbar from "@/components/ui/public-navbar";
 import PublicFooter from "@/components/ui/public-footer";
 
-type Petani = Tables<"petani">;
-type Lahan = Tables<"lahan">;
+type PublicPetani = {
+  id: string;
+  kode_petani: string;
+  nama: string;
+  is_organic: boolean | null;
+};
+
+type PublicLahan = {
+  id: string;
+  petani_id: string | null;
+  nama_lahan: string;
+  lokasi: string | null;
+  status: string | null;
+  is_organic: boolean | null;
+  created_at?: string | null;
+};
 
 const FarmerProfile = () => {
   const { id } = useParams<{ id: string }>();
-  const [petani, setPetani] = useState<Petani | null>(null);
-  const [lands, setLands] = useState<Lahan[]>([]);
+  const [petani, setPetani] = useState<PublicPetani | null>(null);
+  const [lands, setLands] = useState<PublicLahan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
@@ -32,38 +45,28 @@ const FarmerProfile = () => {
 
   const fetchFarmerProfile = async (petaniId: string) => {
     try {
-      const { data, error } = await supabase
-        .from("petani")
-        .select("*")
-        .eq("id", petaniId)
-        .single();
+      const { data, error } = await supabase.functions.invoke("public-farmer-profile", {
+        body: { farmerId: petaniId },
+      });
 
       if (error) throw error;
+      if (!data?.farmer) throw new Error("Petani tidak ditemukan");
 
-      setPetani(data);
-      
-      // Fetch lands associated with this farmer
-      const { data: landsData, error: landsError } = await supabase
-        .from("lahan")
-        .select("*")
-        .eq("petani_id", petaniId)
-        .order("created_at", { ascending: false });
+      const farmer = data.farmer as PublicPetani;
+      const landsData = (data.lands ?? []) as PublicLahan[];
 
-      if (landsError) {
-        console.error("Error fetching lands:", landsError);
-      } else {
-        setLands(landsData || []);
-      }
+      setPetani(farmer);
+      setLands(landsData);
 
       // Save to offline storage
       saveFarmer({
-        id: data.id,
-        kode_petani: data.kode_petani,
-        nama: data.nama,
-        alamat: data.alamat,
-        created_at: data.created_at || new Date().toISOString(),
-        is_organic: data.is_organic,
-        lands: (landsData || []).map(l => ({
+        id: farmer.id,
+        kode_petani: farmer.kode_petani,
+        nama: farmer.nama,
+        alamat: null,
+        created_at: new Date().toISOString(),
+        is_organic: farmer.is_organic,
+        lands: landsData.map((l) => ({
           id: l.id,
           nama_lahan: l.nama_lahan,
           lokasi: l.lokasi,
@@ -84,30 +87,19 @@ const FarmerProfile = () => {
           id: offlineFarmer.id,
           kode_petani: offlineFarmer.kode_petani,
           nama: offlineFarmer.nama,
-          alamat: offlineFarmer.alamat,
-          created_at: offlineFarmer.created_at,
-          updated_at: null as any,
-          foto_url: null as any,
-          logo_url: null as any,
-          no_telepon: null as any,
-          status: null as any,
-          tanggal_bergabung: null as any,
-          pengepul_id: null as any,
           is_organic: offlineFarmer.is_organic ?? true,
         });
-        setLands(offlineFarmer.lands.map(l => ({
-          id: l.id,
-          nama_lahan: l.nama_lahan,
-          lokasi: l.lokasi,
-          created_at: l.created_at,
-          updated_at: null,
-          petani_id: petaniId,
-          jenis_tanah: null,
-          koordinat: null,
-          luas: null,
-          status: null,
-          is_organic: l.is_organic ?? null,
-        })));
+        setLands(
+          offlineFarmer.lands.map((l) => ({
+            id: l.id,
+            petani_id: petaniId,
+            nama_lahan: l.nama_lahan,
+            lokasi: l.lokasi,
+            status: null,
+            created_at: l.created_at,
+            is_organic: l.is_organic ?? null,
+          }))
+        );
         setIsOffline(true);
         toast({
           title: "Mode Offline",
