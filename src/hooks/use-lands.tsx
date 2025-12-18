@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { toast } from "@/hooks/use-toast";
@@ -11,7 +11,7 @@ export const useLands = () => {
   const [lands, setLands] = useState<Land[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchLands = async () => {
+  const fetchLands = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -40,7 +40,7 @@ export const useLands = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const addLand = async (land: LandInsert) => {
     try {
@@ -151,7 +151,7 @@ export const useLands = () => {
 
   useEffect(() => {
     fetchLands();
-  }, []);
+  }, [fetchLands]);
 
   return {
     lands,
