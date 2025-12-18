@@ -4,12 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { MapPin, TreePine, WifiOff, Award, CheckCircle } from "lucide-react";
+import { MapPin, TreePine, WifiOff, Award, CheckCircle, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOfflineFarmers } from "@/hooks/use-offline-farmers";
 import { toast } from "@/hooks/use-toast";
 import PublicNavbar from "@/components/ui/public-navbar";
 import PublicFooter from "@/components/ui/public-footer";
+import { Button } from "@/components/ui/button";
 
 type PublicPetani = {
   id: string;
@@ -35,7 +36,22 @@ const FarmerProfile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const { saveFarmer, getFarmer } = useOfflineFarmers();
+
+  const handleSyncData = async () => {
+    if (!id) return;
+    setIsSyncing(true);
+    setError(null);
+    await fetchFarmerProfile(id);
+    setIsSyncing(false);
+    if (!error) {
+      toast({
+        title: "Berhasil",
+        description: "Data berhasil disinkronkan",
+      });
+    }
+  };
 
   useEffect(() => {
     if (id) {
@@ -152,10 +168,35 @@ const FarmerProfile = () => {
           {isOffline && (
             <Alert className="mb-4 border-organic-green/20 bg-organic-green/5">
               <WifiOff className="h-4 w-4" />
-              <AlertDescription>
-                Anda sedang melihat data offline. Data ini terakhir disimpan saat Anda online.
+              <AlertDescription className="flex items-center justify-between">
+                <span>Anda sedang melihat data offline. Data ini terakhir disimpan saat Anda online.</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSyncData}
+                  disabled={isSyncing}
+                  className="ml-2"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-1 ${isSyncing ? 'animate-spin' : ''}`} />
+                  Sinkronkan
+                </Button>
               </AlertDescription>
             </Alert>
+          )}
+          
+          {!isOffline && (
+            <div className="flex justify-end mb-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSyncData}
+                disabled={isSyncing}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <RefreshCw className={`h-4 w-4 mr-1 ${isSyncing ? 'animate-spin' : ''}`} />
+                Refresh Data
+              </Button>
+            </div>
           )}
           
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
