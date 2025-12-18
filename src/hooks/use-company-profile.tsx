@@ -53,13 +53,14 @@ export const useCompanyProfile = () => {
   const uploadLogo = async (file: File): Promise<string | null> => {
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `logo.${fileExt}`;
+      const timestamp = Date.now();
+      const fileName = `logo-${timestamp}.${fileExt}`;
       const filePath = `${fileName}`;
 
       // Delete existing logo if exists
       if (profile?.logo_url) {
-        const existingPath = profile.logo_url.split('/').pop();
-        if (existingPath) {
+        const existingPath = profile.logo_url.split('/').pop()?.split('?')[0];
+        if (existingPath && existingPath !== fileName) {
           await supabase.storage
             .from('profil-perusahaan')
             .remove([existingPath]);
@@ -76,7 +77,8 @@ export const useCompanyProfile = () => {
         .from('profil-perusahaan')
         .getPublicUrl(filePath);
 
-      return data.publicUrl;
+      // Add cache-busting timestamp
+      return `${data.publicUrl}?t=${timestamp}`;
     } catch (error) {
       console.error('Error uploading logo:', error);
       toast({
