@@ -45,7 +45,8 @@ export const usePenjualanPetani = (pengepulId?: string) => {
           petani:petani_id(id, nama, kode_petani),
           pengepul:pengepul_id(id, nama, kode_pengepul)
         `)
-        .order("tanggal_jual", { ascending: false });
+        .order("tanggal_jual", { ascending: false })
+        .limit(10000); // Increase limit to handle large datasets
 
       if (pengepulId) {
         query = query.eq("pengepul_id", pengepulId);
@@ -294,7 +295,8 @@ export const usePenjualanPetani = (pengepulId?: string) => {
         `)
         .gte("tanggal_jual", startDate)
         .lte("tanggal_jual", endDate)
-        .order("tanggal_jual", { ascending: true });
+        .order("tanggal_jual", { ascending: true })
+        .limit(10000);
 
       if (pengepulId) {
         query = query.eq("pengepul_id", pengepulId);
