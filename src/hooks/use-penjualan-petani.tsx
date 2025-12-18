@@ -34,25 +34,30 @@ export type PenjualanPetaniInsert = Omit<PenjualanPetani, 'id' | 'total_harga' |
 export const usePenjualanPetani = (pengepulId?: string) => {
   const [penjualanList, setPenjualanList] = useState<PenjualanPetani[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const fetchPenjualan = async () => {
+  // Fetch with pagination - only load recent data initially
+  const fetchPenjualan = async (page: number = 1, pageSize: number = 500) => {
     try {
       setLoading(true);
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
       let query = supabase
         .from("penjualan_petani")
         .select(`
           *,
           petani:petani_id(id, nama, kode_petani),
           pengepul:pengepul_id(id, nama, kode_pengepul)
-        `)
+        `, { count: 'exact' })
         .order("tanggal_jual", { ascending: false })
-        .limit(10000); // Increase limit to handle large datasets
+        .range(from, to);
 
       if (pengepulId) {
         query = query.eq("pengepul_id", pengepulId);
       }
 
-      const { data, error } = await query;
+      const { data, error, count } = await query;
 
       if (error) {
         console.error("Error fetching penjualan petani:", error);
@@ -65,6 +70,7 @@ export const usePenjualanPetani = (pengepulId?: string) => {
       }
 
       setPenjualanList(data || []);
+      setTotalCount(count || 0);
     } catch (error) {
       console.error("Error fetching penjualan petani:", error);
       toast({
@@ -74,6 +80,33 @@ export const usePenjualanPetani = (pengepulId?: string) => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch penjualan by catatan (for specific estimation weeks)
+  const fetchPenjualanByCatatan = async (catatanList: string[]): Promise<PenjualanPetani[]> => {
+    if (catatanList.length === 0) return [];
+    
+    try {
+      const { data, error } = await supabase
+        .from("penjualan_petani")
+        .select(`
+          *,
+          petani:petani_id(id, nama, kode_petani),
+          pengepul:pengepul_id(id, nama, kode_pengepul)
+        `)
+        .in("catatan", catatanList)
+        .order("tanggal_jual", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching penjualan by catatan:", error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error("Error fetching penjualan by catatan:", error);
+      return [];
     }
   };
 
@@ -323,12 +356,14 @@ export const usePenjualanPetani = (pengepulId?: string) => {
   return {
     penjualanList,
     loading,
+    totalCount,
     addPenjualan,
     addPenjualanBatch,
     updatePenjualan,
     deletePenjualan,
     deletePenjualanBatch,
     getPenjualanByDateRange,
+    fetchPenjualanByCatatan,
     refetch: fetchPenjualan,
   };
 };
