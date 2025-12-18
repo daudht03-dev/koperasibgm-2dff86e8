@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { toast } from "@/hooks/use-toast";
@@ -11,7 +11,7 @@ export const useFarmers = () => {
   const [farmers, setFarmers] = useState<Farmer[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchFarmers = async () => {
+  const fetchFarmers = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -40,7 +40,7 @@ export const useFarmers = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const addFarmer = async (farmer: FarmerInsert) => {
     try {
@@ -149,7 +149,70 @@ export const useFarmers = () => {
 
   useEffect(() => {
     fetchFarmers();
-  }, []);
+
+    // Subscribe to real-time changes
+    const channel = supabase
+      .channel('petani-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'petani'
+        },
+        (payload) => {
+          console.log('New farmer added:', payload);
+          const newFarmer = payload.new as Farmer;
+          setFarmers(prev => {
+            if (prev.some(f => f.id === newFarmer.id)) return prev;
+            return [newFarmer, ...prev];
+          });
+          toast({
+            title: "Data Baru",
+            description: `Petani "${newFarmer.nama}" telah ditambahkan`,
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'petani'
+        },
+        (payload) => {
+          console.log('Farmer updated:', payload);
+          const updatedFarmer = payload.new as Farmer;
+          setFarmers(prev => prev.map(f => f.id === updatedFarmer.id ? updatedFarmer : f));
+          toast({
+            title: "Data Diperbarui",
+            description: `Data petani "${updatedFarmer.nama}" telah diperbarui`,
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'petani'
+        },
+        (payload) => {
+          console.log('Farmer deleted:', payload);
+          const deletedFarmer = payload.old as Farmer;
+          setFarmers(prev => prev.filter(f => f.id !== deletedFarmer.id));
+          toast({
+            title: "Data Dihapus",
+            description: `Petani "${deletedFarmer.nama}" telah dihapus`,
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchFarmers]);
 
   return {
     farmers,
