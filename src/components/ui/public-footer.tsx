@@ -1,8 +1,8 @@
 import { Leaf, Phone, MapPin } from "lucide-react";
-import { useCompanyProfile } from "@/hooks/use-company-profile";
+import { usePublicCompanyProfile } from "@/hooks/use-public-company-profile";
 
 const PublicFooter = () => {
-  const { profile, loading } = useCompanyProfile();
+  const { profile, loading } = usePublicCompanyProfile();
 
   return (
     <footer className="bg-organic-brown text-primary-foreground">
@@ -13,7 +13,7 @@ const PublicFooter = () => {
             {profile?.logo_url ? (
               <img 
                 src={profile.logo_url} 
-                alt={profile.nama_perusahaan}
+                alt={profile.nama_perusahaan || "Company Logo"}
                 className="h-10 w-10 object-contain"
               />
             ) : (
