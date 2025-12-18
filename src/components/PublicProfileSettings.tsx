@@ -7,8 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Eye, Award, Leaf, Building, Save, ExternalLink } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Eye, Award, Leaf, Building, Save, ExternalLink, Monitor, Smartphone, Tablet, RefreshCw } from "lucide-react";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
+import { useFarmers } from "@/hooks/use-farmers";
 import { toast } from "@/hooks/use-toast";
 
 type PublicProfileSettingsData = {
@@ -31,8 +33,12 @@ const defaultSettings: PublicProfileSettingsData = {
 
 const PublicProfileSettings = () => {
   const { profile, updateProfile, loading: profileLoading } = useCompanyProfile();
+  const { farmers, loading: farmersLoading } = useFarmers();
   const [settings, setSettings] = useState<PublicProfileSettingsData>(defaultSettings);
   const [saving, setSaving] = useState(false);
+  const [selectedFarmerId, setSelectedFarmerId] = useState<string>("");
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
+  const [previewKey, setPreviewKey] = useState(0);
 
   useEffect(() => {
     if (profile?.template_settings) {
@@ -48,6 +54,12 @@ const PublicProfileSettings = () => {
     }
   }, [profile]);
 
+  useEffect(() => {
+    if (farmers.length > 0 && !selectedFarmerId) {
+      setSelectedFarmerId(farmers[0].id);
+    }
+  }, [farmers, selectedFarmerId]);
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -58,6 +70,7 @@ const PublicProfileSettings = () => {
         title: "Berhasil",
         description: "Pengaturan profil publik berhasil disimpan",
       });
+      setPreviewKey((k) => k + 1); // Refresh preview after save
     } catch (error) {
       toast({
         title: "Gagal",
@@ -69,7 +82,15 @@ const PublicProfileSettings = () => {
     }
   };
 
-  const previewUrl = `/farmer/${crypto.randomUUID().slice(0, 8)}`;
+  const getPreviewWidth = () => {
+    switch (previewDevice) {
+      case "mobile": return "375px";
+      case "tablet": return "768px";
+      default: return "100%";
+    }
+  };
+
+  const selectedFarmer = farmers.find((f) => f.id === selectedFarmerId);
 
   return (
     <div className="space-y-6">
@@ -235,37 +256,114 @@ const PublicProfileSettings = () => {
           </CardContent>
         </Card>
 
-        {/* Preview Info */}
-        <Card>
+        {/* Live Preview */}
+        <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Eye className="h-5 w-5 text-primary" />
-              Preview Halaman
-            </CardTitle>
-            <CardDescription>
-              Lihat tampilan profil petani seperti yang dilihat pengunjung
-            </CardDescription>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Eye className="h-5 w-5 text-primary" />
+                  Preview Langsung
+                </CardTitle>
+                <CardDescription>
+                  Lihat tampilan profil petani seperti yang dilihat pengunjung
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Select value={selectedFarmerId} onValueChange={setSelectedFarmerId}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Pilih petani..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {farmersLoading ? (
+                      <SelectItem value="loading" disabled>Memuat...</SelectItem>
+                    ) : farmers.length === 0 ? (
+                      <SelectItem value="empty" disabled>Tidak ada petani</SelectItem>
+                    ) : (
+                      farmers.map((farmer) => (
+                        <SelectItem key={farmer.id} value={farmer.id}>
+                          {farmer.nama} ({farmer.kode_petani})
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setPreviewKey((k) => k + 1)}
+                  title="Refresh Preview"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Untuk melihat preview, scan QR code petani atau buka halaman profil petani langsung.
-            </p>
-            
-            <div className="p-4 bg-gradient-to-br from-organic-green/10 to-organic-cream/30 rounded-lg">
-              <h4 className="font-medium mb-2">Cara Preview:</h4>
-              <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                <li>Buka tab "Petani" di dashboard</li>
-                <li>Klik icon QR pada baris petani</li>
-                <li>Scan QR code atau klik "Buka Profil"</li>
-              </ol>
+            {/* Device Toggle */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                <Button
+                  variant={previewDevice === "desktop" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setPreviewDevice("desktop")}
+                >
+                  <Monitor className="h-4 w-4 mr-1" />
+                  Desktop
+                </Button>
+                <Button
+                  variant={previewDevice === "tablet" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setPreviewDevice("tablet")}
+                >
+                  <Tablet className="h-4 w-4 mr-1" />
+                  Tablet
+                </Button>
+                <Button
+                  variant={previewDevice === "mobile" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setPreviewDevice("mobile")}
+                >
+                  <Smartphone className="h-4 w-4 mr-1" />
+                  Mobile
+                </Button>
+              </div>
+              {selectedFarmer && (
+                <Button variant="outline" size="sm" asChild>
+                  <a href={`/farmer/${selectedFarmerId}`} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Buka di Tab Baru
+                  </a>
+                </Button>
+              )}
             </div>
 
-            <Button variant="outline" className="w-full" asChild>
-              <a href="/" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Buka Halaman Utama
-              </a>
-            </Button>
+            {/* Preview Frame */}
+            <div className="border rounded-lg bg-muted/30 overflow-hidden" style={{ minHeight: "500px" }}>
+              {selectedFarmerId ? (
+                <div className="flex justify-center p-4 bg-muted/50">
+                  <div
+                    className="bg-background rounded-lg shadow-lg overflow-hidden transition-all duration-300"
+                    style={{ width: getPreviewWidth(), maxWidth: "100%" }}
+                  >
+                    <iframe
+                      key={previewKey}
+                      src={`/farmer/${selectedFarmerId}`}
+                      className="w-full border-0"
+                      style={{ height: "600px" }}
+                      title="Preview Profil Petani"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-[500px] text-muted-foreground">
+                  <div className="text-center">
+                    <Eye className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p>Pilih petani untuk melihat preview</p>
+                  </div>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
