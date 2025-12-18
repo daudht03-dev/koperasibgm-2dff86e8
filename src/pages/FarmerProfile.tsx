@@ -238,22 +238,24 @@ const FarmerProfile = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nama Lahan</TableHead>
-                      <TableHead>Lokasi</TableHead>
-                      <TableHead>Terdaftar Sejak</TableHead>
+                      <TableHead>Kode Lahan</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {lands.map((land) => (
                       <TableRow key={land.id}>
                         <TableCell className="font-medium">{land.nama_lahan}</TableCell>
-                        <TableCell className="max-w-md">{land.lokasi || "-"}</TableCell>
                         <TableCell>
-                          {land.created_at ? new Date(land.created_at).toLocaleDateString('id-ID', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric'
-                          }) : "-"}
+                          <Badge 
+                            variant="outline" 
+                            className={petani.is_organic 
+                              ? "border-organic-green text-organic-green" 
+                              : "border-amber-500 text-amber-600"
+                            }
+                          >
+                            {petani.is_organic ? "Organik" : "Konvensional"}
+                          </Badge>
                         </TableCell>
                       </TableRow>
                     ))}
