@@ -8,6 +8,7 @@ import { useOnlineSync } from "@/hooks/use-online-sync";
 import { useState, useEffect, lazy, Suspense } from "react";
 import SplashScreen from "@/components/SplashScreen";
 import ProtectedRoute from "./components/ProtectedRoute";
+import PageTransition from "./components/PageTransition";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Lazy load all pages for code splitting
@@ -52,121 +53,123 @@ const AppContent = () => {
   
   return (
     <Suspense fallback={<PageLoader />}>
-      <Routes>
-        <Route path="/" element={<Navigate to="/admin" replace />} />
-        <Route path="/login" element={<Auth />} />
-        <Route path="/install" element={<Install />} />
-        <Route path="/produk" element={<Products />} />
-        <Route path="/produk/:id" element={<ProductDetail />} />
-        <Route 
-          path="/admin" 
-          element={
-            <ProtectedRoute requireAdmin={true}>
-              <AdminDashboard />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/label-settings" 
-          element={
-            <ProtectedRoute requireAdmin={true}>
-              <LabelSettings />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/farmer-identity-labels" 
-          element={
-            <ProtectedRoute requireAdmin={true}>
-              <FarmerIdentityLabels />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin/farmer-identity-labels" 
-          element={
-            <ProtectedRoute requireAdmin={true}>
-              <FarmerIdentityLabels />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/identity-label-settings" 
-          element={
-            <ProtectedRoute requireAdmin={true}>
-              <IdentityLabelSettings />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin/identity-label-settings" 
-          element={
-            <ProtectedRoute requireAdmin={true}>
-              <IdentityLabelSettings />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin/label-settings" 
-          element={
-            <ProtectedRoute requireAdmin={true}>
-              <LabelSettings />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin/packaging-labels" 
-          element={
-            <ProtectedRoute requireAdmin={true}>
-              <PackagingLabels />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/petani/:id" 
-          element={
-            <ProtectedRoute requireAdmin={true}>
-              <FarmerDetail />
-            </ProtectedRoute>
-          } 
-        />
-        <Route path="/profil-petani/:id" element={<FarmerProfile />} />
-        <Route path="/scan" element={<QRScanner />} />
-        <Route path="/offline-farmers" element={<OfflineFarmers />} />
-        <Route 
-          path="/petani/:id/qr" 
-          element={
-            <ProtectedRoute requireAdmin={true}>
-              <QRCodePage />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/batch-qr" 
-          element={
-            <ProtectedRoute requireAdmin={true}>
-              <BatchQRCode />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin/harvest-management" 
-          element={
-            <ProtectedRoute requireAdmin={true}>
-              <HarvestManagement />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin/batch/:id" 
-          element={
-            <ProtectedRoute requireAdmin={true}>
-              <BatchDetail />
-            </ProtectedRoute>
-          } 
-        />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <PageTransition>
+        <Routes>
+          <Route path="/" element={<Navigate to="/admin" replace />} />
+          <Route path="/login" element={<Auth />} />
+          <Route path="/install" element={<Install />} />
+          <Route path="/produk" element={<Products />} />
+          <Route path="/produk/:id" element={<ProductDetail />} />
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/label-settings" 
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <LabelSettings />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/farmer-identity-labels" 
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <FarmerIdentityLabels />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/farmer-identity-labels" 
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <FarmerIdentityLabels />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/identity-label-settings" 
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <IdentityLabelSettings />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/identity-label-settings" 
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <IdentityLabelSettings />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/label-settings" 
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <LabelSettings />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/packaging-labels" 
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <PackagingLabels />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/petani/:id" 
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <FarmerDetail />
+              </ProtectedRoute>
+            } 
+          />
+          <Route path="/profil-petani/:id" element={<FarmerProfile />} />
+          <Route path="/scan" element={<QRScanner />} />
+          <Route path="/offline-farmers" element={<OfflineFarmers />} />
+          <Route 
+            path="/petani/:id/qr" 
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <QRCodePage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/batch-qr" 
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <BatchQRCode />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/harvest-management" 
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <HarvestManagement />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/batch/:id" 
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <BatchDetail />
+              </ProtectedRoute>
+            } 
+          />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </PageTransition>
     </Suspense>
   );
 };
