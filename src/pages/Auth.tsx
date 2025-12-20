@@ -71,7 +71,8 @@ const Auth = () => {
             title: "Login Berhasil",
             description: "Selamat datang di dashboard admin!",
           });
-          // Redirect akan ditangani oleh useEffect setelah isAdmin di-set
+          // Langsung redirect ke admin dashboard setelah login berhasil
+          navigate("/admin");
         }
       } else {
         const { error } = await signUp(result.data.email, result.data.password, result.data.fullName || "");
