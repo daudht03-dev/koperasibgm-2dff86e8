@@ -333,17 +333,12 @@ export const HarvestEstimationTable = ({
             </div>
           </div>
 
-          {/* Holidays Badge */}
-          {week.holidays.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Hari Libur:</span>
-              {week.holidays.map((dayIndex) => (
-                <Badge key={dayIndex} variant="secondary">
-                  {getDayName(addDays(week.startDate, dayIndex))} ({formatDate(addDays(week.startDate, dayIndex))})
-                </Badge>
-              ))}
-            </div>
-          )}
+          {/* Info: Holidays per farmer */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              Hari libur diacak per petani (0-3 hari)
+            </span>
+          </div>
 
           {/* Side by Side Tables */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
@@ -377,11 +372,10 @@ export const HarvestEstimationTable = ({
                         </TableHead>
                         {[0, 1, 2, 3, 4, 5, 6].map((dayIndex) => {
                           const date = addDays(week.startDate, dayIndex);
-                          const isHoliday = week.holidays.includes(dayIndex);
                           return (
                             <TableHead
                               key={dayIndex}
-                              className={`text-center min-w-[60px] ${isHoliday ? "bg-destructive/10" : ""}`}
+                              className="text-center min-w-[60px]"
                             >
                               <div className="flex flex-col items-center">
                                 <span className="text-xs">{getDayName(date)}</span>
@@ -417,7 +411,8 @@ export const HarvestEstimationTable = ({
                             {farmer.farmerCode}
                           </TableCell>
                           {farmer.dailyHarvest.map((day, index) => {
-                            const isHoliday = week.holidays.includes(index);
+                            // Use farmer's own holidays instead of week-level holidays
+                            const isHoliday = farmer.holidays?.includes(index) ?? false;
                             return (
                               <TableCell
                                 key={index}
