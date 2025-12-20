@@ -402,9 +402,17 @@ const FarmerIdentityLabels = () => {
         </div>
       </div>
 
-      {/* Hidden print content */}
-      <div style={{ display: 'none' }}>
-        <div ref={printRef}>
+      {/* Hidden print content - using visibility:hidden + position:absolute so html2canvas can render */}
+      <div 
+        style={{ 
+          position: 'absolute', 
+          left: '-9999px', 
+          top: 0,
+          visibility: 'hidden',
+          pointerEvents: 'none',
+        }}
+      >
+        <div ref={printRef} style={{ background: 'white' }}>
           <style>
             {`
               @page {
