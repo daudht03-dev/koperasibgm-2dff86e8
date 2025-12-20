@@ -25,6 +25,7 @@ export interface FarmerWeeklyData {
   totalHarvest: number;
   totalSales: number;
   isOrganic: boolean;
+  holidays: number[]; // Each farmer has their own holidays
 }
 
 export interface WeekData {
@@ -32,7 +33,7 @@ export interface WeekData {
   startDate: Date;
   endDate: Date;
   farmersData: FarmerWeeklyData[];
-  holidays: number[]; // 0-6 representing day index within week
+  holidays?: number[]; // Deprecated: kept for backward compatibility, now per-farmer
 }
 
 export interface SavedEstimation {
@@ -118,20 +119,25 @@ export const useHarvestEstimation = () => {
     return salesData;
   };
 
-  // Generate week data for all selected farmers
+  // Generate week data for all selected farmers - each farmer gets unique random holidays
   const generateWeekData = useCallback((
     farmers: FarmerEstimation[],
     weekStartDate: Date,
     weekIndex: number,
-    holidayIndices: number[]
+    globalHolidayIndices?: number[] // Only used for manual mode
   ): WeekData => {
     const farmersData: FarmerWeeklyData[] = farmers.map(farmer => {
+      // Each farmer gets their own random holidays (in auto mode)
+      const farmerHolidays = globalHolidayIndices !== undefined 
+        ? globalHolidayIndices 
+        : generateRandomHolidays();
+      
       const dailyHarvest: DailyData[] = [];
 
       // Generate 7 days of harvest data
       for (let day = 0; day < 7; day++) {
         const date = addDays(weekStartDate, day);
-        const isHoliday = holidayIndices.includes(day);
+        const isHoliday = farmerHolidays.includes(day);
         const value = generateDailyHarvest(farmer.averageDaily, isHoliday);
 
         dailyHarvest.push({
@@ -152,6 +158,7 @@ export const useHarvestEstimation = () => {
         totalHarvest: dailyHarvest.reduce((sum, d) => sum + d.value, 0),
         totalSales: dailySales.reduce((sum, d) => sum + d.value, 0),
         isOrganic: farmer.isOrganic,
+        holidays: farmerHolidays,
       };
     });
 
@@ -160,7 +167,6 @@ export const useHarvestEstimation = () => {
       startDate: weekStartDate,
       endDate: addDays(weekStartDate, 6),
       farmersData,
-      holidays: holidayIndices,
     };
   }, []);
 
@@ -168,8 +174,9 @@ export const useHarvestEstimation = () => {
   const generateEstimation = useCallback(() => {
     if (selectedFarmers.length === 0) return;
 
-    const holidays = autoHoliday ? generateRandomHolidays() : manualHolidays;
-    const weekData = generateWeekData(selectedFarmers, startDate, 0, holidays);
+    // Pass manual holidays only if not in auto mode, otherwise each farmer gets random holidays
+    const globalHolidays = autoHoliday ? undefined : manualHolidays;
+    const weekData = generateWeekData(selectedFarmers, startDate, 0, globalHolidays);
 
     setWeeklyData([weekData]);
   }, [selectedFarmers, startDate, autoHoliday, manualHolidays, generateWeekData]);
@@ -179,8 +186,8 @@ export const useHarvestEstimation = () => {
     if (selectedFarmers.length === 0 || weeklyData.length === 0) return;
 
     const newWeeklyData = weeklyData.map((week) => {
-      const holidays = autoHoliday ? generateRandomHolidays() : manualHolidays;
-      return generateWeekData(selectedFarmers, week.startDate, week.weekIndex, holidays);
+      const globalHolidays = autoHoliday ? undefined : manualHolidays;
+      return generateWeekData(selectedFarmers, week.startDate, week.weekIndex, globalHolidays);
     });
 
     setWeeklyData(newWeeklyData);
@@ -216,12 +223,12 @@ export const useHarvestEstimation = () => {
 
     const lastWeek = weeklyData[weeklyData.length - 1];
     const newStartDate = addDays(lastWeek.endDate, 1);
-    const holidays = autoHoliday ? generateRandomHolidays() : manualHolidays;
+    const globalHolidays = autoHoliday ? undefined : manualHolidays;
     const newWeek = generateWeekData(
       selectedFarmers,
       newStartDate,
       lastWeek.weekIndex + 1,
-      holidays
+      globalHolidays
     );
 
     setWeeklyData(prev => [...prev, newWeek]);
@@ -246,9 +253,9 @@ export const useHarvestEstimation = () => {
         };
       }
 
-      // Regenerate entire week for 'all' or 'harvest'
-      const holidays = autoHoliday ? generateRandomHolidays() : manualHolidays;
-      return generateWeekData(selectedFarmers, week.startDate, week.weekIndex, holidays);
+      // Regenerate entire week for 'all' or 'harvest' - each farmer gets new random holidays
+      const globalHolidays = autoHoliday ? undefined : manualHolidays;
+      return generateWeekData(selectedFarmers, week.startDate, week.weekIndex, globalHolidays);
     }));
   }, [autoHoliday, manualHolidays, selectedFarmers, generateWeekData]);
 
