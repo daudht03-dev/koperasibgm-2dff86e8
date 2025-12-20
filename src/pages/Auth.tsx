@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Leaf, Eye, EyeOff, ArrowLeft, Download } from "lucide-react";
+import { Leaf, Eye, EyeOff, ArrowLeft, Download, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { useNavigate, Link } from "react-router-dom";
@@ -20,6 +20,7 @@ const Auth = () => {
   const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const { signIn, signUp, user, isAdmin } = useAuth();
   const { profile, loading: profileLoading } = useCompanyProfile();
@@ -29,6 +30,7 @@ const Auth = () => {
   // Auto-redirect if already logged in as admin
   useEffect(() => {
     if (user && isAdmin) {
+      setIsRedirecting(true);
       navigate("/admin");
     }
   }, [user, isAdmin, navigate]);
@@ -71,7 +73,8 @@ const Auth = () => {
             title: "Login Berhasil",
             description: "Selamat datang di dashboard admin!",
           });
-          // Langsung redirect ke admin dashboard setelah login berhasil
+          // Show redirecting state and navigate
+          setIsRedirecting(true);
           navigate("/admin");
         }
       } else {
@@ -102,6 +105,19 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
+  // Show loading screen when redirecting
+  if (isRedirecting) {
+    return (
+      <div className="min-h-screen bg-gradient-natural flex items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto text-organic-green" />
+          <p className="text-lg font-medium text-foreground">Mengarahkan ke Dashboard...</p>
+          <p className="text-sm text-muted-foreground">Mohon tunggu sebentar</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-natural flex items-center justify-center p-4">
