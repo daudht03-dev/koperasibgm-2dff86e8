@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Download, Share, Copy, CheckCircle, Loader2 } from "lucide-react";
@@ -26,14 +26,15 @@ export const QRPreviewDialog = ({
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   const { profile } = useCompanyProfile();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (open && farmerId) {
-      generateQR();
+      generateQRWithLogo();
     }
-  }, [open, farmerId, profile?.production_url]);
+  }, [open, farmerId, profile?.production_url, profile?.qr_logo_url]);
 
-  const generateQR = async () => {
+  const generateQRWithLogo = async () => {
     setLoading(true);
     try {
       let baseUrl = window.location.origin;
@@ -42,6 +43,8 @@ export const QRPreviewDialog = ({
       }
       
       const farmerUrl = `${baseUrl}/profil-petani/${farmerId}`;
+      
+      // Generate QR code with higher error correction for logo support
       const qrDataURL = await QRCode.toDataURL(farmerUrl, {
         width: 300,
         margin: 2,
@@ -49,10 +52,16 @@ export const QRPreviewDialog = ({
           dark: "#1a5d3a",
           light: "#ffffff"
         },
-        errorCorrectionLevel: profile?.qr_error_correction as any || "M"
+        errorCorrectionLevel: profile?.qr_logo_url ? "H" : (profile?.qr_error_correction as any || "M")
       });
       
-      setQrCodeDataURL(qrDataURL);
+      // If there's a logo, embed it in the center
+      if (profile?.qr_logo_url) {
+        const qrWithLogo = await embedLogoInQR(qrDataURL, profile.qr_logo_url, profile.qr_logo_size || 50);
+        setQrCodeDataURL(qrWithLogo);
+      } else {
+        setQrCodeDataURL(qrDataURL);
+      }
     } catch (error) {
       console.error("Error generating QR:", error);
       toast({
@@ -63,6 +72,52 @@ export const QRPreviewDialog = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const embedLogoInQR = (qrDataURL: string, logoUrl: string, logoSize: number): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(qrDataURL);
+        return;
+      }
+
+      const qrImg = new Image();
+      qrImg.crossOrigin = "anonymous";
+      qrImg.onload = () => {
+        canvas.width = qrImg.width;
+        canvas.height = qrImg.height;
+        ctx.drawImage(qrImg, 0, 0);
+
+        const logoImg = new Image();
+        logoImg.crossOrigin = "anonymous";
+        logoImg.onload = () => {
+          // Calculate logo position (center of QR)
+          const logoSizePx = (logoSize / 100) * qrImg.width * 0.8; // Max 80% of specified size
+          const logoX = (qrImg.width - logoSizePx) / 2;
+          const logoY = (qrImg.height - logoSizePx) / 2;
+
+          // Draw white background circle for logo
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(qrImg.width / 2, qrImg.height / 2, logoSizePx / 2 + 8, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Draw logo
+          ctx.drawImage(logoImg, logoX, logoY, logoSizePx, logoSizePx);
+
+          resolve(canvas.toDataURL());
+        };
+        logoImg.onerror = () => {
+          console.warn("Failed to load logo, using QR without logo");
+          resolve(qrDataURL);
+        };
+        logoImg.src = logoUrl;
+      };
+      qrImg.onerror = reject;
+      qrImg.src = qrDataURL;
+    });
   };
 
   const handleDownload = () => {
@@ -188,6 +243,12 @@ export const QRPreviewDialog = ({
                 )}
               </div>
 
+              {profile?.qr_logo_url && (
+                <p className="text-xs text-muted-foreground text-center">
+                  QR Code dengan logo perusahaan
+                </p>
+              )}
+
               <div className="grid grid-cols-3 gap-2">
                 <Button 
                   onClick={handleDownload}
@@ -228,6 +289,8 @@ export const QRPreviewDialog = ({
             </>
           )}
         </div>
+        
+        <canvas ref={canvasRef} className="hidden" />
       </DialogContent>
     </Dialog>
   );

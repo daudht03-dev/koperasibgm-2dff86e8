@@ -14,6 +14,7 @@ import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
 import { StatisticsChart } from "@/components/StatisticsChart";
 import { QRPreviewDialog } from "@/components/QRPreviewDialog";
+import { DownloadAllQRCodes } from "@/components/DownloadAllQRCodes";
 import { useAuth } from "@/hooks/use-auth";
 import { useFarmers } from "@/hooks/use-farmers";
 import { useLands } from "@/hooks/use-lands";
@@ -677,6 +678,7 @@ const AdminDashboard = () => {
                   <Upload className="h-4 w-4 mr-2" />
                   Import CSV
                 </Button>
+                <DownloadAllQRCodes farmers={farmers || []} />
                 <Button 
                   asChild
                   variant="outline"
