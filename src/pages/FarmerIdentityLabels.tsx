@@ -88,11 +88,30 @@ const FarmerIdentityLabels = () => {
     });
 
     try {
+      // Temporarily make the hidden content visible for html2canvas
+      const parentDiv = printRef.current.parentElement;
+      if (parentDiv) {
+        parentDiv.style.visibility = 'visible';
+        parentDiv.style.position = 'fixed';
+        parentDiv.style.left = '0';
+        parentDiv.style.top = '0';
+        parentDiv.style.zIndex = '-9999';
+      }
+
       const canvas = await html2canvas(printRef.current, {
         scale: 2,
         useCORS: true,
         logging: false,
+        backgroundColor: '#ffffff',
       });
+
+      // Hide it again
+      if (parentDiv) {
+        parentDiv.style.visibility = 'hidden';
+        parentDiv.style.position = 'absolute';
+        parentDiv.style.left = '-9999px';
+        parentDiv.style.zIndex = '';
+      }
 
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
@@ -144,11 +163,30 @@ const FarmerIdentityLabels = () => {
     });
 
     try {
+      // Temporarily make the hidden content visible for html2canvas
+      const parentDiv = printRef.current.parentElement;
+      if (parentDiv) {
+        parentDiv.style.visibility = 'visible';
+        parentDiv.style.position = 'fixed';
+        parentDiv.style.left = '0';
+        parentDiv.style.top = '0';
+        parentDiv.style.zIndex = '-9999';
+      }
+
       const canvas = await html2canvas(printRef.current, {
         scale: 2,
         useCORS: true,
         logging: false,
+        backgroundColor: '#ffffff',
       });
+
+      // Hide it again
+      if (parentDiv) {
+        parentDiv.style.visibility = 'hidden';
+        parentDiv.style.position = 'absolute';
+        parentDiv.style.left = '-9999px';
+        parentDiv.style.zIndex = '';
+      }
 
       canvas.toBlob((blob) => {
         if (blob) {
