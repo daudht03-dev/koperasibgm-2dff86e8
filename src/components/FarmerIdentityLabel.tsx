@@ -140,18 +140,24 @@ export const FarmerIdentityLabel = ({
           <div className="relative z-10 space-y-4">
             {settings.show_company_logo && companyLogo && (
               <div className="flex justify-center">
-                <img 
-                  src={companyLogo} 
-                  alt="Company Logo" 
+                <img
+                  src={companyLogo}
+                  alt="Logo perusahaan"
+                  crossOrigin="anonymous"
+                  referrerPolicy="no-referrer"
+                  loading={showForPrint ? "eager" : "lazy"}
                   className="h-16 w-auto object-contain"
                 />
               </div>
             )}
             {settings.show_farmer_logo && farmerLogo && (
               <div className="flex justify-center">
-                <img 
-                  src={farmerLogo} 
-                  alt="Farmer Logo" 
+                <img
+                  src={farmerLogo}
+                  alt="Logo petani"
+                  crossOrigin="anonymous"
+                  referrerPolicy="no-referrer"
+                  loading={showForPrint ? "eager" : "lazy"}
                   className="h-14 w-auto object-contain rounded-full border-2"
                   style={{ borderColor: `hsl(${primaryColor})` }}
                 />
@@ -256,9 +262,12 @@ export const FarmerIdentityLabel = ({
           >
             <div className="flex items-center gap-4">
               {settings.show_company_logo && companyLogo && (
-                <img 
-                  src={companyLogo} 
-                  alt="Company Logo" 
+                <img
+                  src={companyLogo}
+                  alt="Logo perusahaan"
+                  crossOrigin="anonymous"
+                  referrerPolicy="no-referrer"
+                  loading={showForPrint ? "eager" : "lazy"}
                   className="h-10 w-auto object-contain"
                 />
               )}
@@ -275,9 +284,12 @@ export const FarmerIdentityLabel = ({
             <div className="col-span-2 space-y-4">
               {settings.show_farmer_logo && farmerLogo && (
                 <div className="flex justify-start">
-                  <img 
-                    src={farmerLogo} 
-                    alt="Farmer Logo" 
+                  <img
+                    src={farmerLogo}
+                    alt="Logo petani"
+                    crossOrigin="anonymous"
+                    referrerPolicy="no-referrer"
+                    loading={showForPrint ? "eager" : "lazy"}
                     className="h-16 w-16 object-cover rounded-full border-4"
                     style={{ borderColor: `hsl(${primaryColor})` }}
                   />
@@ -361,9 +373,12 @@ export const FarmerIdentityLabel = ({
           <div className="relative z-10 space-y-3 text-center">
             {settings.show_company_logo && companyLogo && (
               <div className="flex justify-center mb-2">
-                <img 
-                  src={companyLogo} 
-                  alt="Company Logo" 
+                <img
+                  src={companyLogo}
+                  alt="Logo perusahaan"
+                  crossOrigin="anonymous"
+                  referrerPolicy="no-referrer"
+                  loading={showForPrint ? "eager" : "lazy"}
                   className="h-12 w-auto object-contain"
                 />
               </div>
@@ -386,9 +401,12 @@ export const FarmerIdentityLabel = ({
 
             {settings.show_farmer_logo && farmerLogo && (
               <div className="flex justify-center py-2">
-                <img 
-                  src={farmerLogo} 
-                  alt="Farmer Logo" 
+                <img
+                  src={farmerLogo}
+                  alt="Logo petani"
+                  crossOrigin="anonymous"
+                  referrerPolicy="no-referrer"
+                  loading={showForPrint ? "eager" : "lazy"}
                   className="h-12 w-12 object-cover rounded-full border-2"
                   style={{ borderColor: `hsl(${primaryColor})` }}
                 />

@@ -79,39 +79,68 @@ const FarmerIdentityLabels = () => {
     documentTitle: `Label Identitas Petani - ${new Date().toLocaleDateString('id-ID')}`,
   });
 
+  const waitForCaptureReady = async (root: HTMLElement) => {
+    // Wait 2 frames so layout/paint + QR canvases settle
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+
+    // Wait for fonts (important for PDF readability)
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const fonts = (document as any).fonts;
+      if (fonts?.ready) await fonts.ready;
+    } catch {
+      // ignore
+    }
+
+    // Wait for images to be fully loaded/decoded to avoid blank capture
+    const imgs = Array.from(root.querySelectorAll('img')) as HTMLImageElement[];
+    await Promise.all(
+      imgs.map(async (img) => {
+        if (img.complete && img.naturalWidth > 0) {
+          try {
+            await img.decode?.();
+          } catch {
+            // ignore decode errors
+          }
+          return;
+        }
+
+        await new Promise<void>((resolve) => {
+          const done = () => resolve();
+          img.addEventListener('load', done, { once: true });
+          img.addEventListener('error', done, { once: true });
+        });
+
+        try {
+          await img.decode?.();
+        } catch {
+          // ignore
+        }
+      })
+    );
+
+    // Small buffer for canvases (QR rendering)
+    await new Promise((r) => setTimeout(r, 150));
+  };
+
   const handleDownloadPDF = async () => {
     if (!printRef.current) return;
-    
+
     toast({
       title: "Memproses",
       description: "Sedang membuat file PDF...",
     });
 
     try {
-      // Temporarily make the hidden content visible for html2canvas
-      const parentDiv = printRef.current.parentElement;
-      if (parentDiv) {
-        parentDiv.style.visibility = 'visible';
-        parentDiv.style.position = 'fixed';
-        parentDiv.style.left = '0';
-        parentDiv.style.top = '0';
-        parentDiv.style.zIndex = '-9999';
-      }
+      await waitForCaptureReady(printRef.current);
 
       const canvas = await html2canvas(printRef.current, {
         scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
+        imageTimeout: 15000,
       });
-
-      // Hide it again
-      if (parentDiv) {
-        parentDiv.style.visibility = 'hidden';
-        parentDiv.style.position = 'absolute';
-        parentDiv.style.left = '-9999px';
-        parentDiv.style.zIndex = '';
-      }
 
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
@@ -139,7 +168,7 @@ const FarmerIdentityLabels = () => {
       }
 
       pdf.save(`label-identitas-petani-${new Date().toISOString().split('T')[0]}.pdf`);
-      
+
       toast({
         title: "Berhasil",
         description: "Label berhasil diunduh sebagai PDF",
@@ -156,37 +185,22 @@ const FarmerIdentityLabels = () => {
 
   const handleDownloadJPG = async () => {
     if (!printRef.current) return;
-    
+
     toast({
       title: "Memproses",
       description: "Sedang membuat file JPG...",
     });
 
     try {
-      // Temporarily make the hidden content visible for html2canvas
-      const parentDiv = printRef.current.parentElement;
-      if (parentDiv) {
-        parentDiv.style.visibility = 'visible';
-        parentDiv.style.position = 'fixed';
-        parentDiv.style.left = '0';
-        parentDiv.style.top = '0';
-        parentDiv.style.zIndex = '-9999';
-      }
+      await waitForCaptureReady(printRef.current);
 
       const canvas = await html2canvas(printRef.current, {
         scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
+        imageTimeout: 15000,
       });
-
-      // Hide it again
-      if (parentDiv) {
-        parentDiv.style.visibility = 'hidden';
-        parentDiv.style.position = 'absolute';
-        parentDiv.style.left = '-9999px';
-        parentDiv.style.zIndex = '';
-      }
 
       canvas.toBlob((blob) => {
         if (blob) {
@@ -196,7 +210,7 @@ const FarmerIdentityLabels = () => {
           link.download = `label-identitas-petani-${new Date().toISOString().split('T')[0]}.jpg`;
           link.click();
           URL.revokeObjectURL(url);
-          
+
           toast({
             title: "Berhasil",
             description: "Label berhasil diunduh sebagai JPG",
@@ -440,13 +454,12 @@ const FarmerIdentityLabels = () => {
         </div>
       </div>
 
-      {/* Hidden print content - using visibility:hidden + position:absolute so html2canvas can render */}
-      <div 
-        style={{ 
-          position: 'absolute', 
-          left: '-9999px', 
+      {/* Hidden print content - keep it rendered offscreen so html2canvas can capture it */}
+      <div
+        style={{
+          position: 'fixed',
+          left: '-10000px',
           top: 0,
-          visibility: 'hidden',
           pointerEvents: 'none',
         }}
       >
