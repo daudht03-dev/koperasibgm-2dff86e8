@@ -314,14 +314,14 @@ export const useHarvestEstimation = () => {
       rows.push("ESTIMASI PANEN");
       rows.push(harvestHeader.join(SEP));
       
-      // Harvest data - numbers without quotes for proper spreadsheet recognition
+      // Harvest data - numbers with 1 decimal place for proper spreadsheet recognition
       week.farmersData.forEach(farmer => {
         const row = [
           `"${farmer.farmerName}"`,
           farmer.farmerCode,
           farmer.isOrganic ? "Organik" : "Konvensional",
-          ...farmer.dailyHarvest.map(d => String(d.value).replace(".", ",")), // Use comma as decimal for EU/ID locale
-          String(farmer.totalHarvest).replace(".", ","),
+          ...farmer.dailyHarvest.map(d => d.value.toFixed(1).replace(".", ",")), // Use comma as decimal for EU/ID locale
+          farmer.totalHarvest.toFixed(1).replace(".", ","),
         ];
         rows.push(row.join(SEP));
       });
@@ -330,9 +330,9 @@ export const useHarvestEstimation = () => {
       const harvestTotals = ["TOTAL", "", ""];
       for (let i = 0; i < 7; i++) {
         const dayTotal = week.farmersData.reduce((sum, f) => sum + (f.dailyHarvest[i]?.value || 0), 0);
-        harvestTotals.push(String(Math.round(dayTotal * 10) / 10).replace(".", ","));
+        harvestTotals.push(dayTotal.toFixed(1).replace(".", ","));
       }
-      harvestTotals.push(String(Math.round(week.farmersData.reduce((sum, f) => sum + f.totalHarvest, 0) * 10) / 10).replace(".", ","));
+      harvestTotals.push(week.farmersData.reduce((sum, f) => sum + f.totalHarvest, 0).toFixed(1).replace(".", ","));
       rows.push(harvestTotals.join(SEP));
       rows.push("");
       
@@ -345,14 +345,14 @@ export const useHarvestEstimation = () => {
       rows.push("ESTIMASI PENJUALAN");
       rows.push(salesHeader.join(SEP));
       
-      // Sales data - numbers without quotes
+      // Sales data - numbers with 1 decimal place
       week.farmersData.forEach(farmer => {
         const row = [
           `"${farmer.farmerName}"`,
           farmer.farmerCode,
           farmer.isOrganic ? "Organik" : "Konvensional",
-          ...farmer.dailySales.map(d => String(d.value).replace(".", ",")),
-          String(farmer.totalSales).replace(".", ","),
+          ...farmer.dailySales.map(d => d.value.toFixed(1).replace(".", ",")),
+          farmer.totalSales.toFixed(1).replace(".", ","),
         ];
         rows.push(row.join(SEP));
       });
@@ -361,9 +361,9 @@ export const useHarvestEstimation = () => {
       const salesTotals = ["TOTAL", "", ""];
       for (let i = 0; i < 7; i++) {
         const dayTotal = week.farmersData.reduce((sum, f) => sum + (f.dailySales[i]?.value || 0), 0);
-        salesTotals.push(String(Math.round(dayTotal * 10) / 10).replace(".", ","));
+        salesTotals.push(dayTotal.toFixed(1).replace(".", ","));
       }
-      salesTotals.push(String(Math.round(week.farmersData.reduce((sum, f) => sum + f.totalSales, 0) * 10) / 10).replace(".", ","));
+      salesTotals.push(week.farmersData.reduce((sum, f) => sum + f.totalSales, 0).toFixed(1).replace(".", ","));
       rows.push(salesTotals.join(SEP));
       rows.push("");
       rows.push("");
