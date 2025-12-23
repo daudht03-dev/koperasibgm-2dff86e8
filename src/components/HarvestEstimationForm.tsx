@@ -7,7 +7,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Calculator, Users, Calendar, RefreshCw, Zap, Save, Leaf, Factory } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calculator, Users, Calendar, RefreshCw, Zap, Save, Leaf, Factory, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { FarmerEstimation } from "@/hooks/use-harvest-estimation";
 import { useToast } from "@/hooks/use-toast";
@@ -63,6 +64,8 @@ export const HarvestEstimationForm = ({
 }: HarvestEstimationFormProps) => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"all" | "organic" | "conventional">("all");
+  const [filterSelection, setFilterSelection] = useState<"all" | "selected" | "unselected">("all");
 
   // Load saved settings on mount
   useEffect(() => {
@@ -88,11 +91,27 @@ export const HarvestEstimationForm = ({
     }
   }, []);
 
-  const filteredFarmers = farmers.filter(
-    (f) =>
+  const filteredFarmers = farmers.filter((f) => {
+    // Search filter
+    const matchesSearch =
       f.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      f.kode_petani.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      f.kode_petani.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Status filter (organic/conventional)
+    const matchesStatus =
+      filterStatus === "all" ||
+      (filterStatus === "organic" && f.is_organic !== false) ||
+      (filterStatus === "conventional" && f.is_organic === false);
+    
+    // Selection filter
+    const isCurrentlySelected = selectedFarmers.some((sf) => sf.farmerId === f.id);
+    const matchesSelection =
+      filterSelection === "all" ||
+      (filterSelection === "selected" && isCurrentlySelected) ||
+      (filterSelection === "unselected" && !isCurrentlySelected);
+    
+    return matchesSearch && matchesStatus && matchesSelection;
+  });
 
   const handleFarmerToggle = (farmer: Farmer, checked: boolean) => {
     // Load saved setting for this farmer
@@ -236,11 +255,80 @@ export const HarvestEstimationForm = ({
             </div>
           )}
 
-          <Input
-            placeholder="Cari nama atau kode petani..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+          {/* Filter Controls */}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Input
+              placeholder="Cari nama atau kode petani..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1"
+            />
+            <div className="flex gap-2">
+              <Select value={filterStatus} onValueChange={(value: "all" | "organic" | "conventional") => setFilterStatus(value)}>
+                <SelectTrigger className="w-[130px]">
+                  <Filter className="h-4 w-4 mr-1" />
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Status</SelectItem>
+                  <SelectItem value="organic">
+                    <span className="flex items-center gap-1">
+                      <Leaf className="h-3 w-3 text-green-600" />
+                      Organik
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="conventional">
+                    <span className="flex items-center gap-1">
+                      <Factory className="h-3 w-3 text-orange-500" />
+                      Konvensional
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterSelection} onValueChange={(value: "all" | "selected" | "unselected") => setFilterSelection(value)}>
+                <SelectTrigger className="w-[130px]">
+                  <SelectValue placeholder="Pilihan" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua</SelectItem>
+                  <SelectItem value="selected">Sudah Dipilih</SelectItem>
+                  <SelectItem value="unselected">Belum Dipilih</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Active Filters Badge */}
+          {(filterStatus !== "all" || filterSelection !== "all") && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Filter aktif:</span>
+              {filterStatus !== "all" && (
+                <Badge variant="outline" className="text-xs">
+                  {filterStatus === "organic" ? "Organik" : "Konvensional"}
+                </Badge>
+              )}
+              {filterSelection !== "all" && (
+                <Badge variant="outline" className="text-xs">
+                  {filterSelection === "selected" ? "Sudah Dipilih" : "Belum Dipilih"}
+                </Badge>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 px-2 text-xs"
+                onClick={() => {
+                  setFilterStatus("all");
+                  setFilterSelection("all");
+                }}
+              >
+                Reset
+              </Button>
+            </div>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            Menampilkan {filteredFarmers.length} dari {farmers.length} petani
+          </p>
 
           <ScrollArea className="h-56 border rounded-md p-3">
             <div className="space-y-2">
