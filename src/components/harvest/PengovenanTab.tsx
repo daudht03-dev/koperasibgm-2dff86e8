@@ -286,48 +286,73 @@ export const PengovenanTab = () => {
         is_organic: selectedWeekOption.isOrganic,
       }));
 
-    // Generate lot number from week data
+    // Generate lot number from week data - refetch first to ensure we have latest data
+    await refetch();
     const today = format(new Date(), "yyyyMMdd");
-    const existingLotsToday = proses.filter(p => p.lot_number?.startsWith(`OVEN-${today}`)).length;
+    
+    // Query database directly for accurate count to avoid race condition
+    const { data: existingProses } = await supabase
+      .from("proses_pengeringan")
+      .select("lot_number")
+      .like("lot_number", `OVEN-${today}%`);
+    
+    const existingLotsToday = existingProses?.length || 0;
     const lotNumber = `OVEN-${today}-${String(existingLotsToday + 1).padStart(3, '0')}`;
 
-    // Get or create batch for this week
-    let batchId = '';
-    const existingBatch = batches.find(b => 
-      b.is_organic === selectedWeekOption.isOrganic &&
-      b.status === 'penerimaan'
-    );
-
-    if (existingBatch) {
-      batchId = existingBatch.id;
-    } else {
-      // Create a new batch using the hook's addBatch method
-      const firstFarmer = farmerDetails[0];
-      const newBatch = await addBatch({
-        petani_id: firstFarmer?.petani_id || batches[0]?.petani_id || 'b1111111-1111-1111-1111-111111111111',
-        lahan_id: null,
-        tanggal_penerimaan: format(new Date(), 'yyyy-MM-dd'),
-        jumlah_kg: selectedTotalKg,
-        warna_produk: null,
-        kualitas: 'grade_a' as const,
-        harga_per_kg: null,
-        kondisi: null,
-        is_organic: selectedWeekOption.isOrganic,
-        status: 'pengeringan' as BatchStatus,
-        pengepul_ids: null,
-        detail_petani: farmerDetails as any,
-      });
-
-      if (!newBatch) {
-        toast({
-          title: "Error",
-          description: "Gagal membuat batch",
-          variant: "destructive",
-        });
-        return;
-      }
-      batchId = newBatch.id;
+    // Always create a new batch for each pengovenan process
+    const firstFarmer = farmerDetails[0];
+    
+    // Find a valid petani_id from existing data
+    let validPetaniId = firstFarmer?.petani_id;
+    if (!validPetaniId) {
+      // Try to get from batches
+      const existingBatchWithPetani = batches.find(b => b.petani_id);
+      validPetaniId = existingBatchWithPetani?.petani_id;
     }
+    
+    if (!validPetaniId) {
+      // Query database for a valid petani
+      const { data: petaniData } = await supabase
+        .from("petani")
+        .select("id")
+        .limit(1)
+        .single();
+      validPetaniId = petaniData?.id;
+    }
+
+    if (!validPetaniId) {
+      toast({
+        title: "Error",
+        description: "Tidak ditemukan data petani. Silakan tambah petani terlebih dahulu.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newBatch = await addBatch({
+      petani_id: validPetaniId,
+      lahan_id: null,
+      tanggal_penerimaan: format(new Date(), 'yyyy-MM-dd'),
+      jumlah_kg: selectedTotalKg,
+      warna_produk: null,
+      kualitas: 'grade_a' as const,
+      harga_per_kg: null,
+      kondisi: null,
+      is_organic: selectedWeekOption.isOrganic,
+      status: 'pengeringan' as BatchStatus,
+      pengepul_ids: null,
+      detail_petani: farmerDetails as any,
+    });
+
+    if (!newBatch) {
+      toast({
+        title: "Error",
+        description: "Gagal membuat batch",
+        variant: "destructive",
+      });
+      return;
+    }
+    const batchId = newBatch.id;
 
     await addProses({
       batch_id: batchId,
