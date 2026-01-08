@@ -35,7 +35,8 @@ export const usePengambilanKoperasi = (pengepulId?: string) => {
           *,
           pengepul:pengepul_id(id, nama, kode_pengepul)
         `)
-        .order("tanggal_ambil", { ascending: false });
+        .order("tanggal_ambil", { ascending: false })
+        .limit(10000); // Increase limit to handle large datasets
 
       if (pengepulId) {
         query = query.eq("pengepul_id", pengepulId);
