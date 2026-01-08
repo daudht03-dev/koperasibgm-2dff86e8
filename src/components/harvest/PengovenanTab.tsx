@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, Flame, Leaf, Factory, ChevronDown, ChevronRight, Users, AlertCircle, Calendar, Check, Pencil, Package } from "lucide-react";
+import { Plus, Flame, Leaf, Factory, ChevronDown, ChevronRight, Users, AlertCircle, Calendar, Check, Pencil, Package, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useProsesPengeringan, useBatchPanen, useGudangStok, ProsesPengeringan, PetaniDetailPengeringan, BatchStatus } from "@/hooks/use-batch-panen";
 import { usePengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
 import { TableSkeleton } from "@/components/ui/skeleton-templates";
@@ -45,7 +46,7 @@ interface WeekOption {
 }
 
 export const PengovenanTab = () => {
-  const { proses, loading, addProses, updateProses, refetch } = useProsesPengeringan();
+  const { proses, loading, addProses, updateProses, deleteProses, refetch } = useProsesPengeringan();
   const { batches, addBatch, refetch: refetchBatches } = useBatchPanen();
   const { pengambilanList } = usePengambilanKoperasi();
   const { stok: gudangStok, addStok, refetch: refetchGudang } = useGudangStok();
@@ -273,6 +274,29 @@ export const PengovenanTab = () => {
       return;
     }
 
+    // Validate: Check for duplicate farmer in same week
+    const selectedFarmerIds = Array.from(selectedFarmers);
+    const duplicateFarmers: string[] = [];
+    
+    for (const farmerId of selectedFarmerIds) {
+      // Check if this farmer already exists in processedFarmerIds for this week
+      if (selectedWeekOption.processedFarmerIds.has(farmerId)) {
+        const farmer = selectedWeekOption.farmers.find(f => f.petani_id === farmerId);
+        if (farmer) {
+          duplicateFarmers.push(farmer.petani_nama);
+        }
+      }
+    }
+
+    if (duplicateFarmers.length > 0) {
+      toast({
+        title: "Duplikasi Terdeteksi",
+        description: `Petani berikut sudah diproses di minggu ini: ${duplicateFarmers.join(', ')}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const results = calculateResults;
     
     // Prepare farmer details
@@ -491,6 +515,15 @@ export const PengovenanTab = () => {
       }
       return newSet;
     });
+  };
+
+  const handleDeleteProses = async (prosesItem: ProsesPengeringan) => {
+    // Delete proses and its associated batch
+    const success = await deleteProses(prosesItem.id, prosesItem.batch_id);
+    if (success) {
+      refetch();
+      refetchBatches();
+    }
   };
 
   const getDetailPetani = (p: ProsesPengeringan): PetaniDetailPengeringan[] => {
@@ -904,15 +937,46 @@ export const PengovenanTab = () => {
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
                             {p.status === 'proses' && (
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleCompleteDrying(p)}
-                                className="text-green-600 border-green-600 hover:bg-green-50"
-                              >
-                                <Check className="h-4 w-4 mr-1" />
-                                Selesai
-                              </Button>
+                              <>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleCompleteDrying(p)}
+                                  className="text-green-600 border-green-600 hover:bg-green-50"
+                                >
+                                  <Check className="h-4 w-4 mr-1" />
+                                  Selesai
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon"
+                                      className="h-7 w-7 text-destructive hover:text-destructive"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Hapus Proses Pengovenan?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Proses pengovenan <strong>{p.lot_number}</strong> akan dihapus beserta batch terkait.
+                                        Tindakan ini tidak dapat dibatalkan.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Batal</AlertDialogCancel>
+                                      <AlertDialogAction 
+                                        onClick={() => handleDeleteProses(p)}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        Hapus
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </>
                             )}
                           </div>
                         </TableCell>
