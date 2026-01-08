@@ -410,6 +410,39 @@ export const useProsesPengeringan = (batchId?: string) => {
     }
   };
 
+  const deleteProses = async (id: string, batchId?: string) => {
+    try {
+      const { error } = await supabase
+        .from("proses_pengeringan")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Gagal menghapus proses pengeringan",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      // Also delete associated batch if provided
+      if (batchId) {
+        await supabase.from("batch_panen").delete().eq("id", batchId);
+      }
+
+      setProses(prev => prev.filter(p => p.id !== id));
+      toast({
+        title: "Berhasil",
+        description: "Proses pengeringan berhasil dihapus",
+      });
+      return true;
+    } catch (error) {
+      console.error("Error deleting proses:", error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     fetchProses();
   }, [batchId]);
@@ -419,6 +452,7 @@ export const useProsesPengeringan = (batchId?: string) => {
     loading,
     addProses,
     updateProses,
+    deleteProses,
     refetch: fetchProses,
   };
 };
