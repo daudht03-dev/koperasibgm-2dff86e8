@@ -13,6 +13,13 @@ import { usePenjualanPetani } from "@/hooks/use-penjualan-petani";
 import { usePengepul } from "@/hooks/use-pengepul";
 import { useFarmers } from "@/hooks/use-farmers";
 import { TableSkeleton } from "@/components/ui/skeleton-templates";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { format, addDays } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
@@ -98,6 +105,10 @@ export const BarangKeluarTab = () => {
   
   const [savedEstimations, setSavedEstimations] = useState<SavedEstimation[]>([]);
   const [isLoadingEstimations, setIsLoadingEstimations] = useState(false);
+  
+  // Pagination state
+  const DISPLAY_PAGE_SIZE = 4;
+  const [displayPage, setDisplayPage] = useState(1);
 
   // Load saved estimations
   useEffect(() => {
@@ -433,6 +444,18 @@ export const BarangKeluarTab = () => {
     );
   }, [processedWeeks, filterPengepul]);
 
+  // Pagination for filtered weeks
+  const totalPages = Math.ceil(filteredWeeks.length / DISPLAY_PAGE_SIZE);
+  const paginatedWeeks = useMemo(() => {
+    const startIndex = (displayPage - 1) * DISPLAY_PAGE_SIZE;
+    return filteredWeeks.slice(startIndex, startIndex + DISPLAY_PAGE_SIZE);
+  }, [filteredWeeks, displayPage]);
+
+  // Reset page when filter changes
+  useEffect(() => {
+    setDisplayPage(1);
+  }, [filterPengepul]);
+
   // Render farmer table
   const renderFarmerTable = (
     farmers: FarmerWeekEntry[], 
@@ -689,7 +712,7 @@ export const BarangKeluarTab = () => {
 
       {/* Content based on view mode */}
       {viewMode === 'weekly' ? (
-        // Weekly View - show processed weeks
+        // Weekly View - show processed weeks with pagination
         <div className="space-y-4">
           {filteredWeeks.length === 0 ? (
             <Card>
@@ -700,107 +723,167 @@ export const BarangKeluarTab = () => {
               </CardContent>
             </Card>
           ) : (
-            filteredWeeks.map(week => {
-              const weekKey = `display-${week.estimationId}-${week.weekIndex}`;
-              const isExpanded = expandedWeeks.has(weekKey);
-              const totalKg = week.totalOrganic + week.totalConventional;
+            <>
+              {/* Pagination Info */}
+              <div className="flex items-center justify-between px-2">
+                <p className="text-sm text-muted-foreground">
+                  Menampilkan {((displayPage - 1) * DISPLAY_PAGE_SIZE) + 1} - {Math.min(displayPage * DISPLAY_PAGE_SIZE, filteredWeeks.length)} dari {filteredWeeks.length} minggu
+                </p>
+                {totalPages > 1 && (
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => setDisplayPage(p => Math.max(1, p - 1))}
+                          className={displayPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                      <PaginationItem>
+                        <span className="px-4 py-2 text-sm">
+                          Halaman {displayPage} dari {totalPages}
+                        </span>
+                      </PaginationItem>
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => setDisplayPage(p => Math.min(totalPages, p + 1))}
+                          className={displayPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                )}
+              </div>
 
-              return (
-                <Collapsible key={weekKey} open={isExpanded} onOpenChange={() => toggleWeek(weekKey)}>
-                  <Card>
-                    <CardHeader className="py-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <CollapsibleTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6">
-                              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                            </Button>
-                          </CollapsibleTrigger>
-                          <div>
-                            <p className="font-medium">{week.estimationName} - {week.weekLabel}</p>
-                            <p className="text-sm text-muted-foreground flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {format(new Date(week.startDate), "dd MMM", { locale: localeId })} - {format(new Date(week.endDate), "dd MMM yyyy", { locale: localeId })}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                            <Leaf className="h-3 w-3 mr-1" />
-                            {week.totalOrganic.toLocaleString()} Kg
-                          </Badge>
-                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
-                            <Factory className="h-3 w-3 mr-1" />
-                            {week.totalConventional.toLocaleString()} Kg
-                          </Badge>
-                          <Badge variant="secondary" className="text-lg">
-                            Total: {totalKg.toLocaleString()} Kg
-                          </Badge>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            className="text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDeleteWeek(week)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CollapsibleContent>
-                      <CardContent className="pt-0 space-y-4">
-                        {/* Pengepul Summary */}
-                        {week.pengepulSummary.length > 0 && (
-                          <div className="bg-muted/30 p-3 rounded-lg">
-                            <p className="text-sm font-medium mb-2 flex items-center gap-2">
-                              <Package className="h-4 w-4" />
-                              Rekap per Pengepul:
-                            </p>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                              {week.pengepulSummary.map(p => (
-                                <div key={p.pengepulId} className="bg-background p-2 rounded border">
-                                  <p className="font-medium text-sm">{p.pengepulName}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {p.farmerCount} petani • {p.totalKg.toLocaleString()} Kg
-                                  </p>
-                                  <div className="flex gap-2 mt-1">
-                                    {p.organicKg > 0 && (
-                                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
-                                        Org: {p.organicKg.toLocaleString()}
-                                      </Badge>
-                                    )}
-                                    {p.conventionalKg > 0 && (
-                                      <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700">
-                                        Knv: {p.conventionalKg.toLocaleString()}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
+              {/* Week Cards */}
+              {paginatedWeeks.map(week => {
+                const weekKey = `display-${week.estimationId}-${week.weekIndex}`;
+                const isExpanded = expandedWeeks.has(weekKey);
+                const totalKg = week.totalOrganic + week.totalConventional;
+
+                return (
+                  <Collapsible key={weekKey} open={isExpanded} onOpenChange={() => toggleWeek(weekKey)}>
+                    <Card>
+                      <CardHeader className="py-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <CollapsibleTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-6 w-6">
+                                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                              </Button>
+                            </CollapsibleTrigger>
+                            <div>
+                              <p className="font-medium">{week.estimationName} - {week.weekLabel}</p>
+                              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {format(new Date(week.startDate), "dd MMM", { locale: localeId })} - {format(new Date(week.endDate), "dd MMM yyyy", { locale: localeId })}
+                              </p>
                             </div>
                           </div>
-                        )}
-
-                        <div className="grid grid-cols-2 gap-6">
-                          {renderFarmerTable(
-                            week.farmersOrganic,
-                            "Produk Organik",
-                            <Leaf className="h-4 w-4" />,
-                            "text-green-700"
-                          )}
-                          {renderFarmerTable(
-                            week.farmersConventional,
-                            "Produk Konvensional",
-                            <Factory className="h-4 w-4" />,
-                            "text-orange-700"
-                          )}
+                          <div className="flex items-center gap-4">
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                              <Leaf className="h-3 w-3 mr-1" />
+                              {week.totalOrganic.toLocaleString()} Kg
+                            </Badge>
+                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                              <Factory className="h-3 w-3 mr-1" />
+                              {week.totalConventional.toLocaleString()} Kg
+                            </Badge>
+                            <Badge variant="secondary" className="text-lg">
+                              Total: {totalKg.toLocaleString()} Kg
+                            </Badge>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              className="text-destructive hover:bg-destructive/10"
+                              onClick={() => handleDeleteWeek(week)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                      </CardContent>
-                    </CollapsibleContent>
-                  </Card>
-                </Collapsible>
-              );
-            })
+                      </CardHeader>
+                      <CollapsibleContent>
+                        <CardContent className="pt-0 space-y-4">
+                          {/* Pengepul Summary */}
+                          {week.pengepulSummary.length > 0 && (
+                            <div className="bg-muted/30 p-3 rounded-lg">
+                              <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                                <Package className="h-4 w-4" />
+                                Rekap per Pengepul:
+                              </p>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                {week.pengepulSummary.map(p => (
+                                  <div key={p.pengepulId} className="bg-background p-2 rounded border">
+                                    <p className="font-medium text-sm">{p.pengepulName}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {p.farmerCount} petani • {p.totalKg.toLocaleString()} Kg
+                                    </p>
+                                    <div className="flex gap-2 mt-1">
+                                      {p.organicKg > 0 && (
+                                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                                          Org: {p.organicKg.toLocaleString()}
+                                        </Badge>
+                                      )}
+                                      {p.conventionalKg > 0 && (
+                                        <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700">
+                                          Knv: {p.conventionalKg.toLocaleString()}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-2 gap-6">
+                            {renderFarmerTable(
+                              week.farmersOrganic,
+                              "Produk Organik",
+                              <Leaf className="h-4 w-4" />,
+                              "text-green-700"
+                            )}
+                            {renderFarmerTable(
+                              week.farmersConventional,
+                              "Produk Konvensional",
+                              <Factory className="h-4 w-4" />,
+                              "text-orange-700"
+                            )}
+                          </div>
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
+                );
+              })}
+
+              {/* Bottom Pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-center pt-4">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => setDisplayPage(p => Math.max(1, p - 1))}
+                          className={displayPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                      <PaginationItem>
+                        <span className="px-4 py-2 text-sm">
+                          Halaman {displayPage} dari {totalPages}
+                        </span>
+                      </PaginationItem>
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => setDisplayPage(p => Math.min(totalPages, p + 1))}
+                          className={displayPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
+            </>
           )}
         </div>
       ) : (
