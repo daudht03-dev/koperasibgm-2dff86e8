@@ -1036,10 +1036,6 @@ const HarvestManagement = () => {
                     onGenerate={harvestEstimation.generateEstimation}
                     applyBatchAverage={harvestEstimation.applyBatchAverage}
                     updateFarmerAverage={harvestEstimation.updateFarmerAverage}
-                    farmerAverages={harvestEstimation.farmerAverages}
-                    isLoadingAverages={harvestEstimation.isLoadingAverages}
-                    loadFarmerAverages={harvestEstimation.loadFarmerAverages}
-                    applyLoadedAverages={harvestEstimation.applyLoadedAverages}
                   />
                 )}
               </div>

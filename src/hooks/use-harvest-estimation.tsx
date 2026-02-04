@@ -9,6 +9,7 @@ export interface FarmerEstimation {
   farmerCode: string;
   averageDaily: number;
   isOrganic: boolean;
+  regulasi: string; // "EU", "COR", "EU,COR", or ""
 }
 
 export interface DailyData {
