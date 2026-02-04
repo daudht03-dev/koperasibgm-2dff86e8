@@ -1025,13 +1025,21 @@ const HarvestManagement = () => {
                     setStartDate={harvestEstimation.setStartDate}
                     autoHoliday={harvestEstimation.autoHoliday}
                     setAutoHoliday={harvestEstimation.setAutoHoliday}
+                    holidayMode={harvestEstimation.holidayMode}
+                    setHolidayMode={harvestEstimation.setHolidayMode}
                     manualHolidays={harvestEstimation.manualHolidays}
                     setManualHolidays={harvestEstimation.setManualHolidays}
+                    holidayRates={harvestEstimation.holidayRates}
+                    saveHolidayRates={harvestEstimation.saveHolidayRates}
                     batchAverage={harvestEstimation.batchAverage}
                     setBatchAverage={harvestEstimation.setBatchAverage}
                     onGenerate={harvestEstimation.generateEstimation}
                     applyBatchAverage={harvestEstimation.applyBatchAverage}
                     updateFarmerAverage={harvestEstimation.updateFarmerAverage}
+                    farmerAverages={harvestEstimation.farmerAverages}
+                    isLoadingAverages={harvestEstimation.isLoadingAverages}
+                    loadFarmerAverages={harvestEstimation.loadFarmerAverages}
+                    applyLoadedAverages={harvestEstimation.applyLoadedAverages}
                   />
                 )}
               </div>

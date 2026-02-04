@@ -50,20 +50,54 @@ export interface SavedEstimation {
   pengaturan_petani?: FarmerEstimation[];
 }
 
-// Local storage key for farmer settings
+// Holiday rate configuration type
+export interface HolidayRateConfig {
+  rate0Days: number; // Rate for 0 holiday days (0-100)
+  rate1Day: number;  // Rate for 1 holiday day (0-100)
+  rate2Days: number; // Rate for 2 holiday days (0-100)
+  rate3Days: number; // Rate for 3 holiday days (0-100)
+}
+
+// Holiday mode type
+export type HolidayMode = "auto" | "manual" | "percentage";
+
+// Local storage keys
 const FARMER_SETTINGS_KEY = "harvest_estimation_farmer_settings";
+const HOLIDAY_RATE_KEY = "harvest_estimation_holiday_rates";
+
+// Default holiday rates
+const DEFAULT_HOLIDAY_RATES: HolidayRateConfig = {
+  rate0Days: 80,
+  rate1Day: 15,
+  rate2Days: 10,
+  rate3Days: 5,
+};
 
 export const useHarvestEstimation = () => {
   const { toast } = useToast();
   const [selectedFarmers, setSelectedFarmers] = useState<FarmerEstimation[]>([]);
   const [startDate, setStartDate] = useState<Date>(new Date());
-  const [autoHoliday, setAutoHoliday] = useState(true);
+  const [holidayMode, setHolidayMode] = useState<HolidayMode>("auto");
+  const [autoHoliday, setAutoHoliday] = useState(true); // Backward compatibility
   const [manualHolidays, setManualHolidays] = useState<number[]>([]);
+  const [holidayRates, setHolidayRates] = useState<HolidayRateConfig>(() => {
+    const saved = localStorage.getItem(HOLIDAY_RATE_KEY);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return DEFAULT_HOLIDAY_RATES;
+      }
+    }
+    return DEFAULT_HOLIDAY_RATES;
+  });
   const [weeklyData, setWeeklyData] = useState<WeekData[]>([]);
   const [batchAverage, setBatchAverage] = useState<number>(5);
   const [savedEstimations, setSavedEstimations] = useState<SavedEstimation[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [farmerAverages, setFarmerAverages] = useState<Record<string, number>>({});
+  const [isLoadingAverages, setIsLoadingAverages] = useState(false);
 
   // Generate random number within range
   const randomInRange = (min: number, max: number): number => {
@@ -77,13 +111,119 @@ export const useHarvestEstimation = () => {
     return Math.max(0, Math.round((average + variation) * 10) / 10);
   };
 
-  // Generate random holidays (0-3 days)
-  const generateRandomHolidays = (): number[] => {
-    const holidayCount = Math.floor(Math.random() * 4); // 0-3 days
+  // Generate random holidays (0-3 days) based on mode
+  const generateRandomHolidays = useCallback((): number[] => {
+    let holidayCount: number;
+    
+    if (holidayMode === "percentage") {
+      // Gacha system based on rates
+      const totalRate = holidayRates.rate0Days + holidayRates.rate1Day + holidayRates.rate2Days + holidayRates.rate3Days;
+      const roll = Math.random() * totalRate;
+      
+      if (roll < holidayRates.rate0Days) {
+        holidayCount = 0;
+      } else if (roll < holidayRates.rate0Days + holidayRates.rate1Day) {
+        holidayCount = 1;
+      } else if (roll < holidayRates.rate0Days + holidayRates.rate1Day + holidayRates.rate2Days) {
+        holidayCount = 2;
+      } else {
+        holidayCount = 3;
+      }
+    } else {
+      // Original random (0-3 days with equal probability)
+      holidayCount = Math.floor(Math.random() * 4);
+    }
+    
     const allDays = [0, 1, 2, 3, 4, 5, 6];
     const shuffled = allDays.sort(() => Math.random() - 0.5);
     return shuffled.slice(0, holidayCount).sort((a, b) => a - b);
-  };
+  }, [holidayMode, holidayRates]);
+
+  // Save holiday rates to localStorage
+  const saveHolidayRates = useCallback((rates: HolidayRateConfig) => {
+    setHolidayRates(rates);
+    localStorage.setItem(HOLIDAY_RATE_KEY, JSON.stringify(rates));
+    toast({
+      title: "Pengaturan disimpan",
+      description: "Rate hari libur berhasil disimpan.",
+    });
+  }, [toast]);
+
+  // Load farmer averages from existing penjualan_petani data
+  const loadFarmerAverages = useCallback(async () => {
+    setIsLoadingAverages(true);
+    try {
+      const { data, error } = await supabase
+        .from("penjualan_petani")
+        .select("petani_id, jumlah_kg");
+
+      if (error) throw error;
+
+      // Calculate average per farmer
+      const farmerTotals: Record<string, { total: number; count: number }> = {};
+      
+      data?.forEach((sale) => {
+        if (!farmerTotals[sale.petani_id]) {
+          farmerTotals[sale.petani_id] = { total: 0, count: 0 };
+        }
+        farmerTotals[sale.petani_id].total += Number(sale.jumlah_kg);
+        farmerTotals[sale.petani_id].count += 1;
+      });
+
+      const averages: Record<string, number> = {};
+      Object.entries(farmerTotals).forEach(([farmerId, { total, count }]) => {
+        averages[farmerId] = Math.round((total / count) * 10) / 10;
+      });
+
+      setFarmerAverages(averages);
+      
+      toast({
+        title: "Data dimuat",
+        description: `Berhasil memuat rata-rata panen dari ${Object.keys(averages).length} petani.`,
+      });
+      
+      return averages;
+    } catch (error) {
+      console.error("Error loading farmer averages:", error);
+      toast({
+        title: "Gagal memuat",
+        description: "Terjadi kesalahan saat memuat data rata-rata panen.",
+        variant: "destructive",
+      });
+      return {};
+    } finally {
+      setIsLoadingAverages(false);
+    }
+  }, [toast]);
+
+  // Apply loaded averages to selected farmers
+  const applyLoadedAverages = useCallback(() => {
+    if (Object.keys(farmerAverages).length === 0) {
+      toast({
+        title: "Tidak ada data",
+        description: "Muat data rata-rata panen terlebih dahulu.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    let appliedCount = 0;
+    const updatedFarmers = selectedFarmers.map(farmer => {
+      const avg = farmerAverages[farmer.farmerId];
+      if (avg !== undefined) {
+        appliedCount++;
+        return { ...farmer, averageDaily: avg };
+      }
+      return farmer;
+    });
+
+    setSelectedFarmers(updatedFarmers);
+    
+    toast({
+      title: "Rata-rata diterapkan",
+      description: `Berhasil menerapkan rata-rata ke ${appliedCount} dari ${selectedFarmers.length} petani.`,
+    });
+  }, [farmerAverages, selectedFarmers, toast]);
 
   // Generate sales pattern based on harvest data
   // Pattern: random grouping (single day, 2 days sum, 3 days sum)
@@ -168,30 +308,30 @@ export const useHarvestEstimation = () => {
       endDate: addDays(weekStartDate, 6),
       farmersData,
     };
-  }, []);
+  }, [generateRandomHolidays]);
 
   // Main generate function
   const generateEstimation = useCallback(() => {
     if (selectedFarmers.length === 0) return;
 
-    // Pass manual holidays only if not in auto mode, otherwise each farmer gets random holidays
-    const globalHolidays = autoHoliday ? undefined : manualHolidays;
+    // Pass manual holidays only if in manual mode, otherwise each farmer gets random holidays
+    const globalHolidays = holidayMode === "manual" ? manualHolidays : undefined;
     const weekData = generateWeekData(selectedFarmers, startDate, 0, globalHolidays);
 
     setWeeklyData([weekData]);
-  }, [selectedFarmers, startDate, autoHoliday, manualHolidays, generateWeekData]);
+  }, [selectedFarmers, startDate, holidayMode, manualHolidays, generateWeekData]);
 
   // Refresh all data (both harvest and sales)
   const refreshAll = useCallback(() => {
     if (selectedFarmers.length === 0 || weeklyData.length === 0) return;
 
     const newWeeklyData = weeklyData.map((week) => {
-      const globalHolidays = autoHoliday ? undefined : manualHolidays;
+      const globalHolidays = holidayMode === "manual" ? manualHolidays : undefined;
       return generateWeekData(selectedFarmers, week.startDate, week.weekIndex, globalHolidays);
     });
 
     setWeeklyData(newWeeklyData);
-  }, [selectedFarmers, weeklyData, autoHoliday, manualHolidays, generateWeekData]);
+  }, [selectedFarmers, weeklyData, holidayMode, manualHolidays, generateWeekData]);
 
   // Refresh only harvest data (sales will also be regenerated based on new harvest)
   const refreshHarvest = useCallback(() => {
@@ -223,7 +363,7 @@ export const useHarvestEstimation = () => {
 
     const lastWeek = weeklyData[weeklyData.length - 1];
     const newStartDate = addDays(lastWeek.endDate, 1);
-    const globalHolidays = autoHoliday ? undefined : manualHolidays;
+    const globalHolidays = holidayMode === "manual" ? manualHolidays : undefined;
     const newWeek = generateWeekData(
       selectedFarmers,
       newStartDate,
@@ -232,7 +372,7 @@ export const useHarvestEstimation = () => {
     );
 
     setWeeklyData(prev => [...prev, newWeek]);
-  }, [selectedFarmers, weeklyData, autoHoliday, manualHolidays, generateWeekData]);
+  }, [selectedFarmers, weeklyData, holidayMode, manualHolidays, generateWeekData]);
 
   // Refresh specific week
   const refreshWeek = useCallback((weekIndex: number, type: 'all' | 'harvest' | 'sales') => {
@@ -254,10 +394,10 @@ export const useHarvestEstimation = () => {
       }
 
       // Regenerate entire week for 'all' or 'harvest' - each farmer gets new random holidays
-      const globalHolidays = autoHoliday ? undefined : manualHolidays;
+      const globalHolidays = holidayMode === "manual" ? manualHolidays : undefined;
       return generateWeekData(selectedFarmers, week.startDate, week.weekIndex, globalHolidays);
     }));
-  }, [autoHoliday, manualHolidays, selectedFarmers, generateWeekData]);
+  }, [holidayMode, manualHolidays, selectedFarmers, generateWeekData]);
 
   // Remove week
   const removeWeek = useCallback((weekIndex: number) => {
@@ -536,14 +676,19 @@ export const useHarvestEstimation = () => {
     setStartDate,
     autoHoliday,
     setAutoHoliday,
+    holidayMode,
+    setHolidayMode,
     manualHolidays,
     setManualHolidays,
+    holidayRates,
     weeklyData,
     batchAverage,
     setBatchAverage,
     savedEstimations,
     isSaving,
     isLoading,
+    farmerAverages,
+    isLoadingAverages,
 
     // Actions
     generateEstimation,
@@ -561,5 +706,8 @@ export const useHarvestEstimation = () => {
     loadSavedEstimations,
     loadEstimation,
     deleteEstimation,
+    saveHolidayRates,
+    loadFarmerAverages,
+    applyLoadedAverages,
   };
 };
