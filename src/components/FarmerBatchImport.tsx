@@ -40,6 +40,8 @@ interface ParsedFarmer {
   nama: string;
   alamat: string;
   is_organic: boolean;
+  rata_rata_panen: number | null;
+  regulasi: string; // "EU", "COR", "EU,COR", or ""
   nama_lahan: string;
   lokasi_lahan: string;
   koordinat: string;
@@ -131,9 +133,10 @@ export const FarmerBatchImport = ({
   }, [open]);
 
   const downloadTemplate = () => {
-    const template = `kode_petani;nama;alamat;is_organic
-PK1;Nama Petani 1;Alamat Petani 1;true
-PK2;Nama Petani 2;Alamat Petani 2;false`;
+    const template = `kode_petani;nama;alamat;is_organic;rata_rata_panen;regulasi
+PK1;Nama Petani 1;Alamat Petani 1;true;5.5;EU
+PK2;Nama Petani 2;Alamat Petani 2;false;4.2;COR
+PK3;Nama Petani 3;Alamat Petani 3;true;6.0;EU,COR`;
     
     const blob = new Blob([template], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
@@ -144,7 +147,7 @@ PK2;Nama Petani 2;Alamat Petani 2;false`;
     
     toast({
       title: "Template didownload",
-      description: "Isi data petani pada file CSV lalu upload kembali",
+      description: "Isi data petani dengan rata-rata panen dan regulasi (EU/COR)",
     });
   };
 
@@ -207,6 +210,8 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
     const namaIndex = headers.indexOf("nama");
     const alamatIndex = headers.indexOf("alamat");
     const organicIndex = headers.indexOf("is_organic");
+    const rataRataIndex = headers.indexOf("rata_rata_panen");
+    const regulasiIndex = headers.indexOf("regulasi");
 
     const seenCodes = new Set<string>();
     const parsed: ParsedFarmer[] = [];
@@ -222,6 +227,14 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
       const alamat = alamatIndex >= 0 ? values[alamatIndex]?.trim() || "" : "";
       const is_organic_raw = organicIndex >= 0 ? values[organicIndex]?.trim().toLowerCase() : "true";
       const is_organic = is_organic_raw === "true" || is_organic_raw === "1" || is_organic_raw === "ya" || is_organic_raw === "yes";
+      
+      // Parse rata-rata panen
+      const rataRataRaw = rataRataIndex >= 0 ? values[rataRataIndex]?.trim() || "" : "";
+      const rata_rata_panen = rataRataRaw ? parseFloat(rataRataRaw.replace(",", ".")) : null;
+      
+      // Parse regulasi (EU, COR, EU,COR)
+      const regulasiRaw = regulasiIndex >= 0 ? values[regulasiIndex]?.trim().toUpperCase() || "" : "";
+      const regulasi = regulasiRaw.split(",").map(r => r.trim()).filter(r => r === "EU" || r === "COR").join(",");
 
       let error: string | undefined;
       let isValid = true;
@@ -249,6 +262,8 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
         nama,
         alamat,
         is_organic,
+        rata_rata_panen: isNaN(rata_rata_panen as number) ? null : rata_rata_panen,
+        regulasi,
         nama_lahan: "",
         lokasi_lahan: "",
         koordinat: "",
@@ -803,7 +818,7 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
                 <div className="p-4 border rounded-lg bg-muted/30">
                   <p className="text-sm font-medium mb-2">Download Template Petani</p>
                   <p className="text-xs text-muted-foreground mb-3">
-                    Kolom: kode_petani, nama, alamat, is_organic
+                    Kolom: kode_petani, nama, alamat, is_organic, rata_rata_panen, regulasi
                   </p>
                   <Button variant="outline" onClick={downloadTemplate}>
                     <Download className="h-4 w-4 mr-2" />
@@ -926,6 +941,8 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
                       <TableHead>Nama</TableHead>
                       <TableHead>Alamat</TableHead>
                       <TableHead>Organik</TableHead>
+                      <TableHead>Rata-rata</TableHead>
+                      <TableHead>Regulasi</TableHead>
                       <TableHead>Keterangan</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -961,6 +978,21 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
                           ) : (
                             <Badge variant="secondary" className="text-xs">Konv.</Badge>
                           )}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {farmer.rata_rata_panen !== null ? `${farmer.rata_rata_panen} kg` : "-"}
+                        </TableCell>
+                        <TableCell>
+                          {farmer.regulasi ? (
+                            <div className="flex gap-1 flex-wrap">
+                              {farmer.regulasi.includes("EU") && (
+                                <Badge variant="outline" className="text-xs bg-blue-100 text-blue-800 border-blue-300">EU</Badge>
+                              )}
+                              {farmer.regulasi.includes("COR") && (
+                                <Badge variant="outline" className="text-xs bg-amber-100 text-amber-800 border-amber-300">COR</Badge>
+                              )}
+                            </div>
+                          ) : "-"}
                         </TableCell>
                         <TableCell className="text-destructive text-xs">
                           {farmer.error || (farmer.isUpdate ? "Update" : "")}
