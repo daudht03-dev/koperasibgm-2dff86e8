@@ -4,14 +4,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calculator, Users, Calendar, RefreshCw, Zap, Save, Leaf, Factory, Filter } from "lucide-react";
+import { Calculator, Users, Calendar, RefreshCw, Zap, Save, Leaf, Factory, Filter, Download, Settings2, Percent, Dices, Hand } from "lucide-react";
 import { format } from "date-fns";
-import { FarmerEstimation } from "@/hooks/use-harvest-estimation";
+import { FarmerEstimation, HolidayMode, HolidayRateConfig } from "@/hooks/use-harvest-estimation";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Slider } from "@/components/ui/slider";
 
 interface Farmer {
   id: string;
@@ -28,13 +37,21 @@ interface HarvestEstimationFormProps {
   setStartDate: (date: Date) => void;
   autoHoliday: boolean;
   setAutoHoliday: (auto: boolean) => void;
+  holidayMode: HolidayMode;
+  setHolidayMode: (mode: HolidayMode) => void;
   manualHolidays: number[];
   setManualHolidays: (holidays: number[]) => void;
+  holidayRates: HolidayRateConfig;
+  saveHolidayRates: (rates: HolidayRateConfig) => void;
   batchAverage: number;
   setBatchAverage: (avg: number) => void;
   onGenerate: () => void;
   applyBatchAverage: () => void;
   updateFarmerAverage: (farmerId: string, average: number) => void;
+  farmerAverages: Record<string, number>;
+  isLoadingAverages: boolean;
+  loadFarmerAverages: () => Promise<Record<string, number>>;
+  applyLoadedAverages: () => void;
 }
 
 const dayNames = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
@@ -54,18 +71,28 @@ export const HarvestEstimationForm = ({
   setStartDate,
   autoHoliday,
   setAutoHoliday,
+  holidayMode,
+  setHolidayMode,
   manualHolidays,
   setManualHolidays,
+  holidayRates,
+  saveHolidayRates,
   batchAverage,
   setBatchAverage,
   onGenerate,
   applyBatchAverage,
   updateFarmerAverage,
+  farmerAverages,
+  isLoadingAverages,
+  loadFarmerAverages,
+  applyLoadedAverages,
 }: HarvestEstimationFormProps) => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "organic" | "conventional">("all");
   const [filterSelection, setFilterSelection] = useState<"all" | "selected" | "unselected">("all");
+  const [rateDialogOpen, setRateDialogOpen] = useState(false);
+  const [tempRates, setTempRates] = useState<HolidayRateConfig>(holidayRates);
 
   // Load saved settings on mount
   useEffect(() => {
@@ -404,7 +431,43 @@ export const HarvestEstimationForm = ({
 
         {/* Batch Average Input */}
         <div className="space-y-3">
-          <Label>Rata-rata Panen Harian (Batch)</Label>
+          <Label>Rata-rata Panen Harian</Label>
+          
+          {/* Import from existing data */}
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadFarmerAverages}
+              disabled={isLoadingAverages}
+            >
+              {isLoadingAverages ? (
+                <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-1" />
+              )}
+              Muat dari Data Penjualan
+            </Button>
+            {Object.keys(farmerAverages).length > 0 && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={applyLoadedAverages}
+                disabled={selectedFarmers.length === 0}
+              >
+                <Zap className="h-4 w-4 mr-1" />
+                Terapkan ({Object.keys(farmerAverages).length} petani)
+              </Button>
+            )}
+          </div>
+          
+          {Object.keys(farmerAverages).length > 0 && (
+            <p className="text-xs text-green-600">
+              ✓ Data rata-rata panen dari {Object.keys(farmerAverages).length} petani siap digunakan
+            </p>
+          )}
+
+          {/* Manual batch input */}
           <div className="flex gap-2">
             <Input
               type="number"
@@ -421,7 +484,7 @@ export const HarvestEstimationForm = ({
               disabled={selectedFarmers.length === 0}
             >
               <Zap className="h-4 w-4 mr-1" />
-              Terapkan ke Semua
+              Terapkan Manual
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
@@ -460,19 +523,159 @@ export const HarvestEstimationForm = ({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <Label>Mode Hari Libur</Label>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                {autoHoliday ? "Otomatis" : "Manual"}
-              </span>
-              <Switch checked={!autoHoliday} onCheckedChange={() => setAutoHoliday(!autoHoliday)} />
-            </div>
+          </div>
+          
+          {/* Mode Selection */}
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant={holidayMode === "auto" ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setHolidayMode("auto");
+                setAutoHoliday(true);
+              }}
+            >
+              <Dices className="h-4 w-4 mr-1" />
+              Otomatis
+            </Button>
+            <Button
+              variant={holidayMode === "percentage" ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setHolidayMode("percentage");
+                setAutoHoliday(true);
+              }}
+            >
+              <Percent className="h-4 w-4 mr-1" />
+              Persentase
+            </Button>
+            <Button
+              variant={holidayMode === "manual" ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setHolidayMode("manual");
+                setAutoHoliday(false);
+              }}
+            >
+              <Hand className="h-4 w-4 mr-1" />
+              Manual
+            </Button>
           </div>
 
-          {autoHoliday ? (
+          {/* Mode Description */}
+          {holidayMode === "auto" && (
             <p className="text-xs text-muted-foreground">
-              Sistem akan memilih 0-3 hari libur secara acak
+              Sistem akan memilih 0-3 hari libur secara acak dengan probabilitas sama (25% masing-masing)
             </p>
-          ) : (
+          )}
+
+          {holidayMode === "percentage" && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Hari libur dipilih berdasarkan rate kemunculan yang bisa diatur
+              </p>
+              <div className="flex gap-2 flex-wrap text-xs">
+                <Badge variant="outline">0 hari: {holidayRates.rate0Days}%</Badge>
+                <Badge variant="outline">1 hari: {holidayRates.rate1Day}%</Badge>
+                <Badge variant="outline">2 hari: {holidayRates.rate2Days}%</Badge>
+                <Badge variant="outline">3 hari: {holidayRates.rate3Days}%</Badge>
+              </div>
+              <Dialog open={rateDialogOpen} onOpenChange={setRateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setTempRates(holidayRates)}
+                  >
+                    <Settings2 className="h-4 w-4 mr-1" />
+                    Atur Rate
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Pengaturan Rate Hari Libur</DialogTitle>
+                    <DialogDescription>
+                      Atur persentase kemunculan jumlah hari libur (seperti sistem gacha)
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-6 py-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label>Libur 0 hari</Label>
+                        <span className="text-sm font-medium">{tempRates.rate0Days}%</span>
+                      </div>
+                      <Slider
+                        value={[tempRates.rate0Days]}
+                        onValueChange={([value]) => setTempRates({ ...tempRates, rate0Days: value })}
+                        min={0}
+                        max={100}
+                        step={1}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label>Libur 1 hari</Label>
+                        <span className="text-sm font-medium">{tempRates.rate1Day}%</span>
+                      </div>
+                      <Slider
+                        value={[tempRates.rate1Day]}
+                        onValueChange={([value]) => setTempRates({ ...tempRates, rate1Day: value })}
+                        min={0}
+                        max={100}
+                        step={1}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label>Libur 2 hari</Label>
+                        <span className="text-sm font-medium">{tempRates.rate2Days}%</span>
+                      </div>
+                      <Slider
+                        value={[tempRates.rate2Days]}
+                        onValueChange={([value]) => setTempRates({ ...tempRates, rate2Days: value })}
+                        min={0}
+                        max={100}
+                        step={1}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label>Libur 3 hari</Label>
+                        <span className="text-sm font-medium">{tempRates.rate3Days}%</span>
+                      </div>
+                      <Slider
+                        value={[tempRates.rate3Days]}
+                        onValueChange={([value]) => setTempRates({ ...tempRates, rate3Days: value })}
+                        min={0}
+                        max={100}
+                        step={1}
+                      />
+                    </div>
+                    <div className="p-3 bg-muted rounded-md">
+                      <p className="text-xs text-muted-foreground">
+                        <strong>Catatan:</strong> Nilai tidak perlu berjumlah 100%. 
+                        Sistem akan menormalisasi secara proporsional. 
+                        Contoh: 80:15:10:5 akan menjadi ~73%:14%:9%:4%
+                      </p>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setRateDialogOpen(false)}>
+                      Batal
+                    </Button>
+                    <Button onClick={() => {
+                      saveHolidayRates(tempRates);
+                      setRateDialogOpen(false);
+                    }}>
+                      Simpan
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
+
+          {holidayMode === "manual" && (
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground">
                 Pilih hari libur (maksimal 3 hari)
