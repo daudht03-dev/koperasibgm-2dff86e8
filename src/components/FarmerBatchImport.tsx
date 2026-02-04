@@ -556,6 +556,8 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
               nama: farmer.nama,
               alamat: farmer.alamat || null,
               is_organic: farmer.is_organic,
+              rata_rata_panen: farmer.rata_rata_panen,
+              regulasi: farmer.regulasi || null,
               pengepul_id: selectedPengepulId && selectedPengepulId !== "none" ? selectedPengepulId : null,
             })
             .eq("id", farmer.existingId);
@@ -571,6 +573,8 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
               nama: farmer.nama,
               alamat: farmer.alamat || null,
               is_organic: farmer.is_organic,
+              rata_rata_panen: farmer.rata_rata_panen,
+              regulasi: farmer.regulasi || null,
               pengepul_id: selectedPengepulId && selectedPengepulId !== "none" ? selectedPengepulId : null,
             });
 

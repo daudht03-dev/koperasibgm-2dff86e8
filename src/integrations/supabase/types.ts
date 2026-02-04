@@ -663,6 +663,8 @@ export type Database = {
           nama: string
           no_telepon: string | null
           pengepul_id: string | null
+          rata_rata_panen: number | null
+          regulasi: string | null
           status: string | null
           tanggal_bergabung: string | null
           updated_at: string | null
@@ -678,6 +680,8 @@ export type Database = {
           nama: string
           no_telepon?: string | null
           pengepul_id?: string | null
+          rata_rata_panen?: number | null
+          regulasi?: string | null
           status?: string | null
           tanggal_bergabung?: string | null
           updated_at?: string | null
@@ -693,6 +697,8 @@ export type Database = {
           nama?: string
           no_telepon?: string | null
           pengepul_id?: string | null
+          rata_rata_panen?: number | null
+          regulasi?: string | null
           status?: string | null
           tanggal_bergabung?: string | null
           updated_at?: string | null

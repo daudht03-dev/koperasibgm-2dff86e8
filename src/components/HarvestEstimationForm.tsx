@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calculator, Users, Calendar, RefreshCw, Zap, Save, Leaf, Factory, Filter, Download, Settings2, Percent, Dices, Hand } from "lucide-react";
+import { Calculator, Users, Calendar, RefreshCw, Zap, Save, Leaf, Factory, Filter, Settings2, Percent, Dices, Hand } from "lucide-react";
 import { format } from "date-fns";
 import { FarmerEstimation, HolidayMode, HolidayRateConfig } from "@/hooks/use-harvest-estimation";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +27,8 @@ interface Farmer {
   nama: string;
   kode_petani: string;
   is_organic?: boolean;
+  rata_rata_panen?: number | null;
+  regulasi?: string | null;
 }
 
 interface HarvestEstimationFormProps {
@@ -48,10 +50,6 @@ interface HarvestEstimationFormProps {
   onGenerate: () => void;
   applyBatchAverage: () => void;
   updateFarmerAverage: (farmerId: string, average: number) => void;
-  farmerAverages: Record<string, number>;
-  isLoadingAverages: boolean;
-  loadFarmerAverages: () => Promise<Record<string, number>>;
-  applyLoadedAverages: () => void;
 }
 
 const dayNames = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
@@ -61,6 +59,7 @@ interface SavedFarmerSetting {
   farmerId: string;
   averageDaily: number;
   isOrganic: boolean;
+  regulasi: string;
 }
 
 export const HarvestEstimationForm = ({
@@ -82,10 +81,6 @@ export const HarvestEstimationForm = ({
   onGenerate,
   applyBatchAverage,
   updateFarmerAverage,
-  farmerAverages,
-  isLoadingAverages,
-  loadFarmerAverages,
-  applyLoadedAverages,
 }: HarvestEstimationFormProps) => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -107,6 +102,7 @@ export const HarvestEstimationForm = ({
               ...farmer,
               averageDaily: setting.averageDaily,
               isOrganic: setting.isOrganic,
+              regulasi: setting.regulasi || farmer.regulasi || "",
             };
           }
           return farmer;
@@ -158,8 +154,9 @@ export const HarvestEstimationForm = ({
           farmerId: farmer.id,
           farmerName: farmer.nama,
           farmerCode: farmer.kode_petani,
-          averageDaily: savedSetting?.averageDaily ?? batchAverage,
+          averageDaily: savedSetting?.averageDaily ?? (farmer.rata_rata_panen ?? batchAverage),
           isOrganic: savedSetting?.isOrganic ?? (farmer.is_organic !== false),
+          regulasi: savedSetting?.regulasi ?? (farmer.regulasi || ""),
         },
       ]);
     } else {
@@ -187,8 +184,9 @@ export const HarvestEstimationForm = ({
             farmerId: f.id,
             farmerName: f.nama,
             farmerCode: f.kode_petani,
-            averageDaily: savedSetting?.averageDaily ?? batchAverage,
+            averageDaily: savedSetting?.averageDaily ?? (f.rata_rata_panen ?? batchAverage),
             isOrganic: savedSetting?.isOrganic ?? (f.is_organic !== false),
+            regulasi: savedSetting?.regulasi ?? (f.regulasi || ""),
           };
         })
       );
@@ -224,11 +222,37 @@ export const HarvestEstimationForm = ({
     );
   };
 
+  const getSelectedFarmerRegulasi = (farmerId: string) => {
+    const farmer = selectedFarmers.find((f) => f.farmerId === farmerId);
+    return farmer?.regulasi || "";
+  };
+
+  const toggleFarmerRegulasi = (farmerId: string, reg: "EU" | "COR") => {
+    setSelectedFarmers(
+      selectedFarmers.map((f) => {
+        if (f.farmerId !== farmerId) return f;
+        const current = f.regulasi || "";
+        const parts = current.split(",").filter(r => r.trim() !== "");
+        
+        if (parts.includes(reg)) {
+          // Remove
+          const newParts = parts.filter(r => r !== reg);
+          return { ...f, regulasi: newParts.join(",") };
+        } else {
+          // Add
+          const newParts = [...parts, reg].sort();
+          return { ...f, regulasi: newParts.join(",") };
+        }
+      })
+    );
+  };
+
   const saveSettings = () => {
     const settings: SavedFarmerSetting[] = selectedFarmers.map((f) => ({
       farmerId: f.farmerId,
       averageDaily: f.averageDaily,
       isOrganic: f.isOrganic,
+      regulasi: f.regulasi,
     }));
     localStorage.setItem(FARMER_SETTINGS_KEY, JSON.stringify(settings));
     toast({
@@ -240,6 +264,8 @@ export const HarvestEstimationForm = ({
   // Count organic and conventional farmers
   const organicCount = selectedFarmers.filter((f) => f.isOrganic).length;
   const conventionalCount = selectedFarmers.filter((f) => !f.isOrganic).length;
+  const euCount = selectedFarmers.filter((f) => f.regulasi?.includes("EU")).length;
+  const corCount = selectedFarmers.filter((f) => f.regulasi?.includes("COR")).length;
 
   return (
     <Card className="border-primary/20">
@@ -279,6 +305,16 @@ export const HarvestEstimationForm = ({
                 <Factory className="h-3 w-3 mr-1" />
                 Konvensional: {conventionalCount}
               </Badge>
+              {euCount > 0 && (
+                <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                  EU: {euCount}
+                </Badge>
+              )}
+              {corCount > 0 && (
+                <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
+                  COR: {corCount}
+                </Badge>
+              )}
             </div>
           )}
 
@@ -379,11 +415,41 @@ export const HarvestEstimationForm = ({
                     </div>
                   </div>
                   {isSelected(farmer.id) && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Regulasi toggles */}
+                      <div className="flex gap-1">
+                        <Button
+                          variant={getSelectedFarmerRegulasi(farmer.id).includes("EU") ? "default" : "outline"}
+                          size="sm"
+                          className={`h-6 px-2 text-xs ${
+                            getSelectedFarmerRegulasi(farmer.id).includes("EU")
+                              ? "bg-blue-600 hover:bg-blue-700"
+                              : ""
+                          }`}
+                          onClick={() => toggleFarmerRegulasi(farmer.id, "EU")}
+                          title="Klik untuk toggle EU"
+                        >
+                          EU
+                        </Button>
+                        <Button
+                          variant={getSelectedFarmerRegulasi(farmer.id).includes("COR") ? "default" : "outline"}
+                          size="sm"
+                          className={`h-6 px-2 text-xs ${
+                            getSelectedFarmerRegulasi(farmer.id).includes("COR")
+                              ? "bg-amber-600 hover:bg-amber-700"
+                              : ""
+                          }`}
+                          onClick={() => toggleFarmerRegulasi(farmer.id, "COR")}
+                          title="Klik untuk toggle COR"
+                        >
+                          COR
+                        </Button>
+                      </div>
+                      {/* Organic toggle */}
                       <Button
                         variant={getSelectedFarmerOrganic(farmer.id) ? "default" : "secondary"}
                         size="sm"
-                        className={`h-7 px-2 text-xs ${
+                        className={`h-6 px-2 text-xs ${
                           getSelectedFarmerOrganic(farmer.id)
                             ? "bg-green-600 hover:bg-green-700"
                             : "bg-orange-500 hover:bg-orange-600 text-white"
@@ -405,11 +471,12 @@ export const HarvestEstimationForm = ({
                           </>
                         )}
                       </Button>
+                      {/* Average input */}
                       <Input
                         type="number"
                         step="0.1"
                         min="0"
-                        className="w-16 h-7 text-xs"
+                        className="w-16 h-6 text-xs"
                         value={getSelectedFarmerAverage(farmer.id)}
                         onChange={(e) =>
                           updateFarmerAverage(farmer.id, parseFloat(e.target.value) || 0)
@@ -433,39 +500,11 @@ export const HarvestEstimationForm = ({
         <div className="space-y-3">
           <Label>Rata-rata Panen Harian</Label>
           
-          {/* Import from existing data */}
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadFarmerAverages}
-              disabled={isLoadingAverages}
-            >
-              {isLoadingAverages ? (
-                <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4 mr-1" />
-              )}
-              Muat dari Data Penjualan
-            </Button>
-            {Object.keys(farmerAverages).length > 0 && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={applyLoadedAverages}
-                disabled={selectedFarmers.length === 0}
-              >
-                <Zap className="h-4 w-4 mr-1" />
-                Terapkan ({Object.keys(farmerAverages).length} petani)
-              </Button>
-            )}
-          </div>
-          
-          {Object.keys(farmerAverages).length > 0 && (
-            <p className="text-xs text-green-600">
-              ✓ Data rata-rata panen dari {Object.keys(farmerAverages).length} petani siap digunakan
-            </p>
-          )}
+          {/* Info about imported averages */}
+          <p className="text-xs text-muted-foreground">
+            Rata-rata panen otomatis diambil dari data petani (kolom rata_rata_panen di CSV import). 
+            Anda juga bisa input manual per petani atau terapkan nilai batch di bawah.
+          </p>
 
           {/* Manual batch input */}
           <div className="flex gap-2">
