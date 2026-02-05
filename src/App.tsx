@@ -31,6 +31,7 @@ const HarvestManagement = lazy(() => import("./pages/HarvestManagement"));
 const BatchDetail = lazy(() => import("./pages/BatchDetail"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Install = lazy(() => import("./pages/Install"));
+const Changelog = lazy(() => import("./pages/Changelog"));
 
 const queryClient = new QueryClient();
 
@@ -168,6 +169,7 @@ const AppContent = () => {
               </ProtectedRoute>
             } 
           />
+          <Route path="/changelog" element={<Changelog />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </PageTransition>
