@@ -6,6 +6,7 @@
  
  const PWAUpdatePrompt = () => {
    const [showPrompt, setShowPrompt] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
  
    const {
      needRefresh: [needRefresh, setNeedRefresh],
@@ -14,11 +15,14 @@
      onRegistered(registration) {
        console.log("SW Registered:", registration);
        
-       // Check for updates every 60 seconds
+      // Check for updates every 30 seconds for faster detection
        if (registration) {
+        // Immediate check on registration
+        registration.update();
+        
          setInterval(() => {
            registration.update();
-         }, 60 * 1000);
+        }, 30 * 1000);
        }
      },
      onRegisterError(error) {
@@ -32,7 +36,7 @@
        // Also show a toast notification
        toast.info("Versi baru tersedia!", {
          description: "Klik untuk memperbarui aplikasi",
-         duration: 10000,
+        duration: 15000,
          action: {
            label: "Update",
            onClick: () => handleUpdate(),
@@ -41,8 +45,21 @@
      }
    }, [needRefresh]);
  
-   const handleUpdate = () => {
-     updateServiceWorker(true);
+  const handleUpdate = async () => {
+    setIsUpdating(true);
+    try {
+      await updateServiceWorker(true);
+      // Force reload after a short delay to ensure SW is activated
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    } catch (error) {
+      console.error("Failed to update:", error);
+      setIsUpdating(false);
+      toast.error("Gagal memperbarui", {
+        description: "Silakan refresh halaman secara manual",
+      });
+    }
    };
  
    const handleClose = () => {
@@ -58,43 +75,48 @@
          <div className="flex items-start justify-between gap-3">
            <div className="flex items-center gap-3">
              <div className="bg-primary/10 p-2 rounded-lg">
-               <RefreshCw className="h-5 w-5 text-primary" />
+              <RefreshCw className={`h-5 w-5 text-primary ${isUpdating ? 'animate-spin' : ''}`} />
              </div>
              <div>
                <h4 className="font-semibold text-foreground text-sm">
-                 Pembaruan Tersedia
+                {isUpdating ? 'Memperbarui...' : 'Pembaruan Tersedia'}
                </h4>
                <p className="text-xs text-muted-foreground">
-                 Versi baru aplikasi siap diinstal
+                {isUpdating ? 'Mohon tunggu sebentar' : 'Versi baru aplikasi siap diinstal'}
                </p>
              </div>
            </div>
-           <Button
-             variant="ghost"
-             size="icon"
-             className="h-8 w-8 shrink-0"
-             onClick={handleClose}
-           >
-             <X className="h-4 w-4" />
-           </Button>
+          {!isUpdating && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={handleClose}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
          </div>
  
          <div className="flex gap-2">
+          {!isUpdating && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={handleClose}
+            >
+              Nanti
+            </Button>
+          )}
            <Button
-             variant="outline"
              size="sm"
-             className="flex-1"
-             onClick={handleClose}
-           >
-             Nanti
-           </Button>
-           <Button
-             size="sm"
-             className="flex-1 bg-gradient-organic shadow-organic"
+            className={`${isUpdating ? 'w-full' : 'flex-1'} bg-gradient-organic shadow-organic`}
              onClick={handleUpdate}
+            disabled={isUpdating}
            >
-             <RefreshCw className="h-4 w-4 mr-2" />
-             Update Sekarang
+            <RefreshCw className={`h-4 w-4 mr-2 ${isUpdating ? 'animate-spin' : ''}`} />
+            {isUpdating ? 'Memperbarui...' : 'Update Sekarang'}
            </Button>
          </div>
        </div>
