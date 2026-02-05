@@ -11,6 +11,7 @@ import { Calculator, Users, Calendar, RefreshCw, Zap, Save, Leaf, Factory, Filte
 import { format } from "date-fns";
 import { FarmerEstimation, HolidayMode, HolidayRateConfig } from "@/hooks/use-harvest-estimation";
 import { useToast } from "@/hooks/use-toast";
+import { naturalSort } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +55,15 @@ interface HarvestEstimationFormProps {
 
 const dayNames = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 const FARMER_SETTINGS_KEY = "harvest_estimation_farmer_settings";
+
+// Sort farmers by kode_petani using natural alphanumeric sorting
+const sortFarmersByCode = <T extends { kode_petani?: string; farmerCode?: string }>(farmers: T[]): T[] => {
+  return [...farmers].sort((a, b) => {
+    const codeA = a.kode_petani || a.farmerCode || "";
+    const codeB = b.kode_petani || b.farmerCode || "";
+    return naturalSort(codeA, codeB);
+  });
+};
 
 interface SavedFarmerSetting {
   farmerId: string;
@@ -135,6 +145,12 @@ export const HarvestEstimationForm = ({
     
     return matchesSearch && matchesStatus && matchesSelection;
   });
+
+  // Sort filtered farmers by kode_petani
+  const sortedFilteredFarmers = sortFarmersByCode(filteredFarmers);
+
+  // Sort selected farmers by farmerCode for display
+  const sortedSelectedFarmers = sortFarmersByCode(selectedFarmers);
 
   const handleFarmerToggle = (farmer: Farmer, checked: boolean) => {
     // Load saved setting for this farmer
@@ -390,12 +406,12 @@ export const HarvestEstimationForm = ({
           )}
 
           <p className="text-xs text-muted-foreground">
-            Menampilkan {filteredFarmers.length} dari {farmers.length} petani
+            Menampilkan {sortedFilteredFarmers.length} dari {farmers.length} petani (urut kode)
           </p>
 
           <ScrollArea className="h-56 border rounded-md p-3">
             <div className="space-y-2">
-              {filteredFarmers.map((farmer) => (
+              {sortedFilteredFarmers.map((farmer) => (
                 <div
                   key={farmer.id}
                   className="flex items-center justify-between gap-2 p-2 rounded-md hover:bg-muted/50"
@@ -487,7 +503,7 @@ export const HarvestEstimationForm = ({
                   )}
                 </div>
               ))}
-              {filteredFarmers.length === 0 && (
+              {sortedFilteredFarmers.length === 0 && (
                 <p className="text-center text-muted-foreground py-4">
                   Tidak ada petani ditemukan
                 </p>

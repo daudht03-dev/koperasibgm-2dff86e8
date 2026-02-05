@@ -11,6 +11,12 @@ import { RefreshCw, Plus, Trash2, TrendingUp, Leaf, Download, Save, FolderOpen, 
 import { format, addDays } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { WeekData, SavedEstimation } from "@/hooks/use-harvest-estimation";
+import { naturalSort } from "@/lib/utils";
+
+// Sort farmers data by farmerCode using natural alphanumeric sorting
+const sortFarmersDataByCode = <T extends { farmerCode: string }>(farmers: T[]): T[] => {
+  return [...farmers].sort((a, b) => naturalSort(a.farmerCode, b.farmerCode));
+};
 
 interface HarvestEstimationTableProps {
   weeklyData: WeekData[];
@@ -365,7 +371,7 @@ export const HarvestEstimationTable = ({
                     <TableHeader>
                       <TableRow>
                         <TableHead className="sticky left-0 bg-background z-10 min-w-[100px]">
-                          Petani
+                          Petani ↓
                         </TableHead>
                         <TableHead className="sticky left-[100px] bg-background z-10 min-w-[70px]">
                           Kode
@@ -395,7 +401,7 @@ export const HarvestEstimationTable = ({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {week.farmersData.map((farmer) => (
+                      {sortFarmersDataByCode(week.farmersData).map((farmer) => (
                         <TableRow key={farmer.farmerId}>
                           <TableCell className="sticky left-0 bg-background z-10 font-medium">
                             <div className="flex items-center gap-1">
@@ -481,7 +487,7 @@ export const HarvestEstimationTable = ({
                     <TableHeader>
                       <TableRow>
                         <TableHead className="sticky left-0 bg-background z-10 min-w-[100px]">
-                          Petani
+                          Petani ↓
                         </TableHead>
                         <TableHead className="sticky left-[100px] bg-background z-10 min-w-[70px]">
                           Kode
@@ -508,7 +514,7 @@ export const HarvestEstimationTable = ({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {week.farmersData.map((farmer) => (
+                      {sortFarmersDataByCode(week.farmersData).map((farmer) => (
                         <TableRow key={farmer.farmerId}>
                           <TableCell className="sticky left-0 bg-background z-10 font-medium">
                             <div className="flex items-center gap-1">
