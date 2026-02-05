@@ -22,7 +22,7 @@ import { useProducts } from "@/hooks/use-products";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { useHarvests } from "@/hooks/use-harvests";
 import { useNavigate, Link } from "react-router-dom";
-import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode, Printer, Upload, Map as MapIcon, ArrowUpDown, ArrowUp, ArrowDown, Search } from "lucide-react";
+import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode, Printer, Upload, Map as MapIcon, ArrowUpDown, ArrowUp, ArrowDown, Search, History } from "lucide-react";
 import { LandMapTab } from "@/components/LandMapTab";
 import { FarmerBatchImport } from "@/components/FarmerBatchImport";
 import { toast } from "@/hooks/use-toast";
@@ -626,6 +626,24 @@ const AdminDashboard = () => {
                 <div className="text-left">
                   <p className="font-semibold text-foreground">Label Identitas Petani</p>
                   <p className="text-sm text-muted-foreground">Cetak label untuk petani</p>
+                </div>
+              </div>
+            </Link>
+          </Button>
+
+          <Button
+            variant="outline"
+            asChild
+            className="justify-start h-auto p-4 border-organic-green/20 hover:bg-organic-green/5"
+          >
+            <Link to="/changelog">
+              <div className="flex items-center space-x-3">
+                <div className="bg-gradient-organic p-3 rounded-lg">
+                  <History className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-foreground">Changelog</p>
+                  <p className="text-sm text-muted-foreground">Lihat riwayat perubahan</p>
                 </div>
               </div>
             </Link>
