@@ -89,14 +89,28 @@ export const LandMapPreview = ({
           </div>
         `;
 
-        // Create popup
-        const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-          <div class="p-2">
-            <p class="font-bold text-sm">${coord.label}</p>
-            ${coord.lokasi ? `<p class="text-xs text-gray-600">${coord.lokasi}</p>` : ""}
-            <p class="text-xs text-gray-500">${coord.lat.toFixed(6)}, ${coord.lng.toFixed(6)}</p>
-          </div>
-        `);
+        // Create popup using DOM elements to prevent XSS
+        const popupDiv = document.createElement("div");
+        popupDiv.className = "p-2";
+        
+        const labelEl = document.createElement("p");
+        labelEl.className = "font-bold text-sm";
+        labelEl.textContent = coord.label;
+        popupDiv.appendChild(labelEl);
+        
+        if (coord.lokasi) {
+          const lokasiEl = document.createElement("p");
+          lokasiEl.className = "text-xs text-gray-600";
+          lokasiEl.textContent = coord.lokasi;
+          popupDiv.appendChild(lokasiEl);
+        }
+        
+        const coordsEl = document.createElement("p");
+        coordsEl.className = "text-xs text-gray-500";
+        coordsEl.textContent = `${coord.lat.toFixed(6)}, ${coord.lng.toFixed(6)}`;
+        popupDiv.appendChild(coordsEl);
+        
+        const popup = new mapboxgl.Popup({ offset: 25 }).setDOMContent(popupDiv);
 
         // Add marker
         const marker = new mapboxgl.Marker(el)

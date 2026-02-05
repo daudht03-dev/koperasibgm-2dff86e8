@@ -375,25 +375,53 @@ export const LandMapTab: React.FC = () => {
 
         if (popupRef.current) popupRef.current.remove();
 
+        // Create popup using DOM elements to prevent XSS
+        const popupDiv = document.createElement("div");
+        popupDiv.style.cssText = "padding: 6px; font-family: system-ui, sans-serif;";
+        
+        const titleEl = document.createElement("h3");
+        titleEl.style.cssText = "font-weight: 600; font-size: 14px; margin-bottom: 6px; color: #166534;";
+        titleEl.textContent = props?.nama_lahan || 'N/A';
+        popupDiv.appendChild(titleEl);
+        
+        if (props?.petani_nama) {
+          const petaniEl = document.createElement("p");
+          petaniEl.style.cssText = "margin: 3px 0; color: #374151; font-size: 13px;";
+          const strongEl = document.createElement("strong");
+          strongEl.textContent = "Petani: ";
+          petaniEl.appendChild(strongEl);
+          petaniEl.appendChild(document.createTextNode(props.petani_nama));
+          popupDiv.appendChild(petaniEl);
+          
+          const badgeEl = document.createElement("span");
+          badgeEl.style.cssText = `background: ${isOrganic ? '#16a34a' : '#ea580c'}; color: white; padding: 2px 6px; border-radius: 9999px; font-size: 11px;`;
+          badgeEl.textContent = isOrganic ? '🌿 Organik' : '🏭 Konvensional';
+          popupDiv.appendChild(badgeEl);
+        }
+        
+        if (props?.lokasi) {
+          const lokasiEl = document.createElement("p");
+          lokasiEl.style.cssText = "margin: 3px 0; color: #374151; font-size: 12px;";
+          const strongLokasi = document.createElement("strong");
+          strongLokasi.textContent = "Lokasi: ";
+          lokasiEl.appendChild(strongLokasi);
+          lokasiEl.appendChild(document.createTextNode(props.lokasi));
+          popupDiv.appendChild(lokasiEl);
+        }
+        
+        if (props?.luas) {
+          const luasEl = document.createElement("p");
+          luasEl.style.cssText = "margin: 3px 0; color: #374151; font-size: 12px;";
+          const strongLuas = document.createElement("strong");
+          strongLuas.textContent = "Luas: ";
+          luasEl.appendChild(strongLuas);
+          luasEl.appendChild(document.createTextNode(`${props.luas} ha`));
+          popupDiv.appendChild(luasEl);
+        }
+        
         popupRef.current = new mapboxgl.Popup({ offset: 15, maxWidth: '280px' })
           .setLngLat(coords)
-          .setHTML(`
-            <div style="padding: 6px; font-family: system-ui, sans-serif;">
-              <h3 style="font-weight: 600; font-size: 14px; margin-bottom: 6px; color: #166534;">
-                ${props?.nama_lahan || 'N/A'}
-              </h3>
-              ${props?.petani_nama ? `
-                <p style="margin: 3px 0; color: #374151; font-size: 13px;">
-                  <strong>Petani:</strong> ${props.petani_nama}
-                </p>
-                <span style="background: ${isOrganic ? '#16a34a' : '#ea580c'}; color: white; padding: 2px 6px; border-radius: 9999px; font-size: 11px;">
-                  ${isOrganic ? '🌿 Organik' : '🏭 Konvensional'}
-                </span>
-              ` : ''}
-              ${props?.lokasi ? `<p style="margin: 3px 0; color: #374151; font-size: 12px;"><strong>Lokasi:</strong> ${props.lokasi}</p>` : ''}
-              ${props?.luas ? `<p style="margin: 3px 0; color: #374151; font-size: 12px;"><strong>Luas:</strong> ${props.luas} ha</p>` : ''}
-            </div>
-          `)
+          .setDOMContent(popupDiv)
           .addTo(map.current!);
       });
 
