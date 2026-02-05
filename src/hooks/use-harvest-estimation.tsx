@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { format, addDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { naturalSort } from "@/lib/utils";
 
 export interface FarmerEstimation {
   farmerId: string;
@@ -442,6 +443,11 @@ export const useHarvestEstimation = () => {
     const SEP = ";";
     
     weeklyData.forEach((week) => {
+      // Sort farmers by code for consistent ordering with display
+      const sortedFarmersData = [...week.farmersData].sort((a, b) => 
+        naturalSort(a.farmerCode, b.farmerCode)
+      );
+      
       // Add week header
       rows.push(`Minggu ${week.weekIndex + 1}: ${format(week.startDate, "dd/MM/yyyy")} - ${format(week.endDate, "dd/MM/yyyy")}`);
       rows.push("");
@@ -456,7 +462,7 @@ export const useHarvestEstimation = () => {
       rows.push(harvestHeader.join(SEP));
       
       // Harvest data - numbers with 1 decimal place for proper spreadsheet recognition
-      week.farmersData.forEach(farmer => {
+      sortedFarmersData.forEach(farmer => {
         const row = [
           `"${farmer.farmerName}"`,
           farmer.farmerCode,
@@ -470,10 +476,10 @@ export const useHarvestEstimation = () => {
       // Harvest total row
       const harvestTotals = ["TOTAL", "", ""];
       for (let i = 0; i < 7; i++) {
-        const dayTotal = week.farmersData.reduce((sum, f) => sum + (f.dailyHarvest[i]?.value || 0), 0);
+        const dayTotal = sortedFarmersData.reduce((sum, f) => sum + (f.dailyHarvest[i]?.value || 0), 0);
         harvestTotals.push(dayTotal.toFixed(1).replace(".", ","));
       }
-      harvestTotals.push(week.farmersData.reduce((sum, f) => sum + f.totalHarvest, 0).toFixed(1).replace(".", ","));
+      harvestTotals.push(sortedFarmersData.reduce((sum, f) => sum + f.totalHarvest, 0).toFixed(1).replace(".", ","));
       rows.push(harvestTotals.join(SEP));
       rows.push("");
       
@@ -487,7 +493,7 @@ export const useHarvestEstimation = () => {
       rows.push(salesHeader.join(SEP));
       
       // Sales data - numbers with 1 decimal place
-      week.farmersData.forEach(farmer => {
+      sortedFarmersData.forEach(farmer => {
         const row = [
           `"${farmer.farmerName}"`,
           farmer.farmerCode,
@@ -501,10 +507,10 @@ export const useHarvestEstimation = () => {
       // Sales total row
       const salesTotals = ["TOTAL", "", ""];
       for (let i = 0; i < 7; i++) {
-        const dayTotal = week.farmersData.reduce((sum, f) => sum + (f.dailySales[i]?.value || 0), 0);
+        const dayTotal = sortedFarmersData.reduce((sum, f) => sum + (f.dailySales[i]?.value || 0), 0);
         salesTotals.push(dayTotal.toFixed(1).replace(".", ","));
       }
-      salesTotals.push(week.farmersData.reduce((sum, f) => sum + f.totalSales, 0).toFixed(1).replace(".", ","));
+      salesTotals.push(sortedFarmersData.reduce((sum, f) => sum + f.totalSales, 0).toFixed(1).replace(".", ","));
       rows.push(salesTotals.join(SEP));
       rows.push("");
       rows.push("");
