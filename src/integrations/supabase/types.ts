@@ -89,6 +89,39 @@ export type Database = {
           },
         ]
       }
+      changelog: {
+        Row: {
+          changes: Json
+          created_at: string | null
+          id: string
+          is_latest: boolean | null
+          judul: string
+          tanggal: string
+          updated_at: string | null
+          version: string
+        }
+        Insert: {
+          changes?: Json
+          created_at?: string | null
+          id?: string
+          is_latest?: boolean | null
+          judul: string
+          tanggal?: string
+          updated_at?: string | null
+          version: string
+        }
+        Update: {
+          changes?: Json
+          created_at?: string | null
+          id?: string
+          is_latest?: boolean | null
+          judul?: string
+          tanggal?: string
+          updated_at?: string | null
+          version?: string
+        }
+        Relationships: []
+      }
       estimasi_panen: {
         Row: {
           catatan: string | null
