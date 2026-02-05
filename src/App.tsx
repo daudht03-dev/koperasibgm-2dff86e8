@@ -10,6 +10,7 @@ import SplashScreen from "@/components/SplashScreen";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PageTransition from "./components/PageTransition";
 import { Skeleton } from "@/components/ui/skeleton";
+import PWAUpdatePrompt from "@/components/PWAUpdatePrompt";
 
 // Lazy load all pages for code splitting
 const Auth = lazy(() => import("./pages/Auth"));
@@ -201,6 +202,7 @@ const App = () => {
           )}
           <Toaster />
           <Sonner />
+          <PWAUpdatePrompt />
           <BrowserRouter>
             <AppContent />
           </BrowserRouter>
