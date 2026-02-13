@@ -29,6 +29,7 @@ import { BatchPenerimaanForm } from "@/components/harvest/BatchPenerimaanForm";
 import { GudangTab } from "@/components/harvest/GudangTab";
 import { PengovenanTab } from "@/components/harvest/PengovenanTab";
 import { BatchSummaryView } from "@/components/harvest/BatchSummaryView";
+import { RingkasanTab } from "@/components/harvest/RingkasanTab";
 import { FarmerPengepulManager } from "@/components/FarmerPengepulManager";
 import { usePengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
 import { format } from "date-fns";
@@ -454,55 +455,81 @@ const HarvestManagement = () => {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <ScrollArea className="w-full">
-            <TabsList className="inline-flex w-max min-w-full">
-              <TabsTrigger value="pengepul" className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                <span className="hidden sm:inline">Pengepul</span>
-              </TabsTrigger>
-              <TabsTrigger value="barang-masuk" className="flex items-center gap-2">
-                <ArrowDownToLine className="h-4 w-4" />
-                <span className="hidden sm:inline">Barang Masuk</span>
-              </TabsTrigger>
-              <TabsTrigger value="barang-keluar" className="flex items-center gap-2">
-                <ArrowUpFromLine className="h-4 w-4" />
-                <span className="hidden sm:inline">Barang Keluar</span>
-              </TabsTrigger>
-              <TabsTrigger value="laporan" className="flex items-center gap-2">
-                <FileBarChart className="h-4 w-4" />
-                <span className="hidden sm:inline">Laporan</span>
-              </TabsTrigger>
-              <TabsTrigger value="penerimaan" className="flex items-center gap-2">
-                <Package className="h-4 w-4" />
-                <span className="hidden sm:inline">Penerimaan</span>
-              </TabsTrigger>
-              <TabsTrigger value="pengeringan" className="flex items-center gap-2">
-                <Flame className="h-4 w-4" />
-                <span className="hidden sm:inline">Pengeringan</span>
-              </TabsTrigger>
-              <TabsTrigger value="penyimpanan" className="flex items-center gap-2">
-                <Warehouse className="h-4 w-4" />
-                <span className="hidden sm:inline">Gudang</span>
-              </TabsTrigger>
-              <TabsTrigger value="dokumen" className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                <span className="hidden sm:inline">Dokumen</span>
-              </TabsTrigger>
-              <TabsTrigger value="penjualan" className="flex items-center gap-2">
-                <ShoppingCart className="h-4 w-4" />
-                <span className="hidden sm:inline">Penjualan</span>
-              </TabsTrigger>
-              <TabsTrigger value="estimasi" className="flex items-center gap-2">
-                <Calculator className="h-4 w-4" />
-                <span className="hidden sm:inline">Estimasi</span>
-              </TabsTrigger>
-              <TabsTrigger value="ringkasan" className="flex items-center gap-2">
-                <Eye className="h-4 w-4" />
-                <span className="hidden sm:inline">Ringkasan</span>
-              </TabsTrigger>
-            </TabsList>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
+          <div className="space-y-2">
+            {/* Kegiatan Pengepul */}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 px-1">Kegiatan Pengepul</p>
+              <ScrollArea className="w-full">
+                <TabsList className="inline-flex w-max">
+                  <TabsTrigger value="pengepul" className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    <span className="hidden sm:inline">Pengepul</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="barang-masuk" className="flex items-center gap-2">
+                    <ArrowDownToLine className="h-4 w-4" />
+                    <span className="hidden sm:inline">Barang Masuk</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="barang-keluar" className="flex items-center gap-2">
+                    <ArrowUpFromLine className="h-4 w-4" />
+                    <span className="hidden sm:inline">Barang Keluar</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="laporan" className="flex items-center gap-2">
+                    <FileBarChart className="h-4 w-4" />
+                    <span className="hidden sm:inline">Laporan</span>
+                  </TabsTrigger>
+                </TabsList>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
+            </div>
+
+            {/* Kegiatan Gudang */}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 px-1">Kegiatan Gudang</p>
+              <ScrollArea className="w-full">
+                <TabsList className="inline-flex w-max">
+                  <TabsTrigger value="penerimaan" className="flex items-center gap-2">
+                    <Package className="h-4 w-4" />
+                    <span className="hidden sm:inline">Penerimaan</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="pengeringan" className="flex items-center gap-2">
+                    <Flame className="h-4 w-4" />
+                    <span className="hidden sm:inline">Pengeringan</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="penyimpanan" className="flex items-center gap-2">
+                    <Warehouse className="h-4 w-4" />
+                    <span className="hidden sm:inline">Gudang</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="dokumen" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    <span className="hidden sm:inline">Dokumen</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="penjualan" className="flex items-center gap-2">
+                    <ShoppingCart className="h-4 w-4" />
+                    <span className="hidden sm:inline">Penjualan</span>
+                  </TabsTrigger>
+                </TabsList>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
+            </div>
+
+            {/* Ringkasan & Estimasi */}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 px-1">Ringkasan & Estimasi</p>
+              <ScrollArea className="w-full">
+                <TabsList className="inline-flex w-max">
+                  <TabsTrigger value="ringkasan" className="flex items-center gap-2">
+                    <Eye className="h-4 w-4" />
+                    <span className="hidden sm:inline">Ringkasan</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="estimasi" className="flex items-center gap-2">
+                    <Calculator className="h-4 w-4" />
+                    <span className="hidden sm:inline">Estimasi</span>
+                  </TabsTrigger>
+                </TabsList>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
+            </div>
+          </div>
 
           {/* Pengepul Tab */}
           <TabsContent value="pengepul" className="space-y-6">
@@ -1065,11 +1092,7 @@ const HarvestManagement = () => {
 
           {/* Ringkasan Tab */}
           <TabsContent value="ringkasan">
-            <BatchSummaryView 
-              batches={batches}
-              prosesPengeringan={pengeringanList}
-              gudangStok={gudangList}
-            />
+            <RingkasanTab />
           </TabsContent>
         </Tabs>
       </main>
