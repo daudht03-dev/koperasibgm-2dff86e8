@@ -25,7 +25,7 @@ import { PengepulTab } from "@/components/harvest/PengepulTab";
 import { BarangMasukTab } from "@/components/harvest/BarangMasukTab";
 import { BarangKeluarTab } from "@/components/harvest/BarangKeluarTab";
 import { LaporanPengepulTab } from "@/components/harvest/LaporanPengepulTab";
-import { BatchPenerimaanForm } from "@/components/harvest/BatchPenerimaanForm";
+import { PenerimaanTab } from "@/components/harvest/PenerimaanTab";
 import { GudangTab } from "@/components/harvest/GudangTab";
 import { PengovenanTab } from "@/components/harvest/PengovenanTab";
 import { BatchSummaryView } from "@/components/harvest/BatchSummaryView";
@@ -554,117 +554,7 @@ const HarvestManagement = () => {
 
           {/* Penerimaan Tab */}
           <TabsContent value="penerimaan">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Penerimaan Hasil Panen</CardTitle>
-                  <CardDescription>Catat penerimaan hasil panen dari data pengambilan koperasi</CardDescription>
-                </div>
-                <BatchPenerimaanForm
-                  onSubmit={handleAddBatchFromPengambilan}
-                  dialogOpen={dialogOpen && activeTab === "penerimaan"}
-                  setDialogOpen={setDialogOpen}
-                />
-              </CardHeader>
-              <CardContent>
-                {batchLoading ? (
-                  <TableSkeleton rows={5} columns={7} />
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>No. Batch</TableHead>
-                        <TableHead>Petani</TableHead>
-                        <TableHead>Tanggal</TableHead>
-                        <TableHead>Jumlah (Kg)</TableHead>
-                        <TableHead>Tipe</TableHead>
-                        <TableHead>Kualitas</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Aksi</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {batches.map((batch) => (
-                        <TableRow key={batch.id}>
-                          <TableCell className="font-mono font-medium">{batch.batch_number}</TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{batch.petani?.nama || "-"}</p>
-                              <p className="text-sm text-muted-foreground">{batch.petani?.kode_petani}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {format(new Date(batch.tanggal_penerimaan), "dd MMM yyyy", { locale: localeId })}
-                          </TableCell>
-                          <TableCell>{Number(batch.jumlah_kg).toLocaleString()}</TableCell>
-                          <TableCell>
-                            {batch.is_organic !== false ? (
-                              <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
-                                <Leaf className="h-3 w-3 mr-1" />
-                                Organik
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-xs bg-slate-50 text-slate-700 border-slate-200">
-                                <Factory className="h-3 w-3 mr-1" />
-                                Konv.
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{qualityLabels[batch.kualitas]}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={statusColors[batch.status]}>
-                              {statusLabels[batch.status]}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              <Button variant="outline" size="sm" asChild>
-                                <Link to={`/admin/batch/${batch.id}`}>
-                                  <Eye className="h-4 w-4" />
-                                </Link>
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="outline" size="sm">
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Hapus Batch?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Apakah Anda yakin ingin menghapus batch {batch.batch_number}? Semua data terkait akan ikut terhapus.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Batal</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => deleteBatch(batch.id)}
-                                      className="bg-destructive hover:bg-destructive/90"
-                                    >
-                                      Hapus
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {batches.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                            Belum ada data batch panen
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
+            <PenerimaanTab onAddBatch={handleAddBatchFromPengambilan} />
           </TabsContent>
 
           {/* Pengeringan Tab - Using PengovenanTab */}
