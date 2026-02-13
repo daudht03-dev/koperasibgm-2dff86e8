@@ -63,7 +63,7 @@ export const LaporanPengepulTab = () => {
   }));
 
   const handleExportCSV = () => {
-    const headers = ["Pengepul", "Kode", "Total Masuk (Kg)", "Total Keluar (Kg)", "Selisih (Kg)", "Nilai Masuk (Rp)"];
+    const headers = ["Pengepul", "Kode", "Total Masuk (Kg)", "Total Keluar (Kg)", "Stok (Kg)", "Nilai Masuk (Rp)"];
     const rows = laporanList.map(item => [
       item.nama,
       item.kode_pengepul,
@@ -143,25 +143,28 @@ export const LaporanPengepulTab = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
             <CardContent className="pt-4">
-              <p className="text-sm text-blue-600">Total Masuk</p>
+              <p className="text-sm text-blue-600">Total Barang Masuk</p>
               <p className="text-2xl font-bold text-blue-800">{summary.totalMasuk.toLocaleString()} Kg</p>
+              <p className="text-xs text-blue-500 mt-1">Dari petani ke pengepul</p>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
             <CardContent className="pt-4">
-              <p className="text-sm text-green-600">Total Keluar</p>
+              <p className="text-sm text-green-600">Total Barang Keluar</p>
               <p className="text-2xl font-bold text-green-800">{summary.totalKeluar.toLocaleString()} Kg</p>
+              <p className="text-xs text-green-500 mt-1">Dari pengepul ke koperasi</p>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
             <CardContent className="pt-4">
-              <p className="text-sm text-orange-600">Selisih</p>
+              <p className="text-sm text-orange-600">Stok di Pengepul</p>
               <p className="text-2xl font-bold text-orange-800">{summary.totalSelisih.toLocaleString()} Kg</p>
+              <p className="text-xs text-orange-500 mt-1">Masuk - Keluar</p>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
             <CardContent className="pt-4">
-              <p className="text-sm text-purple-600">Total Nilai</p>
+              <p className="text-sm text-purple-600">Total Nilai Masuk</p>
               <p className="text-2xl font-bold text-purple-800">Rp {summary.totalNilai.toLocaleString()}</p>
             </CardContent>
           </Card>
@@ -205,7 +208,7 @@ export const LaporanPengepulTab = () => {
                 <TableHead>Pengepul</TableHead>
                 <TableHead className="text-right">Masuk (Kg)</TableHead>
                 <TableHead className="text-right">Keluar (Kg)</TableHead>
-                <TableHead className="text-right">Selisih (Kg)</TableHead>
+                <TableHead className="text-right">Stok (Kg)</TableHead>
                 <TableHead className="text-right">Nilai Masuk</TableHead>
               </TableRow>
             </TableHeader>
