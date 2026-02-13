@@ -7,10 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Users, Edit, Trash2, UserPlus } from "lucide-react";
+import { Plus, Users, Edit, Trash2, UserPlus, Search } from "lucide-react";
 import { usePengepul, Pengepul, PengepulWithPetani } from "@/hooks/use-pengepul";
 import { useFarmers } from "@/hooks/use-farmers";
 import { TableSkeleton } from "@/components/ui/skeleton-templates";
+import { naturalSort } from "@/lib/utils";
 
 export const PengepulTab = () => {
   const { pengepulList, loading, addPengepul, updatePengepul, deletePengepul, assignPetani, unassignPetani, refetch } = usePengepul();
@@ -27,6 +28,7 @@ export const PengepulTab = () => {
     no_telepon: "",
     harga_beli: "",
   });
+  const [assignSearch, setAssignSearch] = useState("");
 
   const resetForm = () => {
     setForm({ nama: "", alamat: "", no_telepon: "", harga_beli: "" });
@@ -78,12 +80,22 @@ export const PengepulTab = () => {
 
   const handleOpenAssign = (pengepul: PengepulWithPetani) => {
     setSelectedPengepul(pengepul);
+    setAssignSearch("");
     setAssignDialogOpen(true);
   };
 
-  // Get farmers that are not assigned to any pengepul or assigned to this pengepul
-  const availableFarmers = farmers.filter(f => !f.pengepul_id);
-  const assignedFarmers = farmers.filter(f => f.pengepul_id === selectedPengepul?.id);
+  // Sort by kode_petani using natural sort, then filter by search
+  const assignedFarmers = farmers
+    .filter(f => f.pengepul_id === selectedPengepul?.id)
+    .sort((a, b) => naturalSort(a.kode_petani, b.kode_petani));
+  
+  const availableFarmers = farmers
+    .filter(f => !f.pengepul_id)
+    .filter(f => !assignSearch || 
+      f.kode_petani.toLowerCase().includes(assignSearch.toLowerCase()) ||
+      f.nama.toLowerCase().includes(assignSearch.toLowerCase())
+    )
+    .sort((a, b) => naturalSort(a.kode_petani, b.kode_petani));
 
   const handleAssignFarmer = async (farmerId: string) => {
     if (!selectedPengepul) return;
@@ -261,6 +273,15 @@ export const PengepulTab = () => {
             {/* Available Farmers */}
             <div>
               <h4 className="font-medium mb-2">Petani Tersedia ({availableFarmers.length})</h4>
+              <div className="relative mb-2">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={assignSearch}
+                  onChange={(e) => setAssignSearch(e.target.value)}
+                  placeholder="Cari kode atau nama petani..."
+                  className="pl-9"
+                />
+              </div>
               {availableFarmers.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">
                   Semua petani sudah terdaftar di pengepul
