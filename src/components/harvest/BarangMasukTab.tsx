@@ -768,7 +768,7 @@ export const BarangMasukTab = () => {
               <ArrowDownToLine className="h-5 w-5" />
               Barang Masuk
             </CardTitle>
-            <CardDescription>Penjualan petani ke pengepul dari data estimasi (per minggu)</CardDescription>
+            <CardDescription>Penjualan petani ke pengepul dari data estimasi (per pengepul)</CardDescription>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Select value={filterPengepul} onValueChange={setFilterPengepul}>
@@ -804,13 +804,13 @@ export const BarangMasukTab = () => {
             }}>
               <DialogTrigger asChild>
                 <Button variant="outline" className="border-primary text-primary hover:bg-primary/10">
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Auto Generate
-                  {unprocessedWeeks.length > 0 && (
-                    <span className="ml-2 bg-primary text-primary-foreground px-2 py-0.5 rounded-full text-xs">
-                      {unprocessedWeeks.length} minggu
-                    </span>
-                  )}
+                   <Sparkles className="h-4 w-4 mr-2" />
+                   Auto Generate
+                   {unprocessedWeeks.length > 0 && (
+                     <span className="ml-2 bg-primary text-primary-foreground px-2 py-0.5 rounded-full text-xs">
+                       {unprocessedWeeks.length} data
+                     </span>
+                   )}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
@@ -819,9 +819,9 @@ export const BarangMasukTab = () => {
                     <Sparkles className="h-5 w-5 text-primary" />
                     Auto Generate dari Estimasi Panen
                   </DialogTitle>
-                  <DialogDescription>
-                    Pilih minggu yang akan diproses. Data penjualan akan dibuat per petani per hari.
-                  </DialogDescription>
+                   <DialogDescription>
+                     Pilih data estimasi yang akan diproses. Data penjualan akan dibuat per petani per hari berdasarkan pengepul.
+                   </DialogDescription>
                 </DialogHeader>
 
                 {isLoadingEstimations ? (
@@ -866,7 +866,7 @@ export const BarangMasukTab = () => {
                           onCheckedChange={handleSelectAllWeeks}
                           disabled={autoGenerateLoading}
                         />
-                        <span className="font-medium">Pilih Semua Minggu ({unprocessedWeeks.length})</span>
+                        <span className="font-medium">Pilih Semua Data ({unprocessedWeeks.length})</span>
                       </div>
                       <Button 
                         onClick={handleAutoGenerate} 
@@ -878,7 +878,7 @@ export const BarangMasukTab = () => {
                             Memproses...
                           </>
                         ) : (
-                          `Generate ${selectedWeeks.size} Minggu`
+                          `Generate ${selectedWeeks.size} Data`
                         )}
                       </Button>
                     </div>
