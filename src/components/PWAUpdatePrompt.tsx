@@ -49,16 +49,24 @@
     setIsUpdating(true);
     try {
       await updateServiceWorker(true);
-      // Force reload after a short delay to ensure SW is activated
+      // Clear all caches before reload to ensure fresh content
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+      }
+      // Force reload after cache clear
       setTimeout(() => {
         window.location.reload();
-      }, 500);
+      }, 300);
     } catch (error) {
       console.error("Failed to update:", error);
       setIsUpdating(false);
-      toast.error("Gagal memperbarui", {
-        description: "Silakan refresh halaman secara manual",
-      });
+      // Fallback: clear caches and reload anyway
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+      }
+      window.location.reload();
     }
    };
  

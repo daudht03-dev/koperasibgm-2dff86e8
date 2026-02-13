@@ -27,6 +27,7 @@ export interface FarmerWeeklyData {
   totalHarvest: number;
   totalSales: number;
   isOrganic: boolean;
+  regulasi: string;
   holidays: number[]; // Each farmer has their own holidays
 }
 
@@ -300,6 +301,7 @@ export const useHarvestEstimation = () => {
         totalHarvest: dailyHarvest.reduce((sum, d) => sum + d.value, 0),
         totalSales: dailySales.reduce((sum, d) => sum + d.value, 0),
         isOrganic: farmer.isOrganic,
+        regulasi: farmer.regulasi || "",
         holidays: farmerHolidays,
       };
     });
@@ -453,7 +455,7 @@ export const useHarvestEstimation = () => {
       rows.push("");
       
       // Harvest table header
-      const harvestHeader = ["Nama Petani", "Kode", "Status"];
+      const harvestHeader = ["Nama Petani", "Kode", "Status", "Regulasi"];
       for (let i = 0; i < 7; i++) {
         harvestHeader.push(format(addDays(week.startDate, i), "dd/MM"));
       }
@@ -467,6 +469,7 @@ export const useHarvestEstimation = () => {
           `"${farmer.farmerName}"`,
           farmer.farmerCode,
           farmer.isOrganic ? "Organik" : "Konvensional",
+          farmer.regulasi || "-",
           ...farmer.dailyHarvest.map(d => d.value.toFixed(1).replace(".", ",")), // Use comma as decimal for EU/ID locale
           farmer.totalHarvest.toFixed(1).replace(".", ","),
         ];
@@ -474,7 +477,7 @@ export const useHarvestEstimation = () => {
       });
       
       // Harvest total row
-      const harvestTotals = ["TOTAL", "", ""];
+      const harvestTotals = ["TOTAL", "", "", ""];
       for (let i = 0; i < 7; i++) {
         const dayTotal = sortedFarmersData.reduce((sum, f) => sum + (f.dailyHarvest[i]?.value || 0), 0);
         harvestTotals.push(dayTotal.toFixed(1).replace(".", ","));
@@ -484,7 +487,7 @@ export const useHarvestEstimation = () => {
       rows.push("");
       
       // Sales table header
-      const salesHeader = ["Nama Petani", "Kode", "Status"];
+      const salesHeader = ["Nama Petani", "Kode", "Status", "Regulasi"];
       for (let i = 0; i < 7; i++) {
         salesHeader.push(format(addDays(week.startDate, i), "dd/MM"));
       }
@@ -498,6 +501,7 @@ export const useHarvestEstimation = () => {
           `"${farmer.farmerName}"`,
           farmer.farmerCode,
           farmer.isOrganic ? "Organik" : "Konvensional",
+          farmer.regulasi || "-",
           ...farmer.dailySales.map(d => d.value.toFixed(1).replace(".", ",")),
           farmer.totalSales.toFixed(1).replace(".", ","),
         ];
@@ -505,7 +509,7 @@ export const useHarvestEstimation = () => {
       });
       
       // Sales total row
-      const salesTotals = ["TOTAL", "", ""];
+      const salesTotals = ["TOTAL", "", "", ""];
       for (let i = 0; i < 7; i++) {
         const dayTotal = sortedFarmersData.reduce((sum, f) => sum + (f.dailySales[i]?.value || 0), 0);
         salesTotals.push(dayTotal.toFixed(1).replace(".", ","));

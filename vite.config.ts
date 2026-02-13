@@ -37,9 +37,10 @@ const pwaOptions: Partial<VitePWAOptions> = {
     // Don't precache HTML - always fetch from network
     globPatterns: ['**/*.{js,css,ico,png,jpg,jpeg,svg,woff,woff2}'],
     maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-    // Skip waiting - activate new SW immediately
-    skipWaiting: true,
+    // Let the prompt handle skipWaiting via updateServiceWorker(true)
     clientsClaim: true,
+    // Enable navigation preload for faster page loads
+    navigationPreload: true,
     // Cleaner cache management
     cleanupOutdatedCaches: true,
     runtimeCaching: [
