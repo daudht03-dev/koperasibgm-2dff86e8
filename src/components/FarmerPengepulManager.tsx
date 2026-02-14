@@ -57,10 +57,10 @@ export const FarmerPengepulManager = () => {
     }
 
     return filtered.sort((a, b) => {
-      // Sort unassigned first, then by name
+      // Sort unassigned first, then by kode_petani (natural sort)
       if (!a.pengepul_id && b.pengepul_id) return -1;
       if (a.pengepul_id && !b.pengepul_id) return 1;
-      return a.nama.localeCompare(b.nama);
+      return a.kode_petani.localeCompare(b.kode_petani, undefined, { numeric: true, sensitivity: 'base' });
     });
   }, [farmers, farmersWithPengepul, farmersWithoutPengepul, filterStatus, searchTerm]);
 
@@ -204,7 +204,7 @@ export const FarmerPengepulManager = () => {
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                        placeholder="Cari petani..."
+                        placeholder="Cari kode petani..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-9"
