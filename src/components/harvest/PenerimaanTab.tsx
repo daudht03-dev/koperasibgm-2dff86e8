@@ -78,13 +78,19 @@ interface FarmerDetailItem {
 }
 
 export const PenerimaanTab = ({ onAddBatch }: PenerimaanTabProps) => {
-  const { pengambilanList, loading: pengambilanLoading } = usePengambilanKoperasi();
-  const { batches, loading: batchLoading, deleteBatch } = useBatchPanen();
+  const { pengambilanList, loading: pengambilanLoading, refetch: refetchPengambilan } = usePengambilanKoperasi();
+  const { batches, loading: batchLoading, deleteBatch, refetch: refetchBatches } = useBatchPanen();
   const { pengepulList } = usePengepul();
   const { farmers } = useFarmers();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expandedBatches, setExpandedBatches] = useState<Set<string>>(new Set());
   const [filterPengepul, setFilterPengepul] = useState<string>("all");
+
+  // Wrap onAddBatch to refetch local data after successful addition
+  const handleAddBatch = async (data: Parameters<typeof onAddBatch>[0], pengambilanIds: string[]) => {
+    await onAddBatch(data, pengambilanIds);
+    await Promise.all([refetchBatches(), refetchPengambilan()]);
+  };
 
   // Pending items: pengambilan_koperasi without batch_id
   const pendingItems = useMemo(() => {
@@ -191,7 +197,7 @@ export const PenerimaanTab = ({ onAddBatch }: PenerimaanTabProps) => {
               </CardDescription>
             </div>
             <BatchPenerimaanForm
-              onSubmit={onAddBatch}
+              onSubmit={handleAddBatch}
               dialogOpen={dialogOpen}
               setDialogOpen={setDialogOpen}
             />
@@ -312,7 +318,7 @@ export const PenerimaanTab = ({ onAddBatch }: PenerimaanTabProps) => {
             )}
             {pendingItems.length === 0 && (
               <BatchPenerimaanForm
-                onSubmit={onAddBatch}
+                onSubmit={handleAddBatch}
                 dialogOpen={dialogOpen}
                 setDialogOpen={setDialogOpen}
               />
