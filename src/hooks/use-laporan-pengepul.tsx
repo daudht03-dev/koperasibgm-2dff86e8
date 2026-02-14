@@ -94,6 +94,8 @@ export const useLaporanPengepul = () => {
         penjualanQuery = penjualanQuery.eq("pengepul_id", pengepulId);
       }
 
+      penjualanQuery = penjualanQuery.limit(10000);
+
       const { data: penjualanData, error: penjualanError } = await penjualanQuery;
 
       if (penjualanError) {
@@ -110,6 +112,8 @@ export const useLaporanPengepul = () => {
       if (pengepulId) {
         pengambilanQuery = pengambilanQuery.eq("pengepul_id", pengepulId);
       }
+
+      pengambilanQuery = pengambilanQuery.limit(10000);
 
       const { data: pengambilanData, error: pengambilanError } = await pengambilanQuery;
 

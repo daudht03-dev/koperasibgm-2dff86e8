@@ -7,9 +7,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowUpFromLine, Trash2, Wand2, ChevronDown, ChevronRight, Leaf, Factory, Calendar, FileText, Check, Package } from "lucide-react";
+import { ArrowUpFromLine, Trash2, Wand2, ChevronDown, ChevronRight, Leaf, Factory, Calendar, FileText, Check, Package, RefreshCw } from "lucide-react";
 import { usePengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
-import { usePenjualanPetani } from "@/hooks/use-penjualan-petani";
+// penjualan data is fetched directly in the component to avoid 500-row limit
 import { usePengepul } from "@/hooks/use-pengepul";
 import { useFarmers } from "@/hooks/use-farmers";
 import { TableSkeleton } from "@/components/ui/skeleton-templates";
@@ -92,7 +92,6 @@ interface DisplayWeek {
 
 export const BarangKeluarTab = () => {
   const { pengambilanList, loading, addPengambilan, deletePengambilan, refetch } = usePengambilanKoperasi();
-  const { penjualanList } = usePenjualanPetani();
   const { pengepulList } = usePengepul();
   const { farmers } = useFarmers();
   
@@ -105,6 +104,10 @@ export const BarangKeluarTab = () => {
   
   const [savedEstimations, setSavedEstimations] = useState<SavedEstimation[]>([]);
   const [isLoadingEstimations, setIsLoadingEstimations] = useState(false);
+  
+  // All penjualan data fetched directly (not limited by usePenjualanPetani's 500 row limit)
+  const [allPenjualanData, setAllPenjualanData] = useState<any[]>([]);
+  const [isLoadingPenjualan, setIsLoadingPenjualan] = useState(false);
   
   // Pagination state
   const DISPLAY_PAGE_SIZE = 4;
@@ -131,7 +134,49 @@ export const BarangKeluarTab = () => {
     loadEstimations();
   }, []);
 
-  // Process penjualan_petani data into weekly structure (sama dengan barang masuk)
+  // Fetch ALL penjualan_petani with auto-generated catatan (no row limit)
+  const fetchAllPenjualan = async () => {
+    setIsLoadingPenjualan(true);
+    try {
+      // Fetch in paginated chunks to avoid row limits
+      let allData: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("penjualan_petani")
+          .select(`
+            id, petani_id, pengepul_id, tanggal_jual, jumlah_kg, 
+            harga_per_kg, total_harga, is_organic, catatan,
+            petani:petani_id(id, nama, kode_petani),
+            pengepul:pengepul_id(id, nama, kode_pengepul)
+          `)
+          .like("catatan", "Auto-generated dari estimasi:%")
+          .order("tanggal_jual", { ascending: true })
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) throw error;
+        
+        allData = [...allData, ...(data || [])];
+        hasMore = (data?.length || 0) === pageSize;
+        page++;
+      }
+
+      setAllPenjualanData(allData);
+    } catch (error) {
+      console.error("Error fetching all penjualan:", error);
+    } finally {
+      setIsLoadingPenjualan(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllPenjualan();
+  }, []);
+
+  // Process penjualan_petani data into weekly structure using ALL data
   const weeklyDataFromPenjualan = useMemo((): WeekData[] => {
     const weeks: WeekData[] = [];
     
@@ -143,10 +188,10 @@ export const BarangKeluarTab = () => {
       weekLabel: string;
       startDate: string;
       endDate: string;
-      items: typeof penjualanList;
+      items: typeof allPenjualanData;
     }>();
 
-    penjualanList.forEach(item => {
+    allPenjualanData.forEach(item => {
       const match = item.catatan?.match(/Auto-generated dari estimasi: (.+?) - (Minggu (\d+))/);
       if (match) {
         const [, estName, weekLabel, weekNum] = match;
@@ -198,7 +243,7 @@ export const BarangKeluarTab = () => {
       data.items.forEach(item => {
         const farmer = farmers.find(f => f.id === item.petani_id);
         const pengepul = pengepulList.find(p => p.id === item.pengepul_id);
-        const isOrganic = (item as any).is_organic !== false;
+        const isOrganic = item.is_organic !== false;
         const farmerId = item.petani_id;
         const mapKey = `${farmerId}-${isOrganic}`;
 
@@ -289,7 +334,7 @@ export const BarangKeluarTab = () => {
     });
 
     return weeks.sort((a, b) => a.startDate.localeCompare(b.startDate));
-  }, [penjualanList, savedEstimations, farmers, pengepulList, pengambilanList]);
+  }, [allPenjualanData, savedEstimations, farmers, pengepulList, pengambilanList]);
 
   const unprocessedWeeks = weeklyDataFromPenjualan.filter(w => !w.isProcessed);
   const processedWeeks = weeklyDataFromPenjualan.filter(w => w.isProcessed);

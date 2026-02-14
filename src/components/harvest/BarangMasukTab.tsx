@@ -717,18 +717,30 @@ export const BarangMasukTab = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nama Petani</TableHead>
               <TableHead>Kode</TableHead>
+              <TableHead>Nama Petani</TableHead>
+              <TableHead>Tanggal Penjualan</TableHead>
               <TableHead className="text-right">Total (Kg)</TableHead>
               <TableHead className="text-right">Aksi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {farmers.map((farmer, idx) => (
+            {farmers.sort((a, b) => a.kode.localeCompare(b.kode, undefined, { numeric: true, sensitivity: 'base' })).map((farmer, idx) => (
               <TableRow key={idx}>
+                <TableCell className="font-mono text-sm">{farmer.kode}</TableCell>
                 <TableCell className="font-medium">{farmer.nama}</TableCell>
-                <TableCell>{farmer.kode}</TableCell>
-                <TableCell className="text-right">{farmer.total.toLocaleString()}</TableCell>
+                <TableCell className="text-sm">
+                  <div className="flex flex-wrap gap-1">
+                    {farmer.dailyData
+                      .sort((a, b) => a.date.localeCompare(b.date))
+                      .map((d, i) => (
+                        <Badge key={i} variant="outline" className="text-xs">
+                          {format(new Date(d.date), "dd/MM")} - {d.value} Kg
+                        </Badge>
+                      ))}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right font-bold">{farmer.total.toLocaleString()}</TableCell>
                 <TableCell className="text-right">
                   <Button 
                     variant="ghost" 
@@ -744,7 +756,7 @@ export const BarangMasukTab = () => {
               </TableRow>
             ))}
             <TableRow className="bg-muted/50">
-              <TableCell colSpan={2} className="font-bold">Total</TableCell>
+              <TableCell colSpan={3} className="font-bold">Total</TableCell>
               <TableCell className="text-right font-bold">{totalAll.toLocaleString()} Kg</TableCell>
               <TableCell></TableCell>
             </TableRow>
