@@ -28,6 +28,7 @@ import { id as localeId } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { SavedEstimation, FarmerWeeklyData, DailyData } from "@/hooks/use-harvest-estimation";
+import { generateProductCode } from "@/lib/product-code";
 
 interface WeekData {
   estimationId: string;
@@ -714,18 +715,20 @@ export const BarangMasukTab = () => {
           <span>{title}</span>
           <Badge variant="outline">{farmers.length} petani</Badge>
         </div>
-        <Table>
+         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Kode</TableHead>
               <TableHead>Nama Petani</TableHead>
-              <TableHead>Tanggal Penjualan</TableHead>
+              <TableHead>Identitas Produk</TableHead>
               <TableHead className="text-right">Total (Kg)</TableHead>
               <TableHead className="text-right">Aksi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {farmers.sort((a, b) => a.kode.localeCompare(b.kode, undefined, { numeric: true, sensitivity: 'base' })).map((farmer, idx) => (
+            {farmers.sort((a, b) => a.kode.localeCompare(b.kode, undefined, { numeric: true, sensitivity: 'base' })).map((farmer, idx) => {
+              let seq = 1;
+              return (
               <TableRow key={idx}>
                 <TableCell className="font-mono text-sm">{farmer.kode}</TableCell>
                 <TableCell className="font-medium">{farmer.nama}</TableCell>
@@ -733,11 +736,21 @@ export const BarangMasukTab = () => {
                   <div className="flex flex-wrap gap-1">
                     {farmer.dailyData
                       .sort((a, b) => a.date.localeCompare(b.date))
-                      .map((d, i) => (
-                        <Badge key={i} variant="outline" className="text-xs">
-                          {format(new Date(d.date), "dd/MM")} - {d.value} Kg
+                      .map((d, i) => {
+                        const productCode = generateProductCode(farmer.kode, d.date, seq++);
+                        return (
+                        <Badge 
+                          key={i} 
+                          variant="outline" 
+                          className="text-xs bg-primary/5 border-primary/20 hover:bg-primary/10 transition-colors cursor-default"
+                          title={`Kode Produk: ${productCode}\nTanggal: ${format(new Date(d.date), "dd MMM yyyy", { locale: localeId })}\nBerat: ${d.value} Kg`}
+                        >
+                          <span className="font-mono font-semibold text-primary">{productCode}</span>
+                          <span className="mx-1 text-muted-foreground">·</span>
+                          <span>{d.value} Kg</span>
                         </Badge>
-                      ))}
+                        );
+                      })}
                   </div>
                 </TableCell>
                 <TableCell className="text-right font-bold">{farmer.total.toLocaleString()}</TableCell>
@@ -754,7 +767,8 @@ export const BarangMasukTab = () => {
                   </Button>
                 </TableCell>
               </TableRow>
-            ))}
+              );
+            })}
             <TableRow className="bg-muted/50">
               <TableCell colSpan={3} className="font-bold">Total</TableCell>
               <TableCell className="text-right font-bold">{totalAll.toLocaleString()} Kg</TableCell>
