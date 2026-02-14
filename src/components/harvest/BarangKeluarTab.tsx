@@ -7,8 +7,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowUpFromLine, Trash2, Wand2, ChevronDown, ChevronRight, Leaf, Factory, Calendar, FileText, Check, Package, RefreshCw } from "lucide-react";
+import { ArrowUpFromLine, Trash2, Wand2, ChevronDown, ChevronRight, Leaf, Factory, Calendar, FileText, Check, Package, RefreshCw, Tag } from "lucide-react";
 import { usePengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
+import { generateProductCode } from "@/lib/product-code";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 // penjualan data is fetched directly in the component to avoid 500-row limit
 import { usePengepul } from "@/hooks/use-pengepul";
 import { useFarmers } from "@/hooks/use-farmers";
@@ -393,7 +395,7 @@ export const BarangKeluarTab = () => {
         pengepulId: string;
         isOrganic: boolean;
         totalKg: number;
-        farmers: { id: string; name: string; code: string; kg: number; dailyValues: number[] }[];
+        farmers: { id: string; name: string; code: string; kg: number; dailyValues: number[]; dailyDates: string[] }[];
       }>();
 
       const allFarmers = [...week.farmersOrganic, ...week.farmersConventional];
@@ -418,6 +420,7 @@ export const BarangKeluarTab = () => {
           code: farmer.farmerCode,
           kg: farmer.total,
           dailyValues: farmer.dailyValues,
+          dailyDates: farmer.dailyDates,
         });
       });
 
@@ -431,13 +434,31 @@ export const BarangKeluarTab = () => {
           catatan: `Auto-generated dari estimasi: ${week.estimationName} - ${week.weekLabel} (${group.isOrganic ? 'Organik' : 'Konvensional'})`,
           is_organic: group.isOrganic,
           lot_number: `LOT-${format(new Date(week.pickupDate), "yyyyMMdd")}-${group.isOrganic ? 'ORG' : 'CNV'}`,
-          detail_petani: group.farmers.map(f => ({
-            petani_id: f.id,
-            petani_nama: f.name,
-            petani_kode: f.code,
-            jumlah_kg: f.kg,
-            daily_values: f.dailyValues,
-          })),
+          detail_petani: group.farmers.map(f => {
+            // Generate product codes for traceability
+            let seq = 1;
+            const productCodes = f.dailyValues
+              .map((val, idx) => {
+                if (val <= 0) return null;
+                const dateStr = f.dailyDates?.[idx] || format(addDays(new Date(week.startDate), idx), "yyyy-MM-dd");
+                return {
+                  date: dateStr,
+                  value: val,
+                  code: generateProductCode(f.code, dateStr, seq++),
+                };
+              })
+              .filter(Boolean);
+
+            return {
+              petani_id: f.id,
+              petani_nama: f.name,
+              petani_kode: f.code,
+              jumlah_kg: f.kg,
+              daily_values: f.dailyValues,
+              daily_dates: f.dailyDates,
+              product_codes: productCodes,
+            };
+          }),
         } as any);
         successCount++;
       }
@@ -506,7 +527,8 @@ export const BarangKeluarTab = () => {
     farmers: FarmerWeekEntry[], 
     title: string, 
     icon: React.ReactNode, 
-    colorClass: string
+    colorClass: string,
+    weekStartDate?: string
   ) => {
     if (farmers.length === 0) return null;
     const total = farmers.reduce((sum, f) => sum + f.total, 0);
@@ -521,7 +543,7 @@ export const BarangKeluarTab = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Nama Petani</TableHead>
-              <TableHead>Kode</TableHead>
+              <TableHead>Identitas Produk</TableHead>
               {[1, 2, 3, 4, 5, 6, 7].map(d => (
                 <TableHead key={d} className="text-center w-12">H{d}</TableHead>
               ))}
@@ -529,20 +551,70 @@ export const BarangKeluarTab = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {farmers.map(farmer => (
-              <TableRow key={farmer.farmerId}>
-                <TableCell className="font-medium">{farmer.farmerName}</TableCell>
-                <TableCell>{farmer.farmerCode}</TableCell>
-                {farmer.dailyValues.map((val, idx) => (
-                  <TableCell key={idx} className="text-center text-sm">
-                    {val > 0 ? val.toLocaleString() : '-'}
+            {farmers.map(farmer => {
+              // Generate product codes for each day with harvest
+              const productCodes = farmer.dailyDates.length > 0
+                ? farmer.dailyValues
+                    .map((val, idx) => {
+                      if (val <= 0) return null;
+                      const dateStr = farmer.dailyDates[idx] || (weekStartDate ? format(addDays(new Date(weekStartDate), idx), "yyyy-MM-dd") : '');
+                      return { date: dateStr, value: val, idx };
+                    })
+                    .filter(Boolean)
+                : farmer.dailyValues
+                    .map((val, idx) => {
+                      if (val <= 0 || !weekStartDate) return null;
+                      const dateStr = format(addDays(new Date(weekStartDate), idx), "yyyy-MM-dd");
+                      return { date: dateStr, value: val, idx };
+                    })
+                    .filter(Boolean);
+
+              let seq = 1;
+              const codes = (productCodes as { date: string; value: number; idx: number }[]).map(pc => ({
+                ...pc,
+                code: generateProductCode(farmer.farmerCode, pc.date, seq++),
+              }));
+
+              return (
+                <TableRow key={farmer.farmerId}>
+                  <TableCell className="font-medium">{farmer.farmerName}</TableCell>
+                  <TableCell>
+                    <TooltipProvider>
+                      <div className="flex flex-wrap gap-1">
+                        {codes.map((pc) => (
+                          <Tooltip key={pc.code}>
+                            <TooltipTrigger asChild>
+                              <Badge 
+                                variant="outline" 
+                                className="text-xs cursor-help bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                              >
+                                <Tag className="h-2.5 w-2.5 mr-1" />
+                                {pc.code}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <div className="text-xs">
+                                <p className="font-medium">{farmer.farmerName}</p>
+                                <p>Tanggal Panen: {pc.date ? format(new Date(pc.date), "dd MMM yyyy", { locale: localeId }) : '-'}</p>
+                                <p>Berat: {pc.value} Kg</p>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        ))}
+                      </div>
+                    </TooltipProvider>
                   </TableCell>
-                ))}
-                <TableCell className="text-right font-bold">{farmer.total.toLocaleString()}</TableCell>
-              </TableRow>
-            ))}
+                  {farmer.dailyValues.map((val, idx) => (
+                    <TableCell key={idx} className="text-center text-sm">
+                      {val > 0 ? val.toLocaleString() : '-'}
+                    </TableCell>
+                  ))}
+                  <TableCell className="text-right font-bold">{farmer.total.toLocaleString()}</TableCell>
+                </TableRow>
+              );
+            })}
             <TableRow className="bg-muted/50">
-              <TableCell colSpan={9} className="font-bold">Total</TableCell>
+              <TableCell colSpan={10} className="font-bold">Total</TableCell>
               <TableCell className="text-right font-bold">{total.toLocaleString()} Kg</TableCell>
             </TableRow>
           </TableBody>
@@ -732,13 +804,15 @@ export const BarangKeluarTab = () => {
                                     week.farmersOrganic,
                                     "Produk Organik",
                                     <Leaf className="h-4 w-4" />,
-                                    "text-green-700"
+                                    "text-green-700",
+                                    week.startDate
                                   )}
                                   {renderFarmerTable(
                                     week.farmersConventional,
                                     "Produk Konvensional",
                                     <Factory className="h-4 w-4" />,
-                                    "text-orange-700"
+                                    "text-orange-700",
+                                    week.startDate
                                   )}
                                 </div>
                               </CardContent>
@@ -886,13 +960,15 @@ export const BarangKeluarTab = () => {
                               week.farmersOrganic,
                               "Produk Organik",
                               <Leaf className="h-4 w-4" />,
-                              "text-green-700"
+                              "text-green-700",
+                              week.startDate
                             )}
                             {renderFarmerTable(
                               week.farmersConventional,
                               "Produk Konvensional",
                               <Factory className="h-4 w-4" />,
-                              "text-orange-700"
+                              "text-orange-700",
+                              week.startDate
                             )}
                           </div>
                         </CardContent>
