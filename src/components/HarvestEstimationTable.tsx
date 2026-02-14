@@ -7,11 +7,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { RefreshCw, Plus, Trash2, TrendingUp, Leaf, Download, Save, FolderOpen, Loader2, Factory } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { RefreshCw, Plus, Trash2, TrendingUp, Leaf, Download, Save, FolderOpen, Loader2, Factory, Tag } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { WeekData, SavedEstimation } from "@/hooks/use-harvest-estimation";
 import { naturalSort } from "@/lib/utils";
+import { generateProductCode } from "@/lib/product-code";
 
 // Sort farmers data by farmerCode using natural alphanumeric sorting
 const sortFarmersDataByCode = <T extends { farmerCode: string }>(farmers: T[]): T[] => {
@@ -529,16 +531,73 @@ export const HarvestEstimationTable = ({
                           <TableCell className="sticky left-[100px] bg-background z-10 text-muted-foreground">
                             {farmer.farmerCode}
                           </TableCell>
-                          {farmer.dailySales.map((day, index) => (
-                            <TableCell
-                              key={index}
-                              className={`text-center ${
-                                day.value === 0 ? "text-muted-foreground" : "text-emerald-600 font-medium"
-                              }`}
-                            >
-                              {day.value.toFixed(1)}
-                            </TableCell>
-                          ))}
+                          {farmer.dailySales.map((day, index) => {
+                            // Find which harvest days contribute to this sale date
+                            const saleDate = day.date;
+                            const contributingHarvests: { date: string; value: number; code: string }[] = [];
+                            
+                            if (day.value > 0) {
+                              // Look backwards from this sale date for harvest days that might contribute
+                              // A sale on day X can include harvests from previous unsold days
+                              let accumulated = 0;
+                              for (let i = index; i >= 0; i--) {
+                                const harvestDay = farmer.dailyHarvest[i];
+                                if (harvestDay && harvestDay.value > 0) {
+                                  // Check if this harvest day was already sold on a previous sale date
+                                  const alreadySold = farmer.dailySales.slice(0, index).some(
+                                    (s, si) => s.value > 0 && si >= i
+                                  );
+                                  if (!alreadySold || i === index) {
+                                    const harvestDate = format(addDays(week.startDate, i), "yyyy-MM-dd");
+                                    contributingHarvests.unshift({
+                                      date: harvestDate,
+                                      value: harvestDay.value,
+                                      code: generateProductCode(farmer.farmerCode, harvestDate, contributingHarvests.length + 1),
+                                    });
+                                    accumulated += harvestDay.value;
+                                  }
+                                }
+                                if (accumulated >= day.value) break;
+                              }
+                            }
+
+                            const hasMultipleSources = contributingHarvests.length > 1;
+
+                            return (
+                              <TableCell
+                                key={index}
+                                className={`text-center ${
+                                  day.value === 0 ? "text-muted-foreground" : "text-emerald-600 font-medium"
+                                }`}
+                              >
+                                {day.value > 0 && hasMultipleSources ? (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="cursor-help underline decoration-dotted decoration-emerald-400">
+                                          {day.value.toFixed(1)}
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" className="max-w-xs">
+                                        <div className="text-xs space-y-1">
+                                          <p className="font-medium mb-1">Gabungan dari {contributingHarvests.length} hari panen:</p>
+                                          {contributingHarvests.map(h => (
+                                            <div key={h.code} className="flex items-center gap-1">
+                                              <Tag className="h-2.5 w-2.5 text-blue-500" />
+                                              <span className="font-mono">{h.code}</span>
+                                              <span>({h.value} Kg - {format(new Date(h.date), "dd MMM", { locale: localeId })})</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                ) : (
+                                  day.value.toFixed(1)
+                                )}
+                              </TableCell>
+                            );
+                          })}
                           <TableCell className="text-center font-semibold bg-emerald-500/10">
                             {farmer.totalSales.toFixed(1)}
                           </TableCell>
