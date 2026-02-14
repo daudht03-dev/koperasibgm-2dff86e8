@@ -6,7 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Package, Eye, Trash2, ChevronDown, ChevronRight, Leaf, Factory, Users, ArrowDownToLine, Wand2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Package, Eye, Trash2, ChevronDown, ChevronRight, Leaf, Factory, Users, ArrowDownToLine, Wand2, Tag } from "lucide-react";
 import { usePengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
 import { usePengepul } from "@/hooks/use-pengepul";
 import { useBatchPanen, BatchStatus, QualityGrade } from "@/hooks/use-batch-panen";
@@ -62,10 +63,19 @@ interface PenerimaanTabProps {
         petani_kode: string;
         jumlah_kg: number;
         is_organic: boolean;
+        daily_values?: number[];
+        daily_dates?: string[];
+        product_codes?: ProductCodeEntry[];
       }>;
     },
     pengambilanIds: string[]
   ) => Promise<void>;
+}
+
+interface ProductCodeEntry {
+  date: string;
+  value: number;
+  code: string;
 }
 
 interface FarmerDetailItem {
@@ -75,6 +85,8 @@ interface FarmerDetailItem {
   jumlah_kg: number;
   is_organic: boolean;
   daily_values?: number[];
+  daily_dates?: string[];
+  product_codes?: ProductCodeEntry[];
 }
 
 export const PenerimaanTab = ({ onAddBatch }: PenerimaanTabProps) => {
@@ -254,6 +266,7 @@ export const PenerimaanTab = ({ onAddBatch }: PenerimaanTabProps) => {
                             <TableRow>
                               <TableHead className="text-xs">Kode</TableHead>
                               <TableHead className="text-xs">Nama Petani</TableHead>
+                              <TableHead className="text-xs">Identitas Produk</TableHead>
                               <TableHead className="text-xs">Tipe</TableHead>
                               <TableHead className="text-xs text-right">Jumlah (Kg)</TableHead>
                               <TableHead className="text-xs">Tgl Keluar</TableHead>
@@ -267,6 +280,33 @@ export const PenerimaanTab = ({ onAddBatch }: PenerimaanTabProps) => {
                                 <TableRow key={`${item.id}-${idx}`}>
                                   <TableCell className="text-xs font-mono">{f.petani_kode}</TableCell>
                                   <TableCell className="text-xs">{f.petani_nama}</TableCell>
+                                  <TableCell className="text-xs">
+                                    {Array.isArray(f.product_codes) && f.product_codes.length > 0 ? (
+                                      <TooltipProvider>
+                                        <div className="flex flex-wrap gap-1">
+                                          {f.product_codes.map((pc: ProductCodeEntry) => (
+                                            <Tooltip key={pc.code}>
+                                              <TooltipTrigger asChild>
+                                                <Badge variant="outline" className="text-xs cursor-help bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+                                                  <Tag className="h-2.5 w-2.5 mr-1" />
+                                                  {pc.code}
+                                                </Badge>
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                <div className="text-xs">
+                                                  <p className="font-medium">{f.petani_nama}</p>
+                                                  <p>Tanggal: {pc.date ? format(new Date(pc.date), "dd MMM yyyy", { locale: localeId }) : '-'}</p>
+                                                  <p>Berat: {pc.value} Kg</p>
+                                                </div>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          ))}
+                                        </div>
+                                      </TooltipProvider>
+                                    ) : (
+                                      <span className="text-muted-foreground">-</span>
+                                    )}
+                                  </TableCell>
                                   <TableCell className="text-xs">
                                     {item.is_organic !== false ? (
                                       <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
@@ -422,11 +462,12 @@ export const PenerimaanTab = ({ onAddBatch }: PenerimaanTabProps) => {
                               <Users className="h-4 w-4" />
                               Detail Petani yang Masuk
                             </p>
-                            <Table>
+                             <Table>
                               <TableHeader>
                                 <TableRow>
                                   <TableHead className="text-xs">Kode</TableHead>
                                   <TableHead className="text-xs">Nama Petani</TableHead>
+                                  <TableHead className="text-xs">Identitas Produk</TableHead>
                                   <TableHead className="text-xs">Tipe</TableHead>
                                   <TableHead className="text-xs text-right">Jumlah (Kg)</TableHead>
                                 </TableRow>
@@ -436,6 +477,33 @@ export const PenerimaanTab = ({ onAddBatch }: PenerimaanTabProps) => {
                                   <TableRow key={idx}>
                                     <TableCell className="text-xs font-mono">{f.petani_kode}</TableCell>
                                     <TableCell className="text-xs">{f.petani_nama}</TableCell>
+                                    <TableCell className="text-xs">
+                                      {Array.isArray((f as any).product_codes) && (f as any).product_codes.length > 0 ? (
+                                        <TooltipProvider>
+                                          <div className="flex flex-wrap gap-1">
+                                            {(f as any).product_codes.map((pc: ProductCodeEntry) => (
+                                              <Tooltip key={pc.code}>
+                                                <TooltipTrigger asChild>
+                                                  <Badge variant="outline" className="text-xs cursor-help bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+                                                    <Tag className="h-2.5 w-2.5 mr-1" />
+                                                    {pc.code}
+                                                  </Badge>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                  <div className="text-xs">
+                                                    <p className="font-medium">{f.petani_nama}</p>
+                                                    <p>Tanggal: {pc.date ? format(new Date(pc.date), "dd MMM yyyy", { locale: localeId }) : '-'}</p>
+                                                    <p>Berat: {pc.value} Kg</p>
+                                                  </div>
+                                                </TooltipContent>
+                                              </Tooltip>
+                                            ))}
+                                          </div>
+                                        </TooltipProvider>
+                                      ) : (
+                                        <span className="text-muted-foreground">-</span>
+                                      )}
+                                    </TableCell>
                                     <TableCell className="text-xs">
                                       {f.is_organic !== false ? (
                                         <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
@@ -451,7 +519,7 @@ export const PenerimaanTab = ({ onAddBatch }: PenerimaanTabProps) => {
                                   </TableRow>
                                 ))}
                                 <TableRow className="bg-muted/50">
-                                  <TableCell colSpan={3} className="text-xs font-bold">Total</TableCell>
+                                  <TableCell colSpan={4} className="text-xs font-bold">Total</TableCell>
                                   <TableCell className="text-xs text-right font-bold">
                                     {farmerDetails.reduce((sum, f) => sum + Number(f.jumlah_kg), 0).toLocaleString()} Kg
                                   </TableCell>

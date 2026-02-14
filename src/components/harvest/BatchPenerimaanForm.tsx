@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Package, Users, AlertCircle, Leaf, Factory, Calendar, User } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Plus, Package, Users, AlertCircle, Leaf, Factory, Calendar, User, Tag } from "lucide-react";
 import { usePengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
 import { usePengepul } from "@/hooks/use-pengepul";
 import { QualityGrade } from "@/hooks/use-batch-panen";
@@ -54,12 +55,20 @@ interface WeekData {
   totalConventionalKg: number;
 }
 
+interface ProductCodeEntry {
+  date: string;
+  value: number;
+  code: string;
+}
+
 interface FarmerDetail {
   petani_id: string;
   petani_nama: string;
   petani_kode: string;
   total_kg: number;
   daily_values: number[];
+  daily_dates: string[];
+  product_codes: ProductCodeEntry[];
   is_organic: boolean;
 }
 
@@ -152,6 +161,8 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
             petani_kode: f.petani_kode || f.code || '-',
             total_kg: f.jumlah_kg || f.kg || 0,
             daily_values: f.daily_values || [0, 0, 0, 0, 0, 0, 0],
+            daily_dates: f.daily_dates || [],
+            product_codes: f.product_codes || [],
             is_organic: isOrganic,
           };
 
@@ -279,6 +290,8 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
       jumlah_kg: f.total_kg,
       is_organic: isOrganic,
       daily_values: f.daily_values,
+      daily_dates: f.daily_dates,
+      product_codes: f.product_codes,
     }));
 
     await onSubmit({
@@ -326,6 +339,7 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
               <TableRow>
                 <TableHead className="sticky top-0 bg-background">Nama Petani</TableHead>
                 <TableHead className="sticky top-0 bg-background">Kode</TableHead>
+                <TableHead className="sticky top-0 bg-background">Identitas Produk</TableHead>
                 {[1, 2, 3, 4, 5, 6, 7].map(d => (
                   <TableHead key={d} className="text-center w-12 sticky top-0 bg-background">H{d}</TableHead>
                 ))}
@@ -337,6 +351,33 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
                 <TableRow key={farmer.petani_id}>
                   <TableCell className="font-medium">{farmer.petani_nama}</TableCell>
                   <TableCell>{farmer.petani_kode}</TableCell>
+                  <TableCell>
+                    {Array.isArray(farmer.product_codes) && farmer.product_codes.length > 0 ? (
+                      <TooltipProvider>
+                        <div className="flex flex-wrap gap-1">
+                          {farmer.product_codes.map((pc: ProductCodeEntry) => (
+                            <Tooltip key={pc.code}>
+                              <TooltipTrigger asChild>
+                                <Badge variant="outline" className="text-xs cursor-help bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+                                  <Tag className="h-2.5 w-2.5 mr-1" />
+                                  {pc.code}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <div className="text-xs">
+                                  <p className="font-medium">{farmer.petani_nama}</p>
+                                  <p>Tanggal: {pc.date ? format(new Date(pc.date), "dd MMM yyyy", { locale: localeId }) : '-'}</p>
+                                  <p>Berat: {pc.value} Kg</p>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          ))}
+                        </div>
+                      </TooltipProvider>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">-</span>
+                    )}
+                  </TableCell>
                   {(farmer.daily_values || [0, 0, 0, 0, 0, 0, 0]).slice(0, 7).map((val, idx) => (
                     <TableCell key={idx} className="text-center text-sm">
                       {val > 0 ? val.toLocaleString() : '-'}
@@ -346,7 +387,7 @@ export const BatchPenerimaanForm = ({ onSubmit, dialogOpen, setDialogOpen }: Bat
                 </TableRow>
               ))}
               <TableRow className="bg-muted/50">
-                <TableCell colSpan={9} className="font-bold">Total</TableCell>
+                <TableCell colSpan={10} className="font-bold">Total</TableCell>
                 <TableCell className="text-right font-bold">{total.toLocaleString()} Kg</TableCell>
               </TableRow>
             </TableBody>
