@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, Flame, Leaf, Factory, ChevronDown, ChevronRight, Users, AlertCircle, Calendar, Check, Pencil, Package, Trash2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Plus, Flame, Leaf, Factory, ChevronDown, ChevronRight, Users, AlertCircle, Calendar, Check, Pencil, Package, Trash2, Tag } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useProsesPengeringan, useBatchPanen, useGudangStok, ProsesPengeringan, PetaniDetailPengeringan, BatchStatus, BatchPanen } from "@/hooks/use-batch-panen";
 import { TableSkeleton } from "@/components/ui/skeleton-templates";
@@ -21,12 +22,19 @@ import { id as localeId } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
+interface ProductCodeEntry {
+  date: string;
+  value: number;
+  code: string;
+}
+
 interface FarmerDetail {
   petani_id: string;
   petani_nama: string;
   petani_kode: string;
   jumlah_kg: number;
   is_organic?: boolean;
+  product_codes?: ProductCodeEntry[];
 }
 
 interface PendingBatchOption {
@@ -77,12 +85,13 @@ export const PengovenanTab = () => {
           batchId: b.id,
           batchNumber: b.batch_number,
           isOrganic: b.is_organic !== false,
-          farmers: detailPetani.map(f => ({
+        farmers: detailPetani.map(f => ({
             petani_id: f.petani_id,
             petani_nama: f.petani_nama,
             petani_kode: f.petani_kode,
             jumlah_kg: Number(f.jumlah_kg) || 0,
             is_organic: f.is_organic,
+            product_codes: (f as any).product_codes || [],
           })),
           totalKg: Number(b.jumlah_kg),
           tanggalPenerimaan: b.tanggal_penerimaan,
@@ -193,7 +202,8 @@ export const PengovenanTab = () => {
         petani_kode: f.petani_kode,
         jumlah_kg: f.jumlah_kg,
         is_organic: selectedBatchOption.isOrganic,
-      }));
+        product_codes: f.product_codes || [],
+      } as any));
 
     // Generate lot number
     await refetch();
@@ -395,6 +405,7 @@ export const PengovenanTab = () => {
                 <TableHead className="w-12 sticky top-0 bg-background"></TableHead>
                 <TableHead className="sticky top-0 bg-background">Nama Petani</TableHead>
                 <TableHead className="sticky top-0 bg-background">Kode</TableHead>
+                <TableHead className="sticky top-0 bg-background">Identitas Produk</TableHead>
                 <TableHead className="text-right sticky top-0 bg-background">Total (Kg)</TableHead>
               </TableRow>
             </TableHeader>
@@ -412,12 +423,39 @@ export const PengovenanTab = () => {
                   </TableCell>
                   <TableCell className="font-medium">{farmer.petani_nama}</TableCell>
                   <TableCell>{farmer.petani_kode}</TableCell>
+                  <TableCell>
+                    {Array.isArray(farmer.product_codes) && farmer.product_codes.length > 0 ? (
+                      <TooltipProvider>
+                        <div className="flex flex-wrap gap-1">
+                          {farmer.product_codes.map((pc: ProductCodeEntry) => (
+                            <Tooltip key={pc.code}>
+                              <TooltipTrigger asChild>
+                                <Badge variant="outline" className="text-xs cursor-help bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+                                  <Tag className="h-2.5 w-2.5 mr-1" />
+                                  {pc.code}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <div className="text-xs">
+                                  <p className="font-medium">{farmer.petani_nama}</p>
+                                  <p>Tanggal: {pc.date ? format(new Date(pc.date), "dd MMM yyyy", { locale: localeId }) : '-'}</p>
+                                  <p>Berat: {pc.value} Kg</p>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          ))}
+                        </div>
+                      </TooltipProvider>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">-</span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right font-bold">{farmer.jumlah_kg.toLocaleString()} Kg</TableCell>
                 </TableRow>
               ))}
               <TableRow className="bg-muted/50">
                 <TableCell></TableCell>
-                <TableCell colSpan={2} className="font-bold">Total Dipilih</TableCell>
+                <TableCell colSpan={3} className="font-bold">Total Dipilih</TableCell>
                 <TableCell className="text-right font-bold">{selectedTotalKg.toLocaleString()} Kg</TableCell>
               </TableRow>
             </TableBody>
@@ -804,6 +842,7 @@ export const PengovenanTab = () => {
                                   <TableRow>
                                     <TableHead>Nama Petani</TableHead>
                                     <TableHead>Kode</TableHead>
+                                    <TableHead>Identitas Produk</TableHead>
                                     <TableHead className="text-right">Jumlah (Kg)</TableHead>
                                   </TableRow>
                                 </TableHeader>
@@ -812,6 +851,33 @@ export const PengovenanTab = () => {
                                     <TableRow key={idx}>
                                       <TableCell>{farmer.petani_nama}</TableCell>
                                       <TableCell>{farmer.petani_kode}</TableCell>
+                                      <TableCell>
+                                        {Array.isArray((farmer as any).product_codes) && (farmer as any).product_codes.length > 0 ? (
+                                          <TooltipProvider>
+                                            <div className="flex flex-wrap gap-1">
+                                              {(farmer as any).product_codes.map((pc: ProductCodeEntry) => (
+                                                <Tooltip key={pc.code}>
+                                                  <TooltipTrigger asChild>
+                                                    <Badge variant="outline" className="text-xs cursor-help bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+                                                      <Tag className="h-2.5 w-2.5 mr-1" />
+                                                      {pc.code}
+                                                    </Badge>
+                                                  </TooltipTrigger>
+                                                  <TooltipContent>
+                                                    <div className="text-xs">
+                                                      <p className="font-medium">{farmer.petani_nama}</p>
+                                                      <p>Tanggal: {pc.date ? format(new Date(pc.date), "dd MMM yyyy", { locale: localeId }) : '-'}</p>
+                                                      <p>Berat: {pc.value} Kg</p>
+                                                    </div>
+                                                  </TooltipContent>
+                                                </Tooltip>
+                                              ))}
+                                            </div>
+                                          </TooltipProvider>
+                                        ) : (
+                                          <span className="text-muted-foreground text-xs">-</span>
+                                        )}
+                                      </TableCell>
                                       <TableCell className="text-right">{farmer.jumlah_kg.toLocaleString()} Kg</TableCell>
                                     </TableRow>
                                   ))}
