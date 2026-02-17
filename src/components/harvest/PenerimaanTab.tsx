@@ -18,6 +18,7 @@ import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
+import { generateProductCode } from "@/lib/product-code";
 
 const statusColors: Record<BatchStatus, string> = {
   penerimaan: "bg-blue-100 text-blue-800 border-blue-200",
@@ -88,6 +89,42 @@ interface FarmerDetailItem {
   daily_dates?: string[];
   product_codes?: ProductCodeEntry[];
 }
+
+/**
+ * Ensure product_codes exist for a farmer detail item.
+ * If product_codes are missing but daily_values/daily_dates exist, generate them on-the-fly.
+ */
+const ensureProductCodes = (f: FarmerDetailItem): ProductCodeEntry[] => {
+  if (Array.isArray(f.product_codes) && f.product_codes.length > 0) {
+    return f.product_codes;
+  }
+  // Generate from daily_values + daily_dates if both available
+  if (Array.isArray(f.daily_values) && Array.isArray(f.daily_dates) && f.daily_dates.length > 0) {
+    let seq = 1;
+    const codes: ProductCodeEntry[] = [];
+    for (let i = 0; i < f.daily_values.length; i++) {
+      const val = f.daily_values[i];
+      if (val <= 0) continue;
+      const dateStr = f.daily_dates[i];
+      if (!dateStr) continue;
+      codes.push({
+        date: dateStr,
+        value: Math.round(val * 10) / 10,
+        code: generateProductCode(f.petani_kode, dateStr, seq++),
+      });
+    }
+    if (codes.length > 0) return codes;
+  }
+  // Fallback: single product code with total weight (no daily breakdown available)
+  if (f.jumlah_kg > 0 && f.petani_kode) {
+    return [{
+      date: '',
+      value: Math.round(f.jumlah_kg * 10) / 10,
+      code: `${f.petani_kode}-BULK`,
+    }];
+  }
+  return [];
+};
 
 export const PenerimaanTab = ({ onAddBatch }: PenerimaanTabProps) => {
   const { pengambilanList, loading: pengambilanLoading, refetch: refetchPengambilan } = usePengambilanKoperasi();
@@ -276,15 +313,17 @@ export const PenerimaanTab = ({ onAddBatch }: PenerimaanTabProps) => {
                             {group.items.flatMap(item => {
                               const detail = item.detail_petani as FarmerDetailItem[] | null;
                               if (!Array.isArray(detail)) return [];
-                              return detail.map((f, idx) => (
+                              return detail.map((f, idx) => {
+                                const productCodes = ensureProductCodes(f);
+                                return (
                                 <TableRow key={`${item.id}-${idx}`}>
                                   <TableCell className="text-xs font-mono">{f.petani_kode}</TableCell>
                                   <TableCell className="text-xs">{f.petani_nama}</TableCell>
                                   <TableCell className="text-xs">
-                                    {Array.isArray(f.product_codes) && f.product_codes.length > 0 ? (
+                                    {productCodes.length > 0 ? (
                                       <TooltipProvider>
                                         <div className="flex flex-wrap gap-1">
-                                          {f.product_codes.map((pc: ProductCodeEntry) => (
+                                          {productCodes.map((pc: ProductCodeEntry) => (
                                             <Tooltip key={pc.code}>
                                               <TooltipTrigger asChild>
                                                 <Badge variant="outline" className="text-xs cursor-help bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
@@ -323,7 +362,8 @@ export const PenerimaanTab = ({ onAddBatch }: PenerimaanTabProps) => {
                                   <TableCell className="text-xs text-right font-medium">{Number(f.jumlah_kg).toLocaleString()}</TableCell>
                                   <TableCell className="text-xs">{format(new Date(item.tanggal_ambil), "dd MMM yyyy", { locale: localeId })}</TableCell>
                                 </TableRow>
-                              ));
+                              );
+                              });
                             })}
                           </TableBody>
                         </Table>
@@ -475,15 +515,17 @@ export const PenerimaanTab = ({ onAddBatch }: PenerimaanTabProps) => {
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {farmerDetails.map((f, idx) => (
+                                {farmerDetails.map((f, idx) => {
+                                  const productCodes = ensureProductCodes(f);
+                                  return (
                                   <TableRow key={idx}>
                                     <TableCell className="text-xs font-mono">{f.petani_kode}</TableCell>
                                     <TableCell className="text-xs">{f.petani_nama}</TableCell>
                                     <TableCell className="text-xs">
-                                      {Array.isArray((f as any).product_codes) && (f as any).product_codes.length > 0 ? (
+                                      {productCodes.length > 0 ? (
                                         <TooltipProvider>
                                           <div className="flex flex-wrap gap-1">
-                                            {(f as any).product_codes.map((pc: ProductCodeEntry) => (
+                                            {productCodes.map((pc: ProductCodeEntry) => (
                                               <Tooltip key={pc.code}>
                                                 <TooltipTrigger asChild>
                                                   <Badge variant="outline" className="text-xs cursor-help bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
@@ -521,7 +563,8 @@ export const PenerimaanTab = ({ onAddBatch }: PenerimaanTabProps) => {
                                     </TableCell>
                                     <TableCell className="text-xs text-right font-medium">{Number(f.jumlah_kg).toLocaleString()}</TableCell>
                                   </TableRow>
-                                ))}
+                                  );
+                                })}
                                 <TableRow className="bg-muted/50">
                                   <TableCell colSpan={4} className="text-xs font-bold">Total</TableCell>
                                   <TableCell className="text-xs text-right font-bold">
