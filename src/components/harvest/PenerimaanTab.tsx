@@ -290,6 +290,8 @@ export const PenerimaanTab = ({ onAddBatch }: PenerimaanTabProps) => {
                                                 <Badge variant="outline" className="text-xs cursor-help bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
                                                   <Tag className="h-2.5 w-2.5 mr-1" />
                                                   {pc.code}
+                                                  <span className="mx-1 text-muted-foreground">·</span>
+                                                  <span>{pc.value} Kg</span>
                                                 </Badge>
                                               </TooltipTrigger>
                                               <TooltipContent>
@@ -487,6 +489,8 @@ export const PenerimaanTab = ({ onAddBatch }: PenerimaanTabProps) => {
                                                   <Badge variant="outline" className="text-xs cursor-help bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
                                                     <Tag className="h-2.5 w-2.5 mr-1" />
                                                     {pc.code}
+                                                    <span className="mx-1 text-muted-foreground">·</span>
+                                                    <span>{pc.value} Kg</span>
                                                   </Badge>
                                                 </TooltipTrigger>
                                                 <TooltipContent>

@@ -430,10 +430,12 @@ export const PengovenanTab = () => {
                           {farmer.product_codes.map((pc: ProductCodeEntry) => (
                             <Tooltip key={pc.code}>
                               <TooltipTrigger asChild>
-                                <Badge variant="outline" className="text-xs cursor-help bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
-                                  <Tag className="h-2.5 w-2.5 mr-1" />
-                                  {pc.code}
-                                </Badge>
+                                 <Badge variant="outline" className="text-xs cursor-help bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+                                   <Tag className="h-2.5 w-2.5 mr-1" />
+                                   {pc.code}
+                                   <span className="mx-1 text-muted-foreground">·</span>
+                                   <span>{pc.value} Kg</span>
+                                 </Badge>
                               </TooltipTrigger>
                               <TooltipContent>
                                 <div className="text-xs">
@@ -589,7 +591,7 @@ export const PengovenanTab = () => {
                         <Label>Total Kering (Kg)</Label>
                         <Input
                           type="number"
-                          value={calculateResults.total_kering.toFixed(2)}
+                          value={calculateResults.total_kering.toFixed(1)}
                           readOnly
                           className="bg-muted font-bold"
                         />
@@ -612,7 +614,7 @@ export const PengovenanTab = () => {
                         <Label>QC Off (Kg)</Label>
                         <Input
                           type="number"
-                          value={calculateResults.qc_off.toFixed(2)}
+                          value={calculateResults.qc_off.toFixed(1)}
                           readOnly
                           className="bg-muted"
                         />
@@ -622,7 +624,7 @@ export const PengovenanTab = () => {
                         <Label>Total Kering Packing (Kg)</Label>
                         <Input
                           type="number"
-                          value={calculateResults.total_kering_packing.toFixed(2)}
+                          value={calculateResults.total_kering_packing.toFixed(1)}
                           readOnly
                           className="bg-muted font-bold text-green-600"
                         />
@@ -640,19 +642,19 @@ export const PengovenanTab = () => {
                           <div className="hidden md:block"></div>
                           
                           <div>Penyusutan:</div>
-                          <div className="font-medium">{calculateResults.penyusutan_kg.toFixed(2)} Kg ({calculateResults.susut_persen}%)</div>
+                          <div className="font-medium">{calculateResults.penyusutan_kg.toFixed(1)} Kg ({calculateResults.susut_persen}%)</div>
                           <div className="hidden md:block"></div>
                           
                           <div>Total Kering:</div>
-                          <div className="font-medium">{calculateResults.total_kering.toFixed(2)} Kg</div>
+                          <div className="font-medium">{calculateResults.total_kering.toFixed(1)} Kg</div>
                           <div className="hidden md:block"></div>
                           
                           <div>QC Off:</div>
-                          <div className="font-medium">{calculateResults.qc_off.toFixed(2)} Kg ({calculateResults.susut_qc_off_persen}%)</div>
+                          <div className="font-medium">{calculateResults.qc_off.toFixed(1)} Kg ({calculateResults.susut_qc_off_persen}%)</div>
                           <div className="hidden md:block"></div>
                           
                           <div className="font-bold text-green-700 dark:text-green-400">Total Kering Packing:</div>
-                          <div className="font-bold text-green-700 dark:text-green-400">{calculateResults.total_kering_packing.toFixed(2)} Kg</div>
+                          <div className="font-bold text-green-700 dark:text-green-400">{calculateResults.total_kering_packing.toFixed(1)} Kg</div>
                         </div>
                       </div>
                     )}
@@ -762,10 +764,10 @@ export const PengovenanTab = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>{format(new Date(p.tanggal_mulai), "dd MMM yyyy", { locale: localeId })}</TableCell>
-                        <TableCell>{Number(p.jumlah_kg_sebelum).toLocaleString()} Kg</TableCell>
-                        <TableCell>{p.total_kering ? `${Number(p.total_kering).toLocaleString()} Kg` : '-'}</TableCell>
-                        <TableCell>{p.qc_off ? `${Number(p.qc_off).toLocaleString()} Kg` : '-'}</TableCell>
-                        <TableCell className="font-bold text-green-600">{p.total_kering_packing ? `${Number(p.total_kering_packing).toLocaleString()} Kg` : '-'}</TableCell>
+                        <TableCell>{Number(p.jumlah_kg_sebelum).toFixed(1)} Kg</TableCell>
+                        <TableCell>{p.total_kering ? `${Number(p.total_kering).toFixed(1)} Kg` : '-'}</TableCell>
+                        <TableCell>{p.qc_off ? `${Number(p.qc_off).toFixed(1)} Kg` : '-'}</TableCell>
+                        <TableCell className="font-bold text-green-600">{p.total_kering_packing ? `${Number(p.total_kering_packing).toFixed(1)} Kg` : '-'}</TableCell>
                         <TableCell>
                           {p.susut_persen ? `${Number(p.susut_persen).toFixed(1)}%` : '-'}
                         </TableCell>
@@ -858,10 +860,12 @@ export const PengovenanTab = () => {
                                               {(farmer as any).product_codes.map((pc: ProductCodeEntry) => (
                                                 <Tooltip key={pc.code}>
                                                   <TooltipTrigger asChild>
-                                                    <Badge variant="outline" className="text-xs cursor-help bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
-                                                      <Tag className="h-2.5 w-2.5 mr-1" />
-                                                      {pc.code}
-                                                    </Badge>
+                                                 <Badge variant="outline" className="text-xs cursor-help bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+                                                       <Tag className="h-2.5 w-2.5 mr-1" />
+                                                       {pc.code}
+                                                       <span className="mx-1 text-muted-foreground">·</span>
+                                                       <span>{pc.value} Kg</span>
+                                                     </Badge>
                                                   </TooltipTrigger>
                                                   <TooltipContent>
                                                     <div className="text-xs">
@@ -944,17 +948,17 @@ export const PengovenanTab = () => {
                   <div>Bahan Baku:</div>
                   <div className="font-medium">{editCalculateResults.bahan_masuk.toLocaleString()} Kg</div>
                   
-                  <div>Penyusutan:</div>
-                  <div className="font-medium">{editCalculateResults.penyusutan_kg.toFixed(2)} Kg ({editCalculateResults.susut_persen}%)</div>
+                   <div>Penyusutan:</div>
+                  <div className="font-medium">{editCalculateResults.penyusutan_kg.toFixed(1)} Kg ({editCalculateResults.susut_persen}%)</div>
                   
                   <div>Total Kering:</div>
-                  <div className="font-medium">{editCalculateResults.total_kering.toFixed(2)} Kg</div>
+                  <div className="font-medium">{editCalculateResults.total_kering.toFixed(1)} Kg</div>
                   
                   <div>QC Off:</div>
-                  <div className="font-medium">{editCalculateResults.qc_off.toFixed(2)} Kg ({editCalculateResults.susut_qc_off_persen}%)</div>
+                  <div className="font-medium">{editCalculateResults.qc_off.toFixed(1)} Kg ({editCalculateResults.susut_qc_off_persen}%)</div>
                   
                   <div className="font-bold text-green-700 dark:text-green-400">Total Kering Packing:</div>
-                  <div className="font-bold text-green-700 dark:text-green-400">{editCalculateResults.total_kering_packing.toFixed(2)} Kg</div>
+                  <div className="font-bold text-green-700 dark:text-green-400">{editCalculateResults.total_kering_packing.toFixed(1)} Kg</div>
                 </div>
               </div>
 

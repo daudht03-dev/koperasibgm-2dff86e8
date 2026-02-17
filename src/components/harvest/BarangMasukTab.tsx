@@ -1159,7 +1159,41 @@ export const BarangMasukTab = () => {
              {weekProgressLoading && <span className="text-xs">Memperbarui status…</span>}
            </div>
 
-           {displayWeeksPaged.map(weekGroup => (
+           {displayWeeksPaged.map(weekGroup => {
+             // Calculate pengepul summary for this week
+             const pengepulSummary = new Map<string, { nama: string; kode: string; organicKg: number; conventionalKg: number; totalKg: number; farmerCount: number }>();
+             [...weekGroup.organic, ...weekGroup.conventional].forEach(item => {
+               const pengepul = pengepulList.find(p => p.id === item.pengepul_id);
+               const pId = item.pengepul_id;
+               if (!pengepulSummary.has(pId)) {
+                 pengepulSummary.set(pId, {
+                   nama: pengepul?.nama || (item as any).pengepul?.nama || 'Unknown',
+                   kode: pengepul?.kode_pengepul || (item as any).pengepul?.kode_pengepul || '-',
+                   organicKg: 0, conventionalKg: 0, totalKg: 0, farmerCount: 0,
+                 });
+               }
+               const s = pengepulSummary.get(pId)!;
+               const kg = Number(item.jumlah_kg);
+               if ((item as any).is_organic !== false) {
+                 s.organicKg += kg;
+               } else {
+                 s.conventionalKg += kg;
+               }
+               s.totalKg += kg;
+             });
+             // Count unique farmers per pengepul
+             const farmerPengepulMap = new Map<string, Set<string>>();
+             [...weekGroup.organic, ...weekGroup.conventional].forEach(item => {
+               if (!farmerPengepulMap.has(item.pengepul_id)) farmerPengepulMap.set(item.pengepul_id, new Set());
+               farmerPengepulMap.get(item.pengepul_id)!.add(item.petani_id);
+             });
+             farmerPengepulMap.forEach((farmers, pId) => {
+               const s = pengepulSummary.get(pId);
+               if (s) s.farmerCount = farmers.size;
+             });
+             const summaryArr = Array.from(pengepulSummary.values());
+
+             return (
              <Card key={weekGroup.key}>
                <CardHeader className="py-3">
                  <CardTitle className="text-lg flex items-center gap-2">
@@ -1168,6 +1202,38 @@ export const BarangMasukTab = () => {
                  </CardTitle>
                </CardHeader>
                <CardContent>
+                 {/* Rekap per Pengepul */}
+                 {summaryArr.length > 0 && (
+                   <div className="mb-4 p-3 bg-muted/50 rounded-lg border">
+                     <p className="text-sm font-medium mb-2">Rekap per Pengepul</p>
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                       {summaryArr.map(s => (
+                         <div key={s.kode} className="flex items-center justify-between p-2 bg-background rounded border text-sm">
+                           <div>
+                             <span className="font-medium">{s.nama}</span>
+                             <span className="text-muted-foreground ml-1">({s.kode})</span>
+                             <div className="flex gap-1 mt-0.5">
+                               {s.organicKg > 0 && (
+                                 <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+                                   <Leaf className="h-2.5 w-2.5 mr-0.5" />{s.organicKg.toFixed(1)}
+                                 </Badge>
+                               )}
+                               {s.conventionalKg > 0 && (
+                                 <Badge variant="outline" className="text-xs bg-slate-50 text-slate-700 border-slate-200">
+                                   <Factory className="h-2.5 w-2.5 mr-0.5" />{s.conventionalKg.toFixed(1)}
+                                 </Badge>
+                               )}
+                             </div>
+                           </div>
+                           <div className="text-right">
+                             <p className="font-bold">{s.totalKg.toFixed(1)} Kg</p>
+                             <p className="text-xs text-muted-foreground">{s.farmerCount} petani</p>
+                           </div>
+                         </div>
+                       ))}
+                     </div>
+                   </div>
+                 )}
                  <div className="grid grid-cols-2 gap-6">
                    {renderFarmerTable(
                      weekGroup.organic,
@@ -1182,7 +1248,8 @@ export const BarangMasukTab = () => {
                  </div>
                </CardContent>
              </Card>
-           ))}
+             );
+           })}
 
            {displayTotalPages > 1 && (
              <div className="pt-2">
