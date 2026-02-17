@@ -42,6 +42,8 @@ export const OvenReportPrint = forwardRef<HTMLDivElement, OvenReportPrintProps>(
       ? filteredProses.reduce((sum, p) => sum + (p.susut_persen || 0), 0) / filteredProses.length
       : 0;
 
+    const fmt1 = (n: number) => n.toFixed(1);
+
     const getDetailPetani = (p: ProsesPengeringan): PetaniDetailPengeringan[] => {
       if (Array.isArray(p.detail_petani)) {
         return p.detail_petani as PetaniDetailPengeringan[];
@@ -87,7 +89,7 @@ export const OvenReportPrint = forwardRef<HTMLDivElement, OvenReportPrintProps>(
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mt-3 pt-3 border-t">
             <div>
               <span className="text-gray-600">Rata-rata Susut:</span>
-              <p className="font-bold">{avgSusut.toFixed(2)}%</p>
+              <p className="font-bold">{fmt1(avgSusut)}%</p>
             </div>
             <div>
               <span className="text-gray-600">Total QC Off:</span>
@@ -99,7 +101,7 @@ export const OvenReportPrint = forwardRef<HTMLDivElement, OvenReportPrintProps>(
             </div>
             <div>
               <span className="text-gray-600">Efisiensi:</span>
-              <p className="font-bold">{totals.bahanMasuk > 0 ? ((totals.totalKeringPacking / totals.bahanMasuk) * 100).toFixed(2) : 0}%</p>
+              <p className="font-bold">{totals.bahanMasuk > 0 ? fmt1((totals.totalKeringPacking / totals.bahanMasuk) * 100) : 0}%</p>
             </div>
           </div>
         </div>
