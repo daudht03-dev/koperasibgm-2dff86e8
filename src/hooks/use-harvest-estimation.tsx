@@ -11,6 +11,8 @@ export interface FarmerEstimation {
   averageDaily: number;
   isOrganic: boolean;
   regulasi: string; // "EU", "COR", "EU,COR", or ""
+  pengepulId: string;
+  pengepulName: string;
 }
 
 export interface DailyData {
@@ -29,6 +31,9 @@ export interface FarmerWeeklyData {
   isOrganic: boolean;
   regulasi: string;
   holidays: number[]; // Each farmer has their own holidays
+  pengepulId: string;
+  pengepulName: string;
+  salesBreakdown: Record<number, number[]>; // sale day index -> harvest day indices
 }
 
 export interface WeekData {
@@ -230,8 +235,10 @@ export const useHarvestEstimation = () => {
 
   // Generate sales pattern based on harvest data
   // Pattern: random grouping (single day, 2 days sum, 3 days sum)
-  const generateSalesFromHarvest = (harvestData: DailyData[]): DailyData[] => {
+  // Returns { salesData, breakdown } where breakdown maps sale day index to harvest day indices
+  const generateSalesFromHarvest = (harvestData: DailyData[]): { salesData: DailyData[]; breakdown: Record<number, number[]> } => {
     const salesData: DailyData[] = harvestData.map(h => ({ date: h.date, value: 0 }));
+    const breakdown: Record<number, number[]> = {};
     let dayIndex = 0;
 
     while (dayIndex < 7) {
@@ -240,26 +247,27 @@ export const useHarvestEstimation = () => {
       const daysToSum = pattern + 1;
 
       let sum = 0;
-      let lastNonZeroIndex = dayIndex;
+      const contributingDays: number[] = [];
 
       for (let i = 0; i < daysToSum && dayIndex + i < 7; i++) {
         const currentValue = harvestData[dayIndex + i]?.value || 0;
         sum += currentValue;
         if (currentValue > 0) {
-          lastNonZeroIndex = dayIndex + i;
+          contributingDays.push(dayIndex + i);
         }
       }
 
-      // Display sum at the last day of the group (or last day with value)
+      // Display sum at the last day of the group
       const displayDay = Math.min(dayIndex + daysToSum - 1, 6);
       if (sum > 0) {
         salesData[displayDay].value = Math.round(sum * 10) / 10;
+        breakdown[displayDay] = contributingDays;
       }
 
       dayIndex += daysToSum;
     }
 
-    return salesData;
+    return { salesData, breakdown };
   };
 
   // Generate week data for all selected farmers - each farmer gets unique random holidays
@@ -290,7 +298,7 @@ export const useHarvestEstimation = () => {
       }
 
       // Generate sales based on harvest
-      const dailySales = generateSalesFromHarvest(dailyHarvest);
+      const { salesData: dailySales, breakdown: salesBreakdown } = generateSalesFromHarvest(dailyHarvest);
 
       return {
         farmerId: farmer.farmerId,
@@ -303,6 +311,9 @@ export const useHarvestEstimation = () => {
         isOrganic: farmer.isOrganic,
         regulasi: farmer.regulasi || "",
         holidays: farmerHolidays,
+        pengepulId: farmer.pengepulId || "",
+        pengepulName: farmer.pengepulName || "",
+        salesBreakdown,
       };
     });
 
@@ -349,11 +360,12 @@ export const useHarvestEstimation = () => {
     const newWeeklyData = weeklyData.map((week) => ({
       ...week,
       farmersData: week.farmersData.map(farmer => {
-        const newDailySales = generateSalesFromHarvest(farmer.dailyHarvest);
+        const { salesData: newDailySales, breakdown: newBreakdown } = generateSalesFromHarvest(farmer.dailyHarvest);
         return {
           ...farmer,
           dailySales: newDailySales,
           totalSales: newDailySales.reduce((sum, d) => sum + d.value, 0),
+          salesBreakdown: newBreakdown,
         };
       }),
     }));
@@ -387,11 +399,12 @@ export const useHarvestEstimation = () => {
         return {
           ...week,
           farmersData: week.farmersData.map(farmer => {
-            const newDailySales = generateSalesFromHarvest(farmer.dailyHarvest);
+            const { salesData: newDailySales, breakdown: newBreakdown } = generateSalesFromHarvest(farmer.dailyHarvest);
             return {
               ...farmer,
               dailySales: newDailySales,
               totalSales: newDailySales.reduce((sum, d) => sum + d.value, 0),
+              salesBreakdown: newBreakdown,
             };
           }),
         };
@@ -440,21 +453,22 @@ export const useHarvestEstimation = () => {
     }
 
     const rows: string[] = [];
-    
-    // Use semicolon as separator for better Excel compatibility with numbers
     const SEP = ";";
+    const fmtNum = (n: number) => n.toFixed(1).replace(".", ",");
     
     weeklyData.forEach((week) => {
-      // Sort farmers by code for consistent ordering with display
-      const sortedFarmersData = [...week.farmersData].sort((a, b) => 
-        naturalSort(a.farmerCode, b.farmerCode)
-      );
+      // Sort farmers by pengepul first, then by code
+      const sortedFarmersData = [...week.farmersData].sort((a, b) => {
+        const pA = a.pengepulName || "zzz";
+        const pB = b.pengepulName || "zzz";
+        if (pA !== pB) return pA.localeCompare(pB);
+        return naturalSort(a.farmerCode, b.farmerCode);
+      });
       
-      // Add week header
       rows.push(`Minggu ${week.weekIndex + 1}: ${format(week.startDate, "dd/MM/yyyy")} - ${format(week.endDate, "dd/MM/yyyy")}`);
       rows.push("");
       
-      // Harvest table header
+      // Harvest table
       const harvestHeader = ["Nama Petani", "Kode", "Status", "Regulasi"];
       for (let i = 0; i < 7; i++) {
         harvestHeader.push(format(addDays(week.startDate, i), "dd/MM"));
@@ -463,48 +477,69 @@ export const useHarvestEstimation = () => {
       rows.push("ESTIMASI PANEN");
       rows.push(harvestHeader.join(SEP));
       
-      // Harvest data - numbers with 1 decimal place for proper spreadsheet recognition
       sortedFarmersData.forEach(farmer => {
         const row = [
           `"${farmer.farmerName}"`,
           farmer.farmerCode,
           farmer.isOrganic ? "Organik" : "Konvensional",
           farmer.regulasi || "-",
-          ...farmer.dailyHarvest.map(d => d.value.toFixed(1).replace(".", ",")), // Use comma as decimal for EU/ID locale
-          farmer.totalHarvest.toFixed(1).replace(".", ","),
+          ...farmer.dailyHarvest.map(d => fmtNum(d.value)),
+          fmtNum(farmer.totalHarvest),
         ];
         rows.push(row.join(SEP));
       });
       
-      // Harvest total row
       const harvestTotals = ["TOTAL", "", "", ""];
       for (let i = 0; i < 7; i++) {
         const dayTotal = sortedFarmersData.reduce((sum, f) => sum + (f.dailyHarvest[i]?.value || 0), 0);
-        harvestTotals.push(dayTotal.toFixed(1).replace(".", ","));
+        harvestTotals.push(fmtNum(dayTotal));
       }
-      harvestTotals.push(sortedFarmersData.reduce((sum, f) => sum + f.totalHarvest, 0).toFixed(1).replace(".", ","));
+      harvestTotals.push(fmtNum(sortedFarmersData.reduce((sum, f) => sum + f.totalHarvest, 0)));
       rows.push(harvestTotals.join(SEP));
       rows.push("");
       
-      // Sales table header
+      // Sales table with breakdown and pengepul column
       const salesHeader = ["Nama Petani", "Kode", "Status", "Regulasi"];
       for (let i = 0; i < 7; i++) {
         salesHeader.push(format(addDays(week.startDate, i), "dd/MM"));
       }
-      salesHeader.push("Total Penjualan");
+      salesHeader.push("Total Penjualan", "Pengepul", "Total");
       rows.push("ESTIMASI PENJUALAN");
       rows.push(salesHeader.join(SEP));
       
-      // Sales data - numbers with 1 decimal place
+      // Track pengepul subtotals
+      const pengepulTotals = new Map<string, number>();
+      
       sortedFarmersData.forEach(farmer => {
+        const pengepulName = farmer.pengepulName || "-";
+        pengepulTotals.set(pengepulName, (pengepulTotals.get(pengepulName) || 0) + farmer.totalSales);
+        
         const row = [
           `"${farmer.farmerName}"`,
           farmer.farmerCode,
           farmer.isOrganic ? "Organik" : "Konvensional",
           farmer.regulasi || "-",
-          ...farmer.dailySales.map(d => d.value.toFixed(1).replace(".", ",")),
-          farmer.totalSales.toFixed(1).replace(".", ","),
         ];
+        
+        // Sales cells with breakdown when multiple harvest days contribute
+        for (let i = 0; i < 7; i++) {
+          const saleValue = farmer.dailySales[i]?.value || 0;
+          const contributingDays = farmer.salesBreakdown?.[i] || [];
+          
+          if (saleValue > 0 && contributingDays.length > 1) {
+            // Show breakdown: individual harvest values that make up this sale
+            const breakdownStr = contributingDays
+              .map(dayIdx => fmtNum(farmer.dailyHarvest[dayIdx]?.value || 0))
+              .join("+");
+            row.push(`"${breakdownStr}=${fmtNum(saleValue)}"`);
+          } else {
+            row.push(fmtNum(saleValue));
+          }
+        }
+        
+        row.push(fmtNum(farmer.totalSales));
+        row.push(`"${pengepulName}"`);
+        row.push(fmtNum(farmer.totalSales));
         rows.push(row.join(SEP));
       });
       
@@ -512,10 +547,22 @@ export const useHarvestEstimation = () => {
       const salesTotals = ["TOTAL", "", "", ""];
       for (let i = 0; i < 7; i++) {
         const dayTotal = sortedFarmersData.reduce((sum, f) => sum + (f.dailySales[i]?.value || 0), 0);
-        salesTotals.push(dayTotal.toFixed(1).replace(".", ","));
+        salesTotals.push(fmtNum(dayTotal));
       }
-      salesTotals.push(sortedFarmersData.reduce((sum, f) => sum + f.totalSales, 0).toFixed(1).replace(".", ","));
+      const grandTotal = sortedFarmersData.reduce((sum, f) => sum + f.totalSales, 0);
+      salesTotals.push(fmtNum(grandTotal), "", fmtNum(grandTotal));
       rows.push(salesTotals.join(SEP));
+      
+      // Per-pengepul subtotals
+      if (pengepulTotals.size > 0) {
+        rows.push("");
+        rows.push("REKAP PER PENGEPUL");
+        rows.push(["Pengepul", "Total (Kg)"].join(SEP));
+        pengepulTotals.forEach((total, name) => {
+          rows.push([`"${name}"`, fmtNum(total)].join(SEP));
+        });
+      }
+      
       rows.push("");
       rows.push("");
     });
