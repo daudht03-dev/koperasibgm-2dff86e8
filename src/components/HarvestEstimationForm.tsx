@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { FarmerEstimation, HolidayMode, HolidayRateConfig } from "@/hooks/use-harvest-estimation";
 import { useToast } from "@/hooks/use-toast";
 import { naturalSort } from "@/lib/utils";
+import { usePengepul } from "@/hooks/use-pengepul";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,7 @@ interface Farmer {
   is_organic?: boolean;
   rata_rata_panen?: number | null;
   regulasi?: string | null;
+  pengepul_id?: string | null;
 }
 
 interface HarvestEstimationFormProps {
@@ -93,6 +95,7 @@ export const HarvestEstimationForm = ({
   updateFarmerAverage,
 }: HarvestEstimationFormProps) => {
   const { toast } = useToast();
+  const { pengepulList } = usePengepul();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "organic" | "conventional">("all");
   const [filterSelection, setFilterSelection] = useState<"all" | "selected" | "unselected">("all");
@@ -162,6 +165,7 @@ export const HarvestEstimationForm = ({
       } catch (e) {}
     }
     const savedSetting = savedSettings.find(s => s.farmerId === farmer.id);
+    const pengepul = farmer.pengepul_id ? pengepulList.find(p => p.id === farmer.pengepul_id) : null;
 
     if (checked) {
       setSelectedFarmers([
@@ -173,6 +177,8 @@ export const HarvestEstimationForm = ({
           averageDaily: savedSetting?.averageDaily ?? (farmer.rata_rata_panen ?? batchAverage),
           isOrganic: savedSetting?.isOrganic ?? (farmer.is_organic !== false),
           regulasi: savedSetting?.regulasi ?? (farmer.regulasi || ""),
+          pengepulId: farmer.pengepul_id || "",
+          pengepulName: pengepul?.nama || "",
         },
       ]);
     } else {
@@ -196,6 +202,7 @@ export const HarvestEstimationForm = ({
       setSelectedFarmers(
         filteredFarmers.map((f) => {
           const savedSetting = savedSettings.find(s => s.farmerId === f.id);
+          const pengepul = f.pengepul_id ? pengepulList.find(p => p.id === f.pengepul_id) : null;
           return {
             farmerId: f.id,
             farmerName: f.nama,
@@ -203,6 +210,8 @@ export const HarvestEstimationForm = ({
             averageDaily: savedSetting?.averageDaily ?? (f.rata_rata_panen ?? batchAverage),
             isOrganic: savedSetting?.isOrganic ?? (f.is_organic !== false),
             regulasi: savedSetting?.regulasi ?? (f.regulasi || ""),
+            pengepulId: f.pengepul_id || "",
+            pengepulName: pengepul?.nama || "",
           };
         })
       );
