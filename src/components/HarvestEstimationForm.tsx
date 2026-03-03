@@ -99,6 +99,7 @@ export const HarvestEstimationForm = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "organic" | "conventional">("all");
   const [filterSelection, setFilterSelection] = useState<"all" | "selected" | "unselected">("all");
+  const [filterPengepul, setFilterPengepul] = useState<string>("all");
   const [rateDialogOpen, setRateDialogOpen] = useState(false);
   const [tempRates, setTempRates] = useState<HolidayRateConfig>(holidayRates);
 
