@@ -453,6 +453,9 @@ export const HarvestEstimationTable = ({
                           <TableCell className="sticky left-[100px] bg-background z-10 text-muted-foreground">
                             {farmer.farmerCode}
                           </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {farmer.pengepulName || "-"}
+                          </TableCell>
                           {farmer.dailyHarvest.map((day, index) => {
                             // Use farmer's own holidays instead of week-level holidays
                             const isHoliday = farmer.holidays?.includes(index) ?? false;
