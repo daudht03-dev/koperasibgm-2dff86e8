@@ -405,8 +405,8 @@ export const HarvestEstimationForm = ({
           </div>
 
           {/* Active Filters Badge */}
-          {(filterStatus !== "all" || filterSelection !== "all") && (
-            <div className="flex items-center gap-2">
+          {(filterStatus !== "all" || filterSelection !== "all" || filterPengepul !== "all") && (
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-muted-foreground">Filter aktif:</span>
               {filterStatus !== "all" && (
                 <Badge variant="outline" className="text-xs">
@@ -418,6 +418,11 @@ export const HarvestEstimationForm = ({
                   {filterSelection === "selected" ? "Sudah Dipilih" : "Belum Dipilih"}
                 </Badge>
               )}
+              {filterPengepul !== "all" && (
+                <Badge variant="outline" className="text-xs">
+                  {pengepulList.find(p => p.id === filterPengepul)?.nama || "Pengepul"}
+                </Badge>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -425,6 +430,7 @@ export const HarvestEstimationForm = ({
                 onClick={() => {
                   setFilterStatus("all");
                   setFilterSelection("all");
+                  setFilterPengepul("all");
                 }}
               >
                 Reset
