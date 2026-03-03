@@ -481,6 +481,7 @@ export const HarvestEstimationTable = ({
                           TOTAL
                         </TableCell>
                         <TableCell className="sticky left-[100px] bg-muted/50 z-10"></TableCell>
+                        <TableCell></TableCell>
                         {[0, 1, 2, 3, 4, 5, 6].map((dayIndex) => {
                           const dayTotal = week.farmersData.reduce(
                             (sum, f) => sum + (f.dailyHarvest[dayIndex]?.value || 0),
