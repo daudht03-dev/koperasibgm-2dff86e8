@@ -215,7 +215,12 @@ export const HarvestEstimationTable = ({
           <TrendingUp className="h-4 w-4 mr-2" />
           Refresh Penjualan
         </Button>
-        <Button onClick={onAddNextWeek} className="bg-gradient-organic">
+        <Button onClick={() => {
+          setTempHolidayMode(holidayMode);
+          setTempManualHolidays(manualHolidays);
+          setTempRates(holidayRates);
+          setNextWeekDialogOpen(true);
+        }} className="bg-gradient-organic">
           <Plus className="h-4 w-4 mr-2" />
           Tambah Minggu Berikutnya
         </Button>
