@@ -5,13 +5,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { RefreshCw, Plus, Trash2, TrendingUp, Leaf, Download, Save, FolderOpen, Loader2, Factory, Tag } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { RefreshCw, Plus, Trash2, TrendingUp, Leaf, Download, Save, FolderOpen, Loader2, Factory, Tag, Dices, Percent, Hand, Settings2 } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { id as localeId } from "date-fns/locale";
-import { WeekData, SavedEstimation } from "@/hooks/use-harvest-estimation";
+import { WeekData, SavedEstimation, HolidayMode, HolidayRateConfig } from "@/hooks/use-harvest-estimation";
 import { naturalSort } from "@/lib/utils";
 import { generateProductCode } from "@/lib/product-code";
 
@@ -34,6 +36,12 @@ interface HarvestEstimationTableProps {
   savedEstimations: SavedEstimation[];
   isSaving: boolean;
   isLoading: boolean;
+  holidayMode: HolidayMode;
+  setHolidayMode: (mode: HolidayMode) => void;
+  manualHolidays: number[];
+  setManualHolidays: (holidays: number[]) => void;
+  holidayRates: HolidayRateConfig;
+  saveHolidayRates: (rates: HolidayRateConfig) => void;
   onRefreshAll: () => void;
   onRefreshHarvest: () => void;
   onRefreshSales: () => void;
@@ -52,6 +60,12 @@ export const HarvestEstimationTable = ({
   savedEstimations,
   isSaving,
   isLoading,
+  holidayMode,
+  setHolidayMode,
+  manualHolidays,
+  setManualHolidays,
+  holidayRates,
+  saveHolidayRates,
   onRefreshAll,
   onRefreshHarvest,
   onRefreshSales,
@@ -68,6 +82,12 @@ export const HarvestEstimationTable = ({
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [saveNotes, setSaveNotes] = useState("");
+  const [nextWeekDialogOpen, setNextWeekDialogOpen] = useState(false);
+  const [tempHolidayMode, setTempHolidayMode] = useState<HolidayMode>(holidayMode);
+  const [tempManualHolidays, setTempManualHolidays] = useState<number[]>(manualHolidays);
+  const [tempRates, setTempRates] = useState<HolidayRateConfig>(holidayRates);
+  const [rateDialogOpen, setRateDialogOpen] = useState(false);
+  const dayNames = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
   const handleSave = async () => {
     if (!saveName.trim()) return;
@@ -195,7 +215,12 @@ export const HarvestEstimationTable = ({
           <TrendingUp className="h-4 w-4 mr-2" />
           Refresh Penjualan
         </Button>
-        <Button onClick={onAddNextWeek} className="bg-gradient-organic">
+        <Button onClick={() => {
+          setTempHolidayMode(holidayMode);
+          setTempManualHolidays(manualHolidays);
+          setTempRates(holidayRates);
+          setNextWeekDialogOpen(true);
+        }} className="bg-gradient-organic">
           <Plus className="h-4 w-4 mr-2" />
           Tambah Minggu Berikutnya
         </Button>
@@ -387,6 +412,7 @@ export const HarvestEstimationTable = ({
                         <TableHead className="sticky left-[100px] bg-background z-10 min-w-[70px]">
                           Kode
                         </TableHead>
+                        <TableHead className="min-w-[90px]">Pengepul</TableHead>
                         {[0, 1, 2, 3, 4, 5, 6].map((dayIndex) => {
                           const date = addDays(week.startDate, dayIndex);
                           return (
@@ -412,7 +438,7 @@ export const HarvestEstimationTable = ({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {sortFarmersDataByCode(week.farmersData).map((farmer) => (
+                      {sortFarmersDataByPengepul(week.farmersData).map((farmer) => (
                         <TableRow key={farmer.farmerId}>
                           <TableCell className="sticky left-0 bg-background z-10 font-medium">
                             <div className="flex items-center gap-1">
@@ -426,6 +452,9 @@ export const HarvestEstimationTable = ({
                           </TableCell>
                           <TableCell className="sticky left-[100px] bg-background z-10 text-muted-foreground">
                             {farmer.farmerCode}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {farmer.pengepulName || "-"}
                           </TableCell>
                           {farmer.dailyHarvest.map((day, index) => {
                             // Use farmer's own holidays instead of week-level holidays
@@ -452,6 +481,7 @@ export const HarvestEstimationTable = ({
                           TOTAL
                         </TableCell>
                         <TableCell className="sticky left-[100px] bg-muted/50 z-10"></TableCell>
+                        <TableCell></TableCell>
                         {[0, 1, 2, 3, 4, 5, 6].map((dayIndex) => {
                           const dayTotal = week.farmersData.reduce(
                             (sum, f) => sum + (f.dailyHarvest[dayIndex]?.value || 0),
@@ -623,6 +653,152 @@ export const HarvestEstimationTable = ({
           </div>
         </div>
       ))}
+
+      {/* Next Week Holiday Dialog */}
+      <Dialog open={nextWeekDialogOpen} onOpenChange={setNextWeekDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Pengaturan Minggu Berikutnya</DialogTitle>
+            <DialogDescription>
+              Edit mode hari libur sebelum generate minggu berikutnya
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant={tempHolidayMode === "auto" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTempHolidayMode("auto")}
+              >
+                <Dices className="h-4 w-4 mr-1" />
+                Otomatis
+              </Button>
+              <Button
+                variant={tempHolidayMode === "percentage" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTempHolidayMode("percentage")}
+              >
+                <Percent className="h-4 w-4 mr-1" />
+                Persentase
+              </Button>
+              <Button
+                variant={tempHolidayMode === "manual" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTempHolidayMode("manual")}
+              >
+                <Hand className="h-4 w-4 mr-1" />
+                Manual
+              </Button>
+            </div>
+
+            {tempHolidayMode === "auto" && (
+              <p className="text-xs text-muted-foreground">
+                Sistem akan memilih 0-3 hari libur secara acak per petani
+              </p>
+            )}
+
+            {tempHolidayMode === "percentage" && (
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Atur rate kemunculan hari libur:
+                </p>
+                <div className="flex gap-2 flex-wrap text-xs">
+                  <Badge variant="outline">0 hari: {tempRates.rate0Days}%</Badge>
+                  <Badge variant="outline">1 hari: {tempRates.rate1Day}%</Badge>
+                  <Badge variant="outline">2 hari: {tempRates.rate2Days}%</Badge>
+                  <Badge variant="outline">3 hari: {tempRates.rate3Days}%</Badge>
+                </div>
+                <Dialog open={rateDialogOpen} onOpenChange={setRateDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" onClick={() => setTempRates(holidayRates)}>
+                      <Settings2 className="h-4 w-4 mr-1" />
+                      Atur Rate
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Pengaturan Rate Hari Libur</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      {[
+                        { key: "rate0Days" as const, label: "Libur 0 hari" },
+                        { key: "rate1Day" as const, label: "Libur 1 hari" },
+                        { key: "rate2Days" as const, label: "Libur 2 hari" },
+                        { key: "rate3Days" as const, label: "Libur 3 hari" },
+                      ].map(({ key, label }) => (
+                        <div key={key} className="space-y-2">
+                          <div className="flex justify-between">
+                            <Label>{label}</Label>
+                            <span className="text-sm font-medium">{tempRates[key]}%</span>
+                          </div>
+                          <Slider
+                            value={[tempRates[key]]}
+                            onValueChange={([v]) => setTempRates({ ...tempRates, [key]: v })}
+                            min={0}
+                            max={100}
+                            step={1}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setRateDialogOpen(false)}>Batal</Button>
+                      <Button onClick={() => {
+                        saveHolidayRates(tempRates);
+                        setRateDialogOpen(false);
+                      }}>Simpan</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            )}
+
+            {tempHolidayMode === "manual" && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">Pilih hari libur (maks 3)</p>
+                <div className="flex gap-2 flex-wrap">
+                  {dayNames.map((day, index) => (
+                    <Button
+                      key={index}
+                      variant={tempManualHolidays.includes(index) ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        if (tempManualHolidays.includes(index)) {
+                          setTempManualHolidays(tempManualHolidays.filter(d => d !== index));
+                        } else if (tempManualHolidays.length < 3) {
+                          setTempManualHolidays([...tempManualHolidays, index].sort((a, b) => a - b));
+                        }
+                      }}
+                      disabled={!tempManualHolidays.includes(index) && tempManualHolidays.length >= 3}
+                    >
+                      {day}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNextWeekDialogOpen(false)}>Batal</Button>
+            <Button onClick={() => {
+              // Apply holiday settings then add next week
+              setHolidayMode(tempHolidayMode);
+              setManualHolidays(tempManualHolidays);
+              if (tempHolidayMode === "percentage") {
+                saveHolidayRates(tempRates);
+              }
+              // Need small delay for state to update
+              setTimeout(() => {
+                onAddNextWeek();
+                setNextWeekDialogOpen(false);
+              }, 50);
+            }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Generate Minggu Berikutnya
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

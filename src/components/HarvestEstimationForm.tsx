@@ -99,6 +99,7 @@ export const HarvestEstimationForm = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "organic" | "conventional">("all");
   const [filterSelection, setFilterSelection] = useState<"all" | "selected" | "unselected">("all");
+  const [filterPengepul, setFilterPengepul] = useState<string>("all");
   const [rateDialogOpen, setRateDialogOpen] = useState(false);
   const [tempRates, setTempRates] = useState<HolidayRateConfig>(holidayRates);
 
@@ -146,7 +147,12 @@ export const HarvestEstimationForm = ({
       (filterSelection === "selected" && isCurrentlySelected) ||
       (filterSelection === "unselected" && !isCurrentlySelected);
     
-    return matchesSearch && matchesStatus && matchesSelection;
+    // Pengepul filter
+    const matchesPengepul =
+      filterPengepul === "all" ||
+      f.pengepul_id === filterPengepul;
+    
+    return matchesSearch && matchesStatus && matchesSelection && matchesPengepul;
   });
 
   // Sort filtered farmers by kode_petani
@@ -383,12 +389,24 @@ export const HarvestEstimationForm = ({
                   <SelectItem value="unselected">Belum Dipilih</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={filterPengepul} onValueChange={setFilterPengepul}>
+                <SelectTrigger className="w-[150px]">
+                  <Users className="h-4 w-4 mr-1" />
+                  <SelectValue placeholder="Pengepul" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Pengepul</SelectItem>
+                  {pengepulList.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.nama}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           {/* Active Filters Badge */}
-          {(filterStatus !== "all" || filterSelection !== "all") && (
-            <div className="flex items-center gap-2">
+          {(filterStatus !== "all" || filterSelection !== "all" || filterPengepul !== "all") && (
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-muted-foreground">Filter aktif:</span>
               {filterStatus !== "all" && (
                 <Badge variant="outline" className="text-xs">
@@ -400,6 +418,11 @@ export const HarvestEstimationForm = ({
                   {filterSelection === "selected" ? "Sudah Dipilih" : "Belum Dipilih"}
                 </Badge>
               )}
+              {filterPengepul !== "all" && (
+                <Badge variant="outline" className="text-xs">
+                  {pengepulList.find(p => p.id === filterPengepul)?.nama || "Pengepul"}
+                </Badge>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -407,6 +430,7 @@ export const HarvestEstimationForm = ({
                 onClick={() => {
                   setFilterStatus("all");
                   setFilterSelection("all");
+                  setFilterPengepul("all");
                 }}
               >
                 Reset

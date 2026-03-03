@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowUpFromLine, Trash2, Wand2, ChevronDown, ChevronRight, Leaf, Factory, Calendar, FileText, Check, Package, RefreshCw, Tag } from "lucide-react";
+import { ArrowUpFromLine, Trash2, Wand2, ChevronDown, ChevronRight, Leaf, Factory, Calendar, FileText, Check, Package, RefreshCw, Tag, RotateCcw, Loader2 } from "lucide-react";
 import { usePengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
 import { generateProductCode } from "@/lib/product-code";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -103,6 +103,7 @@ export const BarangKeluarTab = () => {
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
   const [selectedWeeks, setSelectedWeeks] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'weekly' | 'summary'>('weekly');
+  const [regenerating, setRegenerating] = useState(false);
   
   const [savedEstimations, setSavedEstimations] = useState<SavedEstimation[]>([]);
   const [isLoadingEstimations, setIsLoadingEstimations] = useState(false);
@@ -496,6 +497,97 @@ export const BarangKeluarTab = () => {
     });
   };
 
+  // Regenerate existing pengambilan_koperasi to backfill product_codes and daily_dates
+  const handleRegenerateProductCodes = async () => {
+    if (!confirm("Regenerasi akan memperbarui data detail_petani pada semua data barang keluar yang ada agar menyertakan product_codes dan daily_dates. Lanjutkan?")) return;
+
+    setRegenerating(true);
+    let updatedCount = 0;
+
+    try {
+      for (const item of pengambilanList) {
+        const detailPetani = item.detail_petani as any[];
+        if (!detailPetani || !Array.isArray(detailPetani)) continue;
+
+        let needsUpdate = false;
+        const updatedDetail = detailPetani.map((dp: any) => {
+          // Skip if already has product_codes with actual data
+          if (dp.product_codes && Array.isArray(dp.product_codes) && dp.product_codes.length > 0 && dp.product_codes[0]?.code) {
+            return dp;
+          }
+
+          needsUpdate = true;
+          const farmerCode = dp.petani_kode || dp.kode_petani || 'UNK';
+          const dailyValues = dp.daily_values || [];
+          const dailyDates = dp.daily_dates || [];
+
+          // If we have daily_values and daily_dates, generate proper codes
+          if (dailyValues.length > 0 && dailyDates.length > 0) {
+            let seq = 1;
+            const productCodes = dailyValues
+              .map((val: number, idx: number) => {
+                if (val <= 0) return null;
+                const dateStr = dailyDates[idx] || '';
+                if (!dateStr) return null;
+                return {
+                  date: dateStr,
+                  value: val,
+                  code: generateProductCode(farmerCode, dateStr, seq++),
+                };
+              })
+              .filter(Boolean);
+
+            return {
+              ...dp,
+              daily_dates: dailyDates,
+              product_codes: productCodes,
+            };
+          }
+
+          // Fallback: if only jumlah_kg exists, use tanggal_ambil from parent
+          const bulkDate = item.tanggal_ambil;
+          return {
+            ...dp,
+            daily_dates: dailyDates.length > 0 ? dailyDates : [bulkDate],
+            product_codes: [{
+              date: bulkDate,
+              value: dp.jumlah_kg || 0,
+              code: generateProductCode(farmerCode, bulkDate, 1),
+            }],
+          };
+        });
+
+        if (needsUpdate) {
+          const { error } = await supabase
+            .from("pengambilan_koperasi")
+            .update({ detail_petani: updatedDetail })
+            .eq("id", item.id);
+
+          if (error) {
+            console.error("Error updating item:", item.id, error);
+          } else {
+            updatedCount++;
+          }
+        }
+      }
+
+      toast({
+        title: "Regenerasi selesai",
+        description: `${updatedCount} data barang keluar berhasil diperbarui dengan product_codes dan daily_dates`,
+      });
+      refetch();
+    } catch (error) {
+      console.error("Error regenerating:", error);
+      toast({
+        title: "Error",
+        description: "Gagal melakukan regenerasi data",
+        variant: "destructive",
+      });
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   // Filter data by pengepul
   const filteredWeeks = useMemo(() => {
     if (filterPengepul === "all") return processedWeeks;
@@ -663,6 +755,15 @@ export const BarangKeluarTab = () => {
                 <SelectItem value="summary">Rekap Pengepul</SelectItem>
               </SelectContent>
             </Select>
+
+            <Button 
+              variant="outline" 
+              onClick={handleRegenerateProductCodes}
+              disabled={regenerating || pengambilanList.length === 0}
+            >
+              {regenerating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RotateCcw className="h-4 w-4 mr-2" />}
+              {regenerating ? "Memproses..." : "Regenerasi Kode Produk"}
+            </Button>
             
             {/* Auto Generate Dialog */}
             <Dialog open={autoGenerateDialogOpen} onOpenChange={(open) => {

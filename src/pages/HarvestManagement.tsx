@@ -964,6 +964,12 @@ const HarvestManagement = () => {
                   savedEstimations={harvestEstimation.savedEstimations}
                   isSaving={harvestEstimation.isSaving}
                   isLoading={harvestEstimation.isLoading}
+                  holidayMode={harvestEstimation.holidayMode}
+                  setHolidayMode={harvestEstimation.setHolidayMode}
+                  manualHolidays={harvestEstimation.manualHolidays}
+                  setManualHolidays={harvestEstimation.setManualHolidays}
+                  holidayRates={harvestEstimation.holidayRates}
+                  saveHolidayRates={harvestEstimation.saveHolidayRates}
                   onRefreshAll={harvestEstimation.refreshAll}
                   onRefreshHarvest={harvestEstimation.refreshHarvest}
                   onRefreshSales={harvestEstimation.refreshSales}

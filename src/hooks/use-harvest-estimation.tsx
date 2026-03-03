@@ -469,7 +469,7 @@ export const useHarvestEstimation = () => {
       rows.push("");
       
       // Harvest table
-      const harvestHeader = ["Nama Petani", "Kode", "Status", "Regulasi"];
+      const harvestHeader = ["Nama Petani", "Kode", "Status", "Regulasi", "Pengepul"];
       for (let i = 0; i < 7; i++) {
         harvestHeader.push(format(addDays(week.startDate, i), "dd/MM"));
       }
@@ -483,13 +483,14 @@ export const useHarvestEstimation = () => {
           farmer.farmerCode,
           farmer.isOrganic ? "Organik" : "Konvensional",
           farmer.regulasi || "-",
+          `"${farmer.pengepulName || "-"}"`,
           ...farmer.dailyHarvest.map(d => fmtNum(d.value)),
           fmtNum(farmer.totalHarvest),
         ];
         rows.push(row.join(SEP));
       });
       
-      const harvestTotals = ["TOTAL", "", "", ""];
+      const harvestTotals = ["TOTAL", "", "", "", ""];
       for (let i = 0; i < 7; i++) {
         const dayTotal = sortedFarmersData.reduce((sum, f) => sum + (f.dailyHarvest[i]?.value || 0), 0);
         harvestTotals.push(fmtNum(dayTotal));
