@@ -438,7 +438,7 @@ export const HarvestEstimationTable = ({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {sortFarmersDataByCode(week.farmersData).map((farmer) => (
+                      {sortFarmersDataByPengepul(week.farmersData).map((farmer) => (
                         <TableRow key={farmer.farmerId}>
                           <TableCell className="sticky left-0 bg-background z-10 font-medium">
                             <div className="flex items-center gap-1">
