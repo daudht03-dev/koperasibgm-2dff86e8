@@ -36,6 +36,12 @@ interface HarvestEstimationTableProps {
   savedEstimations: SavedEstimation[];
   isSaving: boolean;
   isLoading: boolean;
+  holidayMode: HolidayMode;
+  setHolidayMode: (mode: HolidayMode) => void;
+  manualHolidays: number[];
+  setManualHolidays: (holidays: number[]) => void;
+  holidayRates: HolidayRateConfig;
+  saveHolidayRates: (rates: HolidayRateConfig) => void;
   onRefreshAll: () => void;
   onRefreshHarvest: () => void;
   onRefreshSales: () => void;
