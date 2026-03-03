@@ -389,6 +389,18 @@ export const HarvestEstimationForm = ({
                   <SelectItem value="unselected">Belum Dipilih</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={filterPengepul} onValueChange={setFilterPengepul}>
+                <SelectTrigger className="w-[150px]">
+                  <Users className="h-4 w-4 mr-1" />
+                  <SelectValue placeholder="Pengepul" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Pengepul</SelectItem>
+                  {pengepulList.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.nama}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
