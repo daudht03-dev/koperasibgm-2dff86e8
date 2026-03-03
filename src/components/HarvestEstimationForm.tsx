@@ -147,7 +147,12 @@ export const HarvestEstimationForm = ({
       (filterSelection === "selected" && isCurrentlySelected) ||
       (filterSelection === "unselected" && !isCurrentlySelected);
     
-    return matchesSearch && matchesStatus && matchesSelection;
+    // Pengepul filter
+    const matchesPengepul =
+      filterPengepul === "all" ||
+      f.pengepul_id === filterPengepul;
+    
+    return matchesSearch && matchesStatus && matchesSelection && matchesPengepul;
   });
 
   // Sort filtered farmers by kode_petani
