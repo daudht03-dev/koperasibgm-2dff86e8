@@ -103,6 +103,7 @@ export const BarangKeluarTab = () => {
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
   const [selectedWeeks, setSelectedWeeks] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'weekly' | 'summary'>('weekly');
+  const [regenerating, setRegenerating] = useState(false);
   
   const [savedEstimations, setSavedEstimations] = useState<SavedEstimation[]>([]);
   const [isLoadingEstimations, setIsLoadingEstimations] = useState(false);
