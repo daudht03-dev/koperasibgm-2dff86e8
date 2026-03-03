@@ -60,6 +60,12 @@ export const HarvestEstimationTable = ({
   savedEstimations,
   isSaving,
   isLoading,
+  holidayMode,
+  setHolidayMode,
+  manualHolidays,
+  setManualHolidays,
+  holidayRates,
+  saveHolidayRates,
   onRefreshAll,
   onRefreshHarvest,
   onRefreshSales,
@@ -76,6 +82,12 @@ export const HarvestEstimationTable = ({
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [saveNotes, setSaveNotes] = useState("");
+  const [nextWeekDialogOpen, setNextWeekDialogOpen] = useState(false);
+  const [tempHolidayMode, setTempHolidayMode] = useState<HolidayMode>(holidayMode);
+  const [tempManualHolidays, setTempManualHolidays] = useState<number[]>(manualHolidays);
+  const [tempRates, setTempRates] = useState<HolidayRateConfig>(holidayRates);
+  const [rateDialogOpen, setRateDialogOpen] = useState(false);
+  const dayNames = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
   const handleSave = async () => {
     if (!saveName.trim()) return;
