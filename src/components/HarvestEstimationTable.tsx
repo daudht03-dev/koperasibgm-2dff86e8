@@ -412,6 +412,7 @@ export const HarvestEstimationTable = ({
                         <TableHead className="sticky left-[100px] bg-background z-10 min-w-[70px]">
                           Kode
                         </TableHead>
+                        <TableHead className="min-w-[90px]">Pengepul</TableHead>
                         {[0, 1, 2, 3, 4, 5, 6].map((dayIndex) => {
                           const date = addDays(week.startDate, dayIndex);
                           return (
