@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowUpFromLine, Trash2, Wand2, ChevronDown, ChevronRight, Leaf, Factory, Calendar, FileText, Check, Package, RefreshCw, Tag } from "lucide-react";
+import { ArrowUpFromLine, Trash2, Wand2, ChevronDown, ChevronRight, Leaf, Factory, Calendar, FileText, Check, Package, RefreshCw, Tag, RotateCcw, Loader2 } from "lucide-react";
 import { usePengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
 import { generateProductCode } from "@/lib/product-code";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
