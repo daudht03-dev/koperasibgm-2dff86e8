@@ -51,8 +51,10 @@ interface HarvestEstimationTableProps {
   onAddNextWeek: () => void;
   onRefreshWeek: (weekIndex: number, type: 'all' | 'harvest' | 'sales') => void;
   onRemoveWeek: (weekIndex: number) => void;
-  onExportCSV: () => void;
+  onExportCSV: (mode: SalesDisplayMode) => void;
   onSave: (name: string, notes?: string) => Promise<boolean>;
+  salesDisplayMode: SalesDisplayMode;
+  setSalesDisplayMode: (mode: SalesDisplayMode) => void;
   onLoadSaved: () => void;
   onLoadEstimation: (estimation: SavedEstimation) => void;
   onDeleteEstimation: (id: string) => void;
