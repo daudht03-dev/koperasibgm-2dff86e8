@@ -232,7 +232,14 @@ export const HarvestEstimationTable = ({
           Tambah Minggu Berikutnya
         </Button>
         <div className="flex-1" />
-        <Button variant="outline" onClick={onExportCSV}>
+        <div className="flex items-center gap-2 mr-2">
+          <Label className="text-xs text-muted-foreground whitespace-nowrap">Rincian</Label>
+          <Switch
+            checked={salesDisplayMode === "detail"}
+            onCheckedChange={(checked) => setSalesDisplayMode(checked ? "detail" : "summary")}
+          />
+        </div>
+        <Button variant="outline" onClick={() => onExportCSV(salesDisplayMode)}>
           <Download className="h-4 w-4 mr-2" />
           Export CSV
         </Button>
