@@ -9,11 +9,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
-import { RefreshCw, Plus, Trash2, TrendingUp, Leaf, Download, Save, FolderOpen, Loader2, Factory, Dices, Percent, Hand, Settings2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { RefreshCw, Plus, Trash2, TrendingUp, Leaf, Download, Save, FolderOpen, Loader2, Factory, Dices, Percent, Hand, Settings2, Eye, List } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { WeekData, SavedEstimation, HolidayMode, HolidayRateConfig } from "@/hooks/use-harvest-estimation";
 import { naturalSort } from "@/lib/utils";
+import { generateProductCode } from "@/lib/product-code";
+
+export type SalesDisplayMode = "summary" | "detail";
 
 
 // Sort farmers data by pengepul first, then by farmerCode
@@ -47,8 +51,10 @@ interface HarvestEstimationTableProps {
   onAddNextWeek: () => void;
   onRefreshWeek: (weekIndex: number, type: 'all' | 'harvest' | 'sales') => void;
   onRemoveWeek: (weekIndex: number) => void;
-  onExportCSV: () => void;
+  onExportCSV: (mode: SalesDisplayMode) => void;
   onSave: (name: string, notes?: string) => Promise<boolean>;
+  salesDisplayMode: SalesDisplayMode;
+  setSalesDisplayMode: (mode: SalesDisplayMode) => void;
   onLoadSaved: () => void;
   onLoadEstimation: (estimation: SavedEstimation) => void;
   onDeleteEstimation: (id: string) => void;
@@ -76,6 +82,8 @@ export const HarvestEstimationTable = ({
   onLoadSaved,
   onLoadEstimation,
   onDeleteEstimation,
+  salesDisplayMode,
+  setSalesDisplayMode,
 }: HarvestEstimationTableProps) => {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
@@ -224,7 +232,14 @@ export const HarvestEstimationTable = ({
           Tambah Minggu Berikutnya
         </Button>
         <div className="flex-1" />
-        <Button variant="outline" onClick={onExportCSV}>
+        <div className="flex items-center gap-2 mr-2">
+          <Label className="text-xs text-muted-foreground whitespace-nowrap">Rincian</Label>
+          <Switch
+            checked={salesDisplayMode === "detail"}
+            onCheckedChange={(checked) => setSalesDisplayMode(checked ? "detail" : "summary")}
+          />
+        </div>
+        <Button variant="outline" onClick={() => onExportCSV(salesDisplayMode)}>
           <Download className="h-4 w-4 mr-2" />
           Export CSV
         </Button>
@@ -578,12 +593,28 @@ export const HarvestEstimationTable = ({
                                   day.value === 0 ? "text-muted-foreground" : "text-emerald-600 font-medium"
                                 }`}
                               >
-                                {day.value > 0 && hasMultipleSources ? (
-                                  <span className="whitespace-nowrap">
-                                    {contributingDays
-                                      .map(dayIdx => (farmer.dailyHarvest[dayIdx]?.value || 0).toFixed(1))
-                                      .join("|")}
-                                  </span>
+                                {day.value > 0 && hasMultipleSources && salesDisplayMode === "detail" ? (
+                                  <div>
+                                    <span className="whitespace-nowrap">
+                                      {contributingDays
+                                        .map(dayIdx => (farmer.dailyHarvest[dayIdx]?.value || 0).toFixed(1))
+                                        .join("|")}
+                                    </span>
+                                    <div className="text-[9px] text-muted-foreground mt-0.5">
+                                      {contributingDays.map((dayIdx, ci) => {
+                                        const harvestDate = farmer.dailyHarvest[dayIdx]?.date;
+                                        const weight = farmer.dailyHarvest[dayIdx]?.value || 0;
+                                        if (!harvestDate) return null;
+                                        const code = generateProductCode(farmer.farmerCode, harvestDate);
+                                        return (
+                                          <span key={ci}>
+                                            {code}
+                                            {ci < contributingDays.length - 1 && " | "}
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
                                 ) : (
                                   day.value.toFixed(1)
                                 )}

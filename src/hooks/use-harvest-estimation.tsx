@@ -3,6 +3,8 @@ import { format, addDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { naturalSort } from "@/lib/utils";
+import { generateProductCode } from "@/lib/product-code";
+import type { SalesDisplayMode } from "@/components/HarvestEstimationTable";
 
 export interface FarmerEstimation {
   farmerId: string;
@@ -106,6 +108,7 @@ export const useHarvestEstimation = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [farmerAverages, setFarmerAverages] = useState<Record<string, number>>({});
   const [isLoadingAverages, setIsLoadingAverages] = useState(false);
+  const [salesDisplayMode, setSalesDisplayMode] = useState<SalesDisplayMode>("summary");
 
   // Generate random number within range
   const randomInRange = (min: number, max: number): number => {
@@ -441,8 +444,7 @@ export const useHarvestEstimation = () => {
     })));
   }, [batchAverage]);
 
-  // Export to CSV with proper number format for spreadsheets
-  const exportToCSV = useCallback(() => {
+  const exportToCSV = useCallback((mode: SalesDisplayMode = "summary") => {
     if (weeklyData.length === 0) {
       toast({
         title: "Tidak ada data",
@@ -522,12 +524,12 @@ export const useHarvestEstimation = () => {
           farmer.regulasi || "-",
         ];
         
-        // Sales cells - pipe-separated for multi-day harvest sales
+        // Sales cells - based on display mode
         for (let i = 0; i < 7; i++) {
           const saleValue = farmer.dailySales[i]?.value || 0;
           const contributingDays = farmer.salesBreakdown?.[i] || [];
           
-          if (saleValue > 0 && contributingDays.length > 1) {
+          if (saleValue > 0 && contributingDays.length > 1 && mode === "detail") {
             const pipeStr = contributingDays
               .map(dayIdx => fmtNum(farmer.dailyHarvest[dayIdx]?.value || 0))
               .join("|");
@@ -560,6 +562,39 @@ export const useHarvestEstimation = () => {
         rows.push(["Pengepul", "Total (Kg)"].join(SEP));
         pengepulTotals.forEach((total, name) => {
           rows.push([`"${name}"`, fmtNum(total)].join(SEP));
+        });
+      }
+      
+      // Product traceability codes (detail mode only)
+      if (mode === "detail") {
+        rows.push("");
+        rows.push("KODE PRODUK (TRACEABILITY)");
+        rows.push(["Petani", "Kode Petani", "Pengepul", "Tanggal Panen", "Berat (kg)", "Kode Produk", "Tanggal Jual"].join(SEP));
+        
+        sortedFarmersData.forEach(farmer => {
+          // For each sale day with breakdown
+          for (let i = 0; i < 7; i++) {
+            const saleValue = farmer.dailySales[i]?.value || 0;
+            const contributingDays = farmer.salesBreakdown?.[i] || [];
+            if (saleValue > 0 && contributingDays.length > 0) {
+              contributingDays.forEach((dayIdx) => {
+                const harvestDate = farmer.dailyHarvest[dayIdx]?.date;
+                const weight = farmer.dailyHarvest[dayIdx]?.value || 0;
+                if (!harvestDate || weight === 0) return;
+                const code = generateProductCode(farmer.farmerCode, harvestDate);
+                const saleDate = farmer.dailySales[i]?.date || "";
+                rows.push([
+                  `"${farmer.farmerName}"`,
+                  farmer.farmerCode,
+                  `"${farmer.pengepulName || "-"}"`,
+                  harvestDate ? format(new Date(harvestDate), "dd/MM/yyyy") : "-",
+                  fmtNum(weight),
+                  code,
+                  saleDate ? format(new Date(saleDate), "dd/MM/yyyy") : "-",
+                ].join(SEP));
+              });
+            }
+          }
         });
       }
       
@@ -747,6 +782,8 @@ export const useHarvestEstimation = () => {
     isLoading,
     farmerAverages,
     isLoadingAverages,
+    salesDisplayMode,
+    setSalesDisplayMode,
 
     // Actions
     generateEstimation,
