@@ -3,6 +3,8 @@ import { format, addDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { naturalSort } from "@/lib/utils";
+import { generateProductCode } from "@/lib/product-code";
+import type { SalesDisplayMode } from "@/components/HarvestEstimationTable";
 
 export interface FarmerEstimation {
   farmerId: string;
