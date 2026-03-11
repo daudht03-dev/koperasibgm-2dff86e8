@@ -108,6 +108,7 @@ export const useHarvestEstimation = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [farmerAverages, setFarmerAverages] = useState<Record<string, number>>({});
   const [isLoadingAverages, setIsLoadingAverages] = useState(false);
+  const [salesDisplayMode, setSalesDisplayMode] = useState<SalesDisplayMode>("summary");
 
   // Generate random number within range
   const randomInRange = (min: number, max: number): number => {
