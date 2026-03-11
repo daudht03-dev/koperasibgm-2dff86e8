@@ -782,6 +782,8 @@ export const useHarvestEstimation = () => {
     isLoading,
     farmerAverages,
     isLoadingAverages,
+    salesDisplayMode,
+    setSalesDisplayMode,
 
     // Actions
     generateEstimation,
