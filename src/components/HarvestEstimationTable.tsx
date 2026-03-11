@@ -14,7 +14,7 @@ import { format, addDays } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { WeekData, SavedEstimation, HolidayMode, HolidayRateConfig } from "@/hooks/use-harvest-estimation";
 import { naturalSort } from "@/lib/utils";
-import { generateProductCode } from "@/lib/product-code";
+
 
 // Sort farmers data by pengepul first, then by farmerCode
 const sortFarmersDataByPengepul = <T extends { farmerCode: string; pengepulName?: string }>(farmers: T[]): T[] => {
