@@ -444,8 +444,7 @@ export const useHarvestEstimation = () => {
     })));
   }, [batchAverage]);
 
-  // Export to CSV with proper number format for spreadsheets
-  const exportToCSV = useCallback(() => {
+  const exportToCSV = useCallback((mode: SalesDisplayMode = "summary") => {
     if (weeklyData.length === 0) {
       toast({
         title: "Tidak ada data",
