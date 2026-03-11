@@ -9,11 +9,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
-import { RefreshCw, Plus, Trash2, TrendingUp, Leaf, Download, Save, FolderOpen, Loader2, Factory, Dices, Percent, Hand, Settings2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { RefreshCw, Plus, Trash2, TrendingUp, Leaf, Download, Save, FolderOpen, Loader2, Factory, Dices, Percent, Hand, Settings2, Eye, List } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { WeekData, SavedEstimation, HolidayMode, HolidayRateConfig } from "@/hooks/use-harvest-estimation";
 import { naturalSort } from "@/lib/utils";
+import { generateProductCode } from "@/lib/product-code";
+
+export type SalesDisplayMode = "summary" | "detail";
 
 
 // Sort farmers data by pengepul first, then by farmerCode
