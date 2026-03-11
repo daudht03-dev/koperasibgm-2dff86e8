@@ -593,12 +593,28 @@ export const HarvestEstimationTable = ({
                                   day.value === 0 ? "text-muted-foreground" : "text-emerald-600 font-medium"
                                 }`}
                               >
-                                {day.value > 0 && hasMultipleSources ? (
-                                  <span className="whitespace-nowrap">
-                                    {contributingDays
-                                      .map(dayIdx => (farmer.dailyHarvest[dayIdx]?.value || 0).toFixed(1))
-                                      .join("|")}
-                                  </span>
+                                {day.value > 0 && hasMultipleSources && salesDisplayMode === "detail" ? (
+                                  <div>
+                                    <span className="whitespace-nowrap">
+                                      {contributingDays
+                                        .map(dayIdx => (farmer.dailyHarvest[dayIdx]?.value || 0).toFixed(1))
+                                        .join("|")}
+                                    </span>
+                                    <div className="text-[9px] text-muted-foreground mt-0.5">
+                                      {contributingDays.map((dayIdx, ci) => {
+                                        const harvestDate = farmer.dailyHarvest[dayIdx]?.date;
+                                        const weight = farmer.dailyHarvest[dayIdx]?.value || 0;
+                                        if (!harvestDate) return null;
+                                        const code = generateProductCode(farmer.farmerCode, harvestDate);
+                                        return (
+                                          <span key={ci}>
+                                            {code}
+                                            {ci < contributingDays.length - 1 && " | "}
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
                                 ) : (
                                   day.value.toFixed(1)
                                 )}

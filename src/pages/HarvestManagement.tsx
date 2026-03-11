@@ -981,6 +981,8 @@ const HarvestManagement = () => {
                   onLoadSaved={harvestEstimation.loadSavedEstimations}
                   onLoadEstimation={harvestEstimation.loadEstimation}
                   onDeleteEstimation={harvestEstimation.deleteEstimation}
+                  salesDisplayMode={harvestEstimation.salesDisplayMode}
+                  setSalesDisplayMode={harvestEstimation.setSalesDisplayMode}
                 />
               </div>
             </div>
