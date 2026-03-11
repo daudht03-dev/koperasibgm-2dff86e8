@@ -569,7 +569,6 @@ export const HarvestEstimationTable = ({
                             {farmer.farmerCode}
                           </TableCell>
                           {farmer.dailySales.map((day, index) => {
-                            // Use salesBreakdown from the data
                             const contributingDays = farmer.salesBreakdown?.[index] || [];
                             const hasMultipleSources = contributingDays.length > 1;
 
@@ -581,32 +580,11 @@ export const HarvestEstimationTable = ({
                                 }`}
                               >
                                 {day.value > 0 && hasMultipleSources ? (
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <span className="cursor-help underline decoration-dotted decoration-emerald-400">
-                                          {day.value.toFixed(1)}
-                                        </span>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="top" className="max-w-xs">
-                                        <div className="text-xs space-y-1">
-                                          <p className="font-medium mb-1">Gabungan dari {contributingDays.length} hari panen:</p>
-                                          {contributingDays.map(dayIdx => {
-                                            const harvestDay = farmer.dailyHarvest[dayIdx];
-                                            const harvestDate = format(addDays(week.startDate, dayIdx), "yyyy-MM-dd");
-                                            const code = generateProductCode(farmer.farmerCode, harvestDate, dayIdx + 1);
-                                            return (
-                                              <div key={dayIdx} className="flex items-center gap-1">
-                                                <Tag className="h-2.5 w-2.5 text-blue-500" />
-                                                <span className="font-mono">{code}</span>
-                                                <span>({harvestDay?.value.toFixed(1)} Kg - {format(addDays(week.startDate, dayIdx), "dd MMM", { locale: localeId })})</span>
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
+                                  <span className="whitespace-nowrap">
+                                    {contributingDays
+                                      .map(dayIdx => (farmer.dailyHarvest[dayIdx]?.value || 0).toFixed(1))
+                                      .join("|")}
+                                  </span>
                                 ) : (
                                   day.value.toFixed(1)
                                 )}
