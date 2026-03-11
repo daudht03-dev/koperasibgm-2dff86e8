@@ -82,6 +82,8 @@ export const HarvestEstimationTable = ({
   onLoadSaved,
   onLoadEstimation,
   onDeleteEstimation,
+  salesDisplayMode,
+  setSalesDisplayMode,
 }: HarvestEstimationTableProps) => {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
