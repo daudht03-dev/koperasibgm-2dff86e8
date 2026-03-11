@@ -565,6 +565,39 @@ export const useHarvestEstimation = () => {
         });
       }
       
+      // Product traceability codes (detail mode only)
+      if (mode === "detail") {
+        rows.push("");
+        rows.push("KODE PRODUK (TRACEABILITY)");
+        rows.push(["Petani", "Kode Petani", "Pengepul", "Tanggal Panen", "Berat (kg)", "Kode Produk", "Tanggal Jual"].join(SEP));
+        
+        sortedFarmersData.forEach(farmer => {
+          // For each sale day with breakdown
+          for (let i = 0; i < 7; i++) {
+            const saleValue = farmer.dailySales[i]?.value || 0;
+            const contributingDays = farmer.salesBreakdown?.[i] || [];
+            if (saleValue > 0 && contributingDays.length > 0) {
+              contributingDays.forEach((dayIdx) => {
+                const harvestDate = farmer.dailyHarvest[dayIdx]?.date;
+                const weight = farmer.dailyHarvest[dayIdx]?.value || 0;
+                if (!harvestDate || weight === 0) return;
+                const code = generateProductCode(farmer.farmerCode, harvestDate);
+                const saleDate = farmer.dailySales[i]?.date || "";
+                rows.push([
+                  `"${farmer.farmerName}"`,
+                  farmer.farmerCode,
+                  `"${farmer.pengepulName || "-"}"`,
+                  harvestDate ? format(new Date(harvestDate), "dd/MM/yyyy") : "-",
+                  fmtNum(weight),
+                  code,
+                  saleDate ? format(new Date(saleDate), "dd/MM/yyyy") : "-",
+                ].join(SEP));
+              });
+            }
+          }
+        });
+      }
+      
       rows.push("");
       rows.push("");
     });
