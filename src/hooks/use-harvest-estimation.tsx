@@ -522,17 +522,16 @@ export const useHarvestEstimation = () => {
           farmer.regulasi || "-",
         ];
         
-        // Sales cells with breakdown when multiple harvest days contribute
+        // Sales cells - pipe-separated for multi-day harvest sales
         for (let i = 0; i < 7; i++) {
           const saleValue = farmer.dailySales[i]?.value || 0;
           const contributingDays = farmer.salesBreakdown?.[i] || [];
           
           if (saleValue > 0 && contributingDays.length > 1) {
-            // Show breakdown: individual harvest values that make up this sale
-            const breakdownStr = contributingDays
+            const pipeStr = contributingDays
               .map(dayIdx => fmtNum(farmer.dailyHarvest[dayIdx]?.value || 0))
-              .join("+");
-            row.push(`"${breakdownStr}=${fmtNum(saleValue)}"`);
+              .join("|");
+            row.push(`"${pipeStr}"`);
           } else {
             row.push(fmtNum(saleValue));
           }
