@@ -232,26 +232,59 @@ export const GudangTab = () => {
                     <div className="border-t px-4 pb-4">
                       <p className="text-sm font-medium py-2 text-muted-foreground">Detail Petani:</p>
                       <div className="max-h-64 overflow-y-auto border rounded-md">
-                        <Table>
+                       <Table>
                           <TableHeader>
                             <TableRow>
                               <TableHead className="sticky top-0 bg-background">Nama Petani</TableHead>
                               <TableHead className="sticky top-0 bg-background">Kode</TableHead>
+                              <TableHead className="sticky top-0 bg-background">Identitas Produk</TableHead>
                               <TableHead className="sticky top-0 bg-background text-right">Jumlah (Kg)</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {detailPetani.map((farmer, idx) => (
+                            {detailPetani.map((farmer, idx) => {
+                              const productCodes = ensureProductCodes(farmer);
+                              return (
                               <TableRow key={`${batch.id}-${farmer.petani_id}-${idx}`}>
                                 <TableCell className="font-medium">{farmer.petani_nama}</TableCell>
                                 <TableCell className="font-mono">{farmer.petani_kode}</TableCell>
+                                <TableCell>
+                                  {productCodes.length > 0 ? (
+                                    <TooltipProvider>
+                                      <div className="flex flex-wrap gap-1">
+                                        {productCodes.map((pc) => (
+                                          <Tooltip key={pc.code}>
+                                            <TooltipTrigger asChild>
+                                              <Badge variant="outline" className="text-xs cursor-help bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+                                                <Tag className="h-2.5 w-2.5 mr-1" />
+                                                {pc.code}
+                                                <span className="mx-1 text-muted-foreground">·</span>
+                                                <span>{pc.value} Kg</span>
+                                              </Badge>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <div className="text-xs">
+                                                <p className="font-medium">{farmer.petani_nama}</p>
+                                                <p>Tanggal: {pc.date ? format(new Date(pc.date), "dd MMM yyyy", { locale: localeId }) : '-'}</p>
+                                                <p>Berat: {pc.value} Kg</p>
+                                              </div>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        ))}
+                                      </div>
+                                    </TooltipProvider>
+                                  ) : (
+                                    <span className="text-muted-foreground text-xs">-</span>
+                                  )}
+                                </TableCell>
                                 <TableCell className="text-right font-medium">
                                   {Number(farmer.jumlah_kg).toLocaleString()} Kg
                                 </TableCell>
                               </TableRow>
-                            ))}
+                              );
+                            })}
                             <TableRow className="bg-muted/50">
-                              <TableCell colSpan={2} className="font-bold">Total</TableCell>
+                              <TableCell colSpan={3} className="font-bold">Total</TableCell>
                               <TableCell className="text-right font-bold">
                                 {detailPetani.reduce((sum, f) => sum + Number(f.jumlah_kg), 0).toLocaleString()} Kg
                               </TableCell>
