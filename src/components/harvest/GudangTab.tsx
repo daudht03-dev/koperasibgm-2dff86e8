@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Warehouse, Leaf, Factory, Package, Flame, ArrowDownToLine, ArrowUpFromLine, RefreshCw, ShoppingCart, ChevronDown, ChevronRight, Users } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Warehouse, Leaf, Factory, Package, Flame, ArrowDownToLine, ArrowUpFromLine, RefreshCw, ShoppingCart, ChevronDown, ChevronRight, Users, Tag } from "lucide-react";
 import { useGudangStok, useBatchPanen, useProsesPengeringan, usePenjualan, GudangStok } from "@/hooks/use-batch-panen";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { TableSkeleton } from "@/components/ui/skeleton-templates";
@@ -13,6 +14,13 @@ import { OvenReportDialog } from "./OvenReportDialog";
 import { BarangKeluarGudangDialog } from "./BarangKeluarGudangDialog";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
+import { generateProductCode } from "@/lib/product-code";
+
+interface ProductCodeEntry {
+  date: string;
+  value: number;
+  code: string;
+}
 
 interface FarmerDetail {
   petani_id: string;
@@ -21,7 +29,43 @@ interface FarmerDetail {
   jumlah_kg: number;
   is_organic: boolean;
   daily_values?: number[];
+  daily_dates?: string[];
+  product_codes?: ProductCodeEntry[];
 }
+
+/**
+ * Ensure product_codes exist for a farmer detail item.
+ * If missing but daily_values/daily_dates exist, generate them on-the-fly.
+ */
+const ensureProductCodes = (f: FarmerDetail): ProductCodeEntry[] => {
+  if (Array.isArray(f.product_codes) && f.product_codes.length > 0) {
+    return f.product_codes;
+  }
+  if (Array.isArray(f.daily_values) && Array.isArray(f.daily_dates) && f.daily_dates.length > 0) {
+    let seq = 1;
+    const codes: ProductCodeEntry[] = [];
+    for (let i = 0; i < f.daily_values.length; i++) {
+      const val = f.daily_values[i];
+      if (val <= 0) continue;
+      const dateStr = f.daily_dates[i];
+      if (!dateStr) continue;
+      codes.push({
+        date: dateStr,
+        value: Math.round(val * 10) / 10,
+        code: generateProductCode(f.petani_kode, dateStr, seq++),
+      });
+    }
+    if (codes.length > 0) return codes;
+  }
+  if (f.jumlah_kg > 0 && f.petani_kode) {
+    return [{
+      date: '',
+      value: Math.round(f.jumlah_kg * 10) / 10,
+      code: `${f.petani_kode}-BULK`,
+    }];
+  }
+  return [];
+};
 
 export const GudangTab = () => {
   const { stok, loading, refetch } = useGudangStok();
