@@ -400,77 +400,144 @@ export const GudangTab = () => {
     }
 
     return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Lot Number</TableHead>
-            <TableHead>Tanggal Selesai</TableHead>
-            <TableHead>Bahan Masuk</TableHead>
-            <TableHead>Susut (%)</TableHead>
-            <TableHead>Total Kering</TableHead>
-            <TableHead>QC Off</TableHead>
-            <TableHead>Hasil Packing</TableHead>
-            <TableHead>Status Gudang</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {completedProses.map((item) => {
-            const stokEntry = stok.find(s => s.batch_id === item.batch_id && s.tipe_stok === 'produk_jadi');
-            return (
-              <TableRow key={item.id}>
-                <TableCell>
-                  <div>
-                    <p className="font-mono font-medium">{item.lot_number || "-"}</p>
-                    <div className="flex items-center gap-1 mt-1">
-                      {item.is_organic ? (
-                        <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
-                          <Leaf className="h-3 w-3 mr-1" />
-                          Organik
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-xs bg-slate-50 text-slate-700 border-slate-200">
-                          <Factory className="h-3 w-3 mr-1" />
-                          Konvensional
-                        </Badge>
+      <div className="space-y-2">
+        {completedProses.map((item) => {
+          const stokEntry = stok.find(s => s.batch_id === item.batch_id && s.tipe_stok === 'produk_jadi');
+          const detailPetani = Array.isArray(item.detail_petani) ? (item.detail_petani as FarmerDetail[]) : [];
+          const isExpanded = expandedBatches.has(`oven-${item.id}`);
+
+          return (
+            <Collapsible key={item.id} open={isExpanded} onOpenChange={() => toggleBatchExpanded(`oven-${item.id}`)}>
+              <Card className="border">
+                <div className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {detailPetani.length > 0 && (
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-6 w-6">
+                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          </Button>
+                        </CollapsibleTrigger>
                       )}
+                      <div>
+                        <p className="font-mono font-medium">{item.lot_number || "-"}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Selesai: {item.tanggal_selesai 
+                            ? format(new Date(item.tanggal_selesai), "dd MMM yyyy HH:mm", { locale: localeId })
+                            : "-"
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right text-sm">
+                        <div className="flex gap-3">
+                          <span>Masuk: <strong>{Number(item.jumlah_kg_sebelum).toLocaleString()} Kg</strong></span>
+                          <span className="text-orange-600">Susut: {item.susut_persen || 0}%</span>
+                          <span>Kering: <strong>{Number(item.total_kering || 0).toLocaleString()} Kg</strong></span>
+                          <span className="text-destructive">QC Off: {Number(item.qc_off || 0).toLocaleString()} Kg</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-lg text-emerald-600">{Number(item.total_kering_packing || 0).toLocaleString()} Kg</p>
+                        <p className="text-xs text-muted-foreground">Hasil Packing</p>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        {item.is_organic ? (
+                          <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+                            <Leaf className="h-3 w-3 mr-1" />Organik
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs bg-slate-50 text-slate-700 border-slate-200">
+                            <Factory className="h-3 w-3 mr-1" />Konv.
+                          </Badge>
+                        )}
+                        {stokEntry ? (
+                          <Badge variant="default" className="bg-emerald-100 text-emerald-800 border-emerald-200 text-xs">
+                            <Package className="h-3 w-3 mr-1" />Di Gudang
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">Belum Masuk</Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </TableCell>
-                <TableCell>
-                  {item.tanggal_selesai 
-                    ? format(new Date(item.tanggal_selesai), "dd MMM yyyy HH:mm", { locale: localeId })
-                    : "-"
-                  }
-                </TableCell>
-                <TableCell className="font-medium">{Number(item.jumlah_kg_sebelum).toLocaleString()} Kg</TableCell>
-                <TableCell>
-                  <span className="text-orange-600">{item.susut_persen || 0}%</span>
-                </TableCell>
-                <TableCell className="font-medium">{Number(item.total_kering || 0).toLocaleString()} Kg</TableCell>
-                <TableCell>
-                  <span className="text-red-600">{Number(item.qc_off || 0).toLocaleString()} Kg</span>
-                  {item.susut_qc_off_persen && (
-                    <span className="text-xs text-muted-foreground ml-1">({item.susut_qc_off_persen}%)</span>
-                  )}
-                </TableCell>
-                <TableCell className="font-bold text-emerald-600">
-                  {Number(item.total_kering_packing || 0).toLocaleString()} Kg
-                </TableCell>
-                <TableCell>
-                  {stokEntry ? (
-                    <Badge variant="default" className="bg-emerald-100 text-emerald-800 border-emerald-200">
-                      <Package className="h-3 w-3 mr-1" />
-                      Di Gudang
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary">Belum Masuk</Badge>
-                  )}
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+                </div>
+                
+                {detailPetani.length > 0 && (
+                  <CollapsibleContent>
+                    <div className="border-t px-4 pb-4">
+                      <p className="text-sm font-medium py-2 text-muted-foreground flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Detail Petani ({detailPetani.length} petani) — Traceability
+                      </p>
+                      <div className="max-h-64 overflow-y-auto border rounded-md">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="sticky top-0 bg-background">Nama Petani</TableHead>
+                              <TableHead className="sticky top-0 bg-background">Kode</TableHead>
+                              <TableHead className="sticky top-0 bg-background">Identitas Produk</TableHead>
+                              <TableHead className="sticky top-0 bg-background text-right">Jumlah (Kg)</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {detailPetani.map((farmer, idx) => {
+                              const productCodes = ensureProductCodes(farmer);
+                              return (
+                                <TableRow key={idx}>
+                                  <TableCell className="font-medium">{farmer.petani_nama}</TableCell>
+                                  <TableCell className="font-mono">{farmer.petani_kode}</TableCell>
+                                  <TableCell>
+                                    {productCodes.length > 0 ? (
+                                      <TooltipProvider>
+                                        <div className="flex flex-wrap gap-1">
+                                          {productCodes.map((pc) => (
+                                            <Tooltip key={pc.code}>
+                                              <TooltipTrigger asChild>
+                                                <Badge variant="outline" className="text-xs cursor-help bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+                                                  <Tag className="h-2.5 w-2.5 mr-1" />
+                                                  {pc.code}
+                                                  <span className="mx-1 text-muted-foreground">·</span>
+                                                  <span>{pc.value} Kg</span>
+                                                </Badge>
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                <div className="text-xs">
+                                                  <p className="font-medium">{farmer.petani_nama}</p>
+                                                  <p>Tanggal: {pc.date ? format(new Date(pc.date), "dd MMM yyyy", { locale: localeId }) : '-'}</p>
+                                                  <p>Berat: {pc.value} Kg</p>
+                                                </div>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          ))}
+                                        </div>
+                                      </TooltipProvider>
+                                    ) : (
+                                      <span className="text-muted-foreground text-xs">-</span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-right font-medium">{Number(farmer.jumlah_kg).toLocaleString()} Kg</TableCell>
+                                </TableRow>
+                              );
+                            })}
+                            <TableRow className="bg-muted/50">
+                              <TableCell colSpan={3} className="font-bold">Total</TableCell>
+                              <TableCell className="text-right font-bold">
+                                {detailPetani.reduce((sum, f) => sum + Number(f.jumlah_kg), 0).toLocaleString()} Kg
+                              </TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                )}
+              </Card>
+            </Collapsible>
+          );
+        })}
+      </div>
     );
   };
 
