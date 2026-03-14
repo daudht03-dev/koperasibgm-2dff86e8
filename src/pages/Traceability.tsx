@@ -78,8 +78,8 @@ const Traceability = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
 
-  const { penjualanPetani } = usePenjualanPetani();
-  const { pengambilan } = usePengambilanKoperasi();
+  const { penjualanList: penjualanPetani } = usePenjualanPetani();
+  const { pengambilanList: pengambilan } = usePengambilanKoperasi();
   const { batches } = useBatchPanen();
   const { proses } = useProsesPengeringan();
   const { stok } = useGudangStok();
