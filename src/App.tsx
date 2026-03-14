@@ -171,6 +171,14 @@ const AppContent = () => {
             } 
           />
           <Route path="/changelog" element={<Changelog />} />
+          <Route 
+            path="/admin/traceability" 
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <Traceability />
+              </ProtectedRoute>
+            } 
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </PageTransition>
