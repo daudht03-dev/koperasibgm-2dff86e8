@@ -364,11 +364,11 @@ const Traceability = () => {
                     {selectedCode && codeInfo && (
                       <CardDescription className="mt-1 flex items-center gap-2">
                         {codeInfo.isOrganic ? (
-                          <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
+                          <Badge variant="secondary" className="text-xs">
                             <Leaf className="h-3 w-3 mr-1" /> Organik
                           </Badge>
                         ) : (
-                          <Badge variant="secondary" className="bg-amber-100 text-amber-800 text-xs">
+                          <Badge variant="secondary" className="text-xs">
                             <Factory className="h-3 w-3 mr-1" /> Konvensional
                           </Badge>
                         )}
