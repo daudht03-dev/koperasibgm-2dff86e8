@@ -32,6 +32,7 @@ const BatchDetail = lazy(() => import("./pages/BatchDetail"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Install = lazy(() => import("./pages/Install"));
 const Changelog = lazy(() => import("./pages/Changelog"));
+const Traceability = lazy(() => import("./pages/Traceability"));
 
 const queryClient = new QueryClient();
 
