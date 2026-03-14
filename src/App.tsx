@@ -32,6 +32,7 @@ const BatchDetail = lazy(() => import("./pages/BatchDetail"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Install = lazy(() => import("./pages/Install"));
 const Changelog = lazy(() => import("./pages/Changelog"));
+const Traceability = lazy(() => import("./pages/Traceability"));
 
 const queryClient = new QueryClient();
 
@@ -170,6 +171,14 @@ const AppContent = () => {
             } 
           />
           <Route path="/changelog" element={<Changelog />} />
+          <Route 
+            path="/admin/traceability" 
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <Traceability />
+              </ProtectedRoute>
+            } 
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </PageTransition>
