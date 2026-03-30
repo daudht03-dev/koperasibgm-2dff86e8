@@ -424,6 +424,24 @@ export const RingkasanTab = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Traceability Link */}
+      <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
+        <CardContent className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-primary/10">
+              <Search className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Traceability Produk</h3>
+              <p className="text-sm text-muted-foreground">Lacak kode produk dari estimasi hingga gudang secara end-to-end</p>
+            </div>
+          </div>
+          <Button onClick={() => navigate("/admin/traceability")} className="shrink-0">
+            <Search className="h-4 w-4 mr-2" /> Buka Traceability
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 };
