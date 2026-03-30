@@ -1,8 +1,10 @@
 import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  Users, ArrowDownToLine, ArrowUpFromLine, Warehouse, Flame, Package, ShoppingCart, Leaf, Factory, TrendingUp, Scale, Clock, CheckCircle
+  Users, ArrowDownToLine, ArrowUpFromLine, Warehouse, Flame, Package, ShoppingCart, Leaf, Factory, TrendingUp, Scale, Clock, CheckCircle, Search
 } from "lucide-react";
 import { usePenjualanPetani } from "@/hooks/use-penjualan-petani";
 import { usePengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
@@ -18,6 +20,7 @@ import {
 const COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316"];
 
 export const RingkasanTab = () => {
+  const navigate = useNavigate();
   const { penjualanList } = usePenjualanPetani();
   const { pengambilanList } = usePengambilanKoperasi();
   const { pengepulList } = usePengepul();
@@ -419,6 +422,24 @@ export const RingkasanTab = () => {
           ) : (
             <div className="text-center py-8 text-muted-foreground">Belum ada data pengepul</div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Traceability Link */}
+      <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
+        <CardContent className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-primary/10">
+              <Search className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Traceability Produk</h3>
+              <p className="text-sm text-muted-foreground">Lacak kode produk dari estimasi hingga gudang secara end-to-end</p>
+            </div>
+          </div>
+          <Button onClick={() => navigate("/admin/traceability")} className="shrink-0">
+            <Search className="h-4 w-4 mr-2" /> Buka Traceability
+          </Button>
         </CardContent>
       </Card>
     </div>
