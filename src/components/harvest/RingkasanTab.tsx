@@ -1,8 +1,10 @@
 import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  Users, ArrowDownToLine, ArrowUpFromLine, Warehouse, Flame, Package, ShoppingCart, Leaf, Factory, TrendingUp, Scale, Clock, CheckCircle
+  Users, ArrowDownToLine, ArrowUpFromLine, Warehouse, Flame, Package, ShoppingCart, Leaf, Factory, TrendingUp, Scale, Clock, CheckCircle, Search
 } from "lucide-react";
 import { usePenjualanPetani } from "@/hooks/use-penjualan-petani";
 import { usePengambilanKoperasi } from "@/hooks/use-pengambilan-koperasi";
