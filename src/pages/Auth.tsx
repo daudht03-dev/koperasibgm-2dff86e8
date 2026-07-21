@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Leaf, Eye, EyeOff, ArrowLeft, Download, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { authSchema } from "@/lib/validation-schemas";
 import { Skeleton } from "@/components/ui/skeleton";
