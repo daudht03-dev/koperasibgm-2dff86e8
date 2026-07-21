@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Leaf, Eye, EyeOff, ArrowLeft, Download, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { authSchema } from "@/lib/validation-schemas";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,15 +25,20 @@ const Auth = () => {
   const { signIn, signUp, user, isAdmin } = useAuth();
   const { profile, loading: profileLoading } = useCompanyProfile();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+
+  // Only allow same-origin relative paths for `next`.
+  const rawNext = searchParams.get("next") ?? "";
+  const nextPath = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/admin";
 
   // Auto-redirect if already logged in as admin
   useEffect(() => {
     if (user && isAdmin) {
       setIsRedirecting(true);
-      navigate("/admin");
+      navigate(nextPath);
     }
-  }, [user, isAdmin, navigate]);
+  }, [user, isAdmin, navigate, nextPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,7 +80,7 @@ const Auth = () => {
           });
           // Show redirecting state and navigate
           setIsRedirecting(true);
-          navigate("/admin");
+          navigate(nextPath);
         }
       } else {
         const { error } = await signUp(result.data.email, result.data.password, result.data.fullName || "");

@@ -33,6 +33,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Install = lazy(() => import("./pages/Install"));
 const Changelog = lazy(() => import("./pages/Changelog"));
 const Traceability = lazy(() => import("./pages/Traceability"));
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 
 const queryClient = new QueryClient();
 
@@ -179,6 +180,7 @@ const AppContent = () => {
               </ProtectedRoute>
             } 
           />
+          <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </PageTransition>

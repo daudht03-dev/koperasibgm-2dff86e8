@@ -4,6 +4,7 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import type { VitePWAOptions } from "vite-plugin-pwa";
+import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/supabase/vite";
 
 const pwaOptions: Partial<VitePWAOptions> = {
   registerType: 'prompt',
@@ -110,7 +111,8 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mode === "development" && componentTagger(),
-    VitePWA(pwaOptions)
+    VitePWA(pwaOptions),
+    mcpPlugin(),
   ].filter(Boolean),
   resolve: {
     alias: {
