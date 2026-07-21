@@ -25,15 +25,20 @@ const Auth = () => {
   const { signIn, signUp, user, isAdmin } = useAuth();
   const { profile, loading: profileLoading } = useCompanyProfile();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+
+  // Only allow same-origin relative paths for `next`.
+  const rawNext = searchParams.get("next") ?? "";
+  const nextPath = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/admin";
 
   // Auto-redirect if already logged in as admin
   useEffect(() => {
     if (user && isAdmin) {
       setIsRedirecting(true);
-      navigate("/admin");
+      navigate(nextPath);
     }
-  }, [user, isAdmin, navigate]);
+  }, [user, isAdmin, navigate, nextPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
