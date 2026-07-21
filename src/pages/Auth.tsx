@@ -80,7 +80,7 @@ const Auth = () => {
           });
           // Show redirecting state and navigate
           setIsRedirecting(true);
-          navigate("/admin");
+          navigate(nextPath);
         }
       } else {
         const { error } = await signUp(result.data.email, result.data.password, result.data.fullName || "");
