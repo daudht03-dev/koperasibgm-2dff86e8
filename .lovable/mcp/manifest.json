@@ -26,20 +26,21 @@
           "openWorldHint": false
         },
         "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "object",
           "properties": {
             "search": {
-              "description": "Optional case-insensitive filter matched against kode_petani or nama_petani.",
-              "type": "string"
+              "type": "string",
+              "description": "Optional case-insensitive filter matched against kode_petani or nama_petani."
             },
             "limit": {
-              "default": 100,
               "type": "integer",
               "minimum": 1,
-              "maximum": 500
+              "maximum": 500,
+              "default": 100
             }
-          }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
       },
@@ -53,20 +54,21 @@
           "openWorldHint": false
         },
         "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "object",
           "properties": {
             "status": {
-              "description": "Optional status filter (e.g. 'pending', 'selesai').",
-              "type": "string"
+              "type": "string",
+              "description": "Optional status filter (e.g. 'pending', 'selesai')."
             },
             "limit": {
-              "default": 50,
               "type": "integer",
               "minimum": 1,
-              "maximum": 500
+              "maximum": 500,
+              "default": 50
             }
-          }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
       },
@@ -80,16 +82,17 @@
           "openWorldHint": false
         },
         "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "object",
           "properties": {
             "limit": {
-              "default": 200,
               "type": "integer",
               "minimum": 1,
-              "maximum": 1000
+              "maximum": 1000,
+              "default": 200
             }
-          }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
       },
@@ -103,7 +106,6 @@
           "openWorldHint": false
         },
         "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "object",
           "properties": {
             "product_code": {
@@ -114,7 +116,9 @@
           },
           "required": [
             "product_code"
-          ]
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
       }
