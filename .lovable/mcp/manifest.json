@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "sdk_version": "0.24.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://kreupbnakmqgfsbiijhl.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "bgm-koperasi-mcp",
+      "version": "0.1.0",
+      "title": "Berkah Gendis Mandiri Koperasi MCP"
+    },
+    "tools": [
+      {
+        "name": "list_farmers",
+        "title": "List farmers",
+        "description": "List petani (farmers) registered in the koperasi, including their kode_petani, name, and assigned pengepul (collector).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "search": {
+              "description": "Optional case-insensitive filter matched against kode_petani or nama_petani.",
+              "type": "string"
+            },
+            "limit": {
+              "default": 100,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_batches",
+        "title": "List harvest batches",
+        "description": "List batch_panen (harvest receiving batches) for the koperasi. Returns batch_number, tanggal, total_berat, and status.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "status": {
+              "description": "Optional status filter (e.g. 'pending', 'selesai').",
+              "type": "string"
+            },
+            "limit": {
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "warehouse_stock",
+        "title": "Warehouse stock",
+        "description": "Return current gudang (warehouse) stock records with weights and batch references.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "limit": {
+              "default": 200,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "trace_product",
+        "title": "Trace product code",
+        "description": "Trace a product identity code (e.g. BN6-201025-001) across penjualan_petani, batch_panen, proses_pengeringan, and gudang_stok stages.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "product_code": {
+              "type": "string",
+              "minLength": 3,
+              "description": "The product identity code to trace, e.g. 'BN6-201025-001'."
+            }
+          },
+          "required": [
+            "product_code"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
