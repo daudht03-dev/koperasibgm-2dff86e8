@@ -1,10 +1,9 @@
+/// <reference types="google.maps" />
 import { useEffect, useRef, useState } from "react";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { MapPin, AlertCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { loadGoogleMaps } from "@/lib/google-maps-loader";
 
 interface Coordinate {
   lat: number;
@@ -25,117 +24,97 @@ export const LandMapPreview = ({
   coordinates,
 }: LandMapPreviewProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
-  const [mapboxToken, setMapboxToken] = useState<string | null>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<google.maps.Marker[]>([]);
+  const infoRef = useRef<google.maps.InfoWindow | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch Mapbox token
-  useEffect(() => {
-    const fetchToken = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("get-mapbox-token");
-        if (error) throw error;
-        setMapboxToken(data?.token);
-      } catch (err) {
-        console.error("Error fetching Mapbox token:", err);
-        setError("Mapbox token tidak ditemukan. Pastikan MAPBOX_PUBLIC_TOKEN sudah dikonfigurasi.");
-      }
-    };
-
-    if (open) {
-      fetchToken();
-    }
-  }, [open]);
+  const validCoords = coordinates.filter((c) => !isNaN(c.lat) && !isNaN(c.lng));
 
   useEffect(() => {
-    if (!open || !mapContainer.current || !mapboxToken || coordinates.length === 0) return;
+    if (!open || !mapContainer.current || validCoords.length === 0) return;
 
-    // Clear previous markers
-    markersRef.current.forEach(marker => marker.remove());
-    markersRef.current = [];
+    let cancelled = false;
+    setError(null);
 
-    // Initialize map
-    mapboxgl.accessToken = mapboxToken;
+    loadGoogleMaps()
+      .then((google) => {
+        if (cancelled || !mapContainer.current) return;
 
-    // Calculate bounds
-    const bounds = new mapboxgl.LngLatBounds();
-    coordinates.forEach(coord => {
-      bounds.extend([coord.lng, coord.lat]);
-    });
+        // Cleanup previous
+        markersRef.current.forEach((m) => m.setMap(null));
+        markersRef.current = [];
+        infoRef.current?.close();
 
-    // Get center from bounds
-    const center = bounds.getCenter();
+        const bounds = new google.maps.LatLngBounds();
+        validCoords.forEach((c) => bounds.extend({ lat: c.lat, lng: c.lng }));
 
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: "mapbox://styles/mapbox/satellite-streets-v12",
-      center: [center.lng, center.lat],
-      zoom: 10,
-    });
+        mapRef.current = new google.maps.Map(mapContainer.current, {
+          center: bounds.getCenter(),
+          zoom: 10,
+          mapTypeId: google.maps.MapTypeId.HYBRID,
+          mapTypeControl: true,
+          streetViewControl: false,
+          fullscreenControl: true,
+        });
 
-    // Add navigation controls
-    map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
+        infoRef.current = new google.maps.InfoWindow();
 
-    // Add markers for each coordinate
-    map.current.on("load", () => {
-      coordinates.forEach((coord, index) => {
-        // Create custom marker element
-        const el = document.createElement("div");
-        el.className = "custom-marker";
-        el.innerHTML = `
-          <div class="flex items-center justify-center w-8 h-8 bg-primary rounded-full text-primary-foreground font-bold text-sm shadow-lg border-2 border-white">
-            ${index + 1}
-          </div>
-        `;
+        validCoords.forEach((coord, index) => {
+          const marker = new google.maps.Marker({
+            position: { lat: coord.lat, lng: coord.lng },
+            map: mapRef.current!,
+            label: {
+              text: String(index + 1),
+              color: "#ffffff",
+              fontWeight: "bold",
+              fontSize: "12px",
+            },
+            title: coord.label,
+          });
 
-        // Create popup using DOM elements to prevent XSS
-        const popupDiv = document.createElement("div");
-        popupDiv.className = "p-2";
-        
-        const labelEl = document.createElement("p");
-        labelEl.className = "font-bold text-sm";
-        labelEl.textContent = coord.label;
-        popupDiv.appendChild(labelEl);
-        
-        if (coord.lokasi) {
-          const lokasiEl = document.createElement("p");
-          lokasiEl.className = "text-xs text-gray-600";
-          lokasiEl.textContent = coord.lokasi;
-          popupDiv.appendChild(lokasiEl);
+          marker.addListener("click", () => {
+            const div = document.createElement("div");
+            div.style.cssText = "padding: 4px; font-family: system-ui, sans-serif;";
+            const t = document.createElement("p");
+            t.style.cssText = "font-weight: 700; font-size: 13px; margin: 0 0 3px;";
+            t.textContent = coord.label;
+            div.appendChild(t);
+            if (coord.lokasi) {
+              const l = document.createElement("p");
+              l.style.cssText = "font-size: 12px; color: #4b5563; margin: 0 0 3px;";
+              l.textContent = coord.lokasi;
+              div.appendChild(l);
+            }
+            const c = document.createElement("p");
+            c.style.cssText = "font-size: 11px; color: #6b7280; margin: 0;";
+            c.textContent = `${coord.lat.toFixed(6)}, ${coord.lng.toFixed(6)}`;
+            div.appendChild(c);
+            infoRef.current!.setContent(div);
+            infoRef.current!.open({ map: mapRef.current!, anchor: marker });
+          });
+
+          markersRef.current.push(marker);
+        });
+
+        if (validCoords.length > 1) {
+          mapRef.current.fitBounds(bounds, 50);
         }
-        
-        const coordsEl = document.createElement("p");
-        coordsEl.className = "text-xs text-gray-500";
-        coordsEl.textContent = `${coord.lat.toFixed(6)}, ${coord.lng.toFixed(6)}`;
-        popupDiv.appendChild(coordsEl);
-        
-        const popup = new mapboxgl.Popup({ offset: 25 }).setDOMContent(popupDiv);
-
-        // Add marker
-        const marker = new mapboxgl.Marker(el)
-          .setLngLat([coord.lng, coord.lat])
-          .setPopup(popup)
-          .addTo(map.current!);
-
-        markersRef.current.push(marker);
+      })
+      .catch((err) => {
+        console.error("Google Maps load error:", err);
+        if (!cancelled) setError(err.message || "Gagal memuat Google Maps");
       });
 
-      // Fit bounds with padding
-      if (coordinates.length > 1) {
-        map.current?.fitBounds(bounds, { padding: 50 });
-      }
-    });
-
     return () => {
-      markersRef.current.forEach(marker => marker.remove());
+      cancelled = true;
+      markersRef.current.forEach((m) => m.setMap(null));
       markersRef.current = [];
-      map.current?.remove();
-      map.current = null;
+      infoRef.current?.close();
+      infoRef.current = null;
+      mapRef.current = null;
     };
-  }, [open, mapboxToken, coordinates]);
-
-  const validCoords = coordinates.filter(c => !isNaN(c.lat) && !isNaN(c.lng));
+  }, [open, coordinates]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -162,7 +141,6 @@ export const LandMapPreview = ({
             <div ref={mapContainer} className="w-full h-[400px] rounded-lg overflow-hidden" />
           )}
 
-          {/* Legend */}
           {validCoords.length > 0 && !error && (
             <div className="max-h-[150px] overflow-auto border rounded-lg p-3 bg-muted/30">
               <p className="text-sm font-medium mb-2">Daftar Lokasi:</p>
@@ -196,64 +174,34 @@ export const LandMapPreview = ({
 // Helper function to parse and validate coordinates
 export const parseCoordinate = (koordinat: string): { lat: number; lng: number; isValid: boolean; error?: string } => {
   if (!koordinat || koordinat.trim() === "") {
-    return { lat: 0, lng: 0, isValid: true }; // Empty is valid (optional field)
+    return { lat: 0, lng: 0, isValid: true };
   }
 
   const trimmed = koordinat.trim();
-  
-  // Try different formats:
-  // Format 1: "-6.123,106.456" or "-6.123, 106.456"
-  // Format 2: "-6.123 106.456"
-  // Format 3: "lat: -6.123, lng: 106.456"
-  
   let lat: number | null = null;
   let lng: number | null = null;
 
-  // Try comma separated
   if (trimmed.includes(",")) {
-    const parts = trimmed.split(",").map(p => p.trim());
+    const parts = trimmed.split(",").map((p) => p.trim());
     if (parts.length === 2) {
       lat = parseFloat(parts[0].replace(/[^0-9.-]/g, ""));
       lng = parseFloat(parts[1].replace(/[^0-9.-]/g, ""));
     }
-  } 
-  // Try space separated
-  else if (trimmed.includes(" ")) {
-    const parts = trimmed.split(/\s+/).map(p => p.trim());
+  } else if (trimmed.includes(" ")) {
+    const parts = trimmed.split(/\s+/).map((p) => p.trim());
     if (parts.length === 2) {
       lat = parseFloat(parts[0].replace(/[^0-9.-]/g, ""));
       lng = parseFloat(parts[1].replace(/[^0-9.-]/g, ""));
     }
-  }
-  // Try single number (invalid)
-  else {
-    return { 
-      lat: 0, 
-      lng: 0, 
-      isValid: false, 
-      error: "Format koordinat tidak valid. Gunakan format: lat,lng (contoh: -6.123,106.456)" 
-    };
+  } else {
+    return { lat: 0, lng: 0, isValid: false, error: "Format koordinat tidak valid. Gunakan format: lat,lng" };
   }
 
-  // Validate latitude (-90 to 90)
   if (lat === null || isNaN(lat) || lat < -90 || lat > 90) {
-    return { 
-      lat: 0, 
-      lng: 0, 
-      isValid: false, 
-      error: `Latitude tidak valid (${lat}). Harus antara -90 dan 90` 
-    };
+    return { lat: 0, lng: 0, isValid: false, error: `Latitude tidak valid (${lat})` };
   }
-
-  // Validate longitude (-180 to 180)
   if (lng === null || isNaN(lng) || lng < -180 || lng > 180) {
-    return { 
-      lat: 0, 
-      lng: 0, 
-      isValid: false, 
-      error: `Longitude tidak valid (${lng}). Harus antara -180 dan 180` 
-    };
+    return { lat: 0, lng: 0, isValid: false, error: `Longitude tidak valid (${lng})` };
   }
-
   return { lat, lng, isValid: true };
 };
