@@ -1,7 +1,8 @@
+/// <reference types="google.maps" />
 // Shared Google Maps JS API loader (loads script once)
-let loaderPromise: Promise<typeof google> | null = null;
+let loaderPromise: Promise<typeof globalThis.google> | null = null;
 
-export function loadGoogleMaps(): Promise<typeof google> {
+export function loadGoogleMaps(): Promise<typeof globalThis.google> {
   if (typeof window !== "undefined" && (window as any).google?.maps) {
     return Promise.resolve((window as any).google);
   }
