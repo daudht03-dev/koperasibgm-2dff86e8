@@ -15,6 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { loadGoogleMaps } from "@/lib/google-maps-loader";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
+import { MapAddressSearch } from "@/components/MapAddressSearch";
 
 interface LandWithFarmer {
   id: string;
