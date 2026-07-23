@@ -15,6 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { loadGoogleMaps } from "@/lib/google-maps-loader";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
+import { MapAddressSearch } from "@/components/MapAddressSearch";
 
 interface LandWithFarmer {
   id: string;
@@ -64,6 +65,7 @@ export const LandMapTab: React.FC = () => {
   const clustererRef = useRef<MarkerClusterer | null>(null);
   const clickMarkerRef = useRef<google.maps.Marker | null>(null);
   const infoRef = useRef<google.maps.InfoWindow | null>(null);
+  const searchMarkerRef = useRef<google.maps.Marker | null>(null);
   const clickListenerRef = useRef<google.maps.MapsEventListener | null>(null);
 
   const [allLands, setAllLands] = useState<LandWithFarmer[]>([]);
@@ -297,6 +299,7 @@ export const LandMapTab: React.FC = () => {
       clustererRef.current?.clearMarkers();
       markersRef.current.forEach((m) => m.setMap(null));
       clickMarkerRef.current?.setMap(null);
+      searchMarkerRef.current?.setMap(null);
       infoRef.current?.close();
       mapRef.current = null;
     };
@@ -417,6 +420,62 @@ export const LandMapTab: React.FC = () => {
     contentRef: printRef,
     documentTitle: `Peta Lahan - ${profile?.nama_perusahaan || ""}`,
   });
+  const handleAddressSelect = useCallback(({ lat, lng, address }: { lat: number; lng: number; address: string }) => {
+    if (!mapRef.current || !(window as any).google?.maps) return;
+    const google = (window as any).google;
+    mapRef.current.panTo({ lat, lng });
+    mapRef.current.setZoom(16);
+
+    searchMarkerRef.current?.setMap(null);
+    searchMarkerRef.current = new google.maps.Marker({
+      position: { lat, lng },
+      map: mapRef.current,
+      animation: google.maps.Animation.DROP,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 11,
+        fillColor: "#2563eb",
+        fillOpacity: 1,
+        strokeColor: "#ffffff",
+        strokeWeight: 3,
+      },
+      title: address,
+    });
+
+    if (infoRef.current) {
+      const div = document.createElement("div");
+      div.style.cssText = "padding: 6px; font-family: system-ui, sans-serif; max-width: 260px;";
+      const t = document.createElement("p");
+      t.style.cssText = "font-weight: 600; font-size: 13px; margin: 0 0 4px;";
+      t.textContent = address;
+      div.appendChild(t);
+      const c = document.createElement("p");
+      c.style.cssText = "font-size: 11px; color: #6b7280; margin: 0;";
+      c.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      div.appendChild(c);
+      infoRef.current.setContent(div);
+      infoRef.current.open({ map: mapRef.current, anchor: searchMarkerRef.current });
+    }
+
+    if (editMode && selectedLandForEdit) {
+      setNewCoordinates({ lat, lng });
+      clickMarkerRef.current?.setMap(null);
+      clickMarkerRef.current = new google.maps.Marker({
+        position: { lat, lng },
+        map: mapRef.current,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 12,
+          fillColor: "#ef4444",
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: 3,
+        },
+      });
+      setEditDialogOpen(true);
+    }
+  }, [editMode, selectedLandForEdit]);
+
 
   if (loading) {
     return (
@@ -461,6 +520,8 @@ export const LandMapTab: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            <MapAddressSearch onSelect={handleAddressSelect} className="w-full sm:w-[280px]" />
 
             <div className="h-6 w-px bg-border" />
 
