@@ -299,6 +299,7 @@ export const LandMapTab: React.FC = () => {
       clustererRef.current?.clearMarkers();
       markersRef.current.forEach((m) => m.setMap(null));
       clickMarkerRef.current?.setMap(null);
+      searchMarkerRef.current?.setMap(null);
       infoRef.current?.close();
       mapRef.current = null;
     };
