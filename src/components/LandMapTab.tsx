@@ -520,6 +520,8 @@ export const LandMapTab: React.FC = () => {
               </Select>
             </div>
 
+            <MapAddressSearch onSelect={handleAddressSelect} className="w-full sm:w-[280px]" />
+
             <div className="h-6 w-px bg-border" />
 
             <div className="flex items-center gap-2">
