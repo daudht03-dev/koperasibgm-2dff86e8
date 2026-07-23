@@ -419,6 +419,62 @@ export const LandMapTab: React.FC = () => {
     contentRef: printRef,
     documentTitle: `Peta Lahan - ${profile?.nama_perusahaan || ""}`,
   });
+  const handleAddressSelect = useCallback(({ lat, lng, address }: { lat: number; lng: number; address: string }) => {
+    if (!mapRef.current || !(window as any).google?.maps) return;
+    const google = (window as any).google;
+    mapRef.current.panTo({ lat, lng });
+    mapRef.current.setZoom(16);
+
+    searchMarkerRef.current?.setMap(null);
+    searchMarkerRef.current = new google.maps.Marker({
+      position: { lat, lng },
+      map: mapRef.current,
+      animation: google.maps.Animation.DROP,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 11,
+        fillColor: "#2563eb",
+        fillOpacity: 1,
+        strokeColor: "#ffffff",
+        strokeWeight: 3,
+      },
+      title: address,
+    });
+
+    if (infoRef.current) {
+      const div = document.createElement("div");
+      div.style.cssText = "padding: 6px; font-family: system-ui, sans-serif; max-width: 260px;";
+      const t = document.createElement("p");
+      t.style.cssText = "font-weight: 600; font-size: 13px; margin: 0 0 4px;";
+      t.textContent = address;
+      div.appendChild(t);
+      const c = document.createElement("p");
+      c.style.cssText = "font-size: 11px; color: #6b7280; margin: 0;";
+      c.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      div.appendChild(c);
+      infoRef.current.setContent(div);
+      infoRef.current.open({ map: mapRef.current, anchor: searchMarkerRef.current });
+    }
+
+    if (editMode && selectedLandForEdit) {
+      setNewCoordinates({ lat, lng });
+      clickMarkerRef.current?.setMap(null);
+      clickMarkerRef.current = new google.maps.Marker({
+        position: { lat, lng },
+        map: mapRef.current,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 12,
+          fillColor: "#ef4444",
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: 3,
+        },
+      });
+      setEditDialogOpen(true);
+    }
+  }, [editMode, selectedLandForEdit]);
+
 
   if (loading) {
     return (
