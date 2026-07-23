@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, Printer, Map, Loader2, AlertCircle, Filter, MousePointer, X, FileSpreadsheet, FileJson, Layers } from "lucide-react";
+import { Download, Printer, Map, Loader2, AlertCircle, Filter, MousePointer, X, FileSpreadsheet, FileJson, Layers, MapPin, Images } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import html2canvas from "html2canvas";
 import { toast } from "@/hooks/use-toast";
@@ -31,10 +32,19 @@ interface LandWithFarmer {
     is_organic: boolean | null;
   } | null;
   parsedCoord?: { lat: number; lng: number };
+  villageCode?: string;
 }
 
 type MapStyle = "roadmap" | "satellite" | "hybrid" | "terrain";
 type OrganicFilter = "all" | "organic" | "conventional";
+type MapMode = "all" | "village";
+
+const VILLAGE_NAMES: Record<string, string> = {
+  MT: "Metenggeng",
+  PK: "Pekuncen",
+  BN: "Banjaranyar",
+  KR: "Karangkemiri",
+};
 
 const parseCoordinate = (koordinat: string): { lat: number; lng: number; isValid: boolean } => {
   if (!koordinat) return { lat: 0, lng: 0, isValid: false };
@@ -50,12 +60,20 @@ const parseCoordinate = (koordinat: string): { lat: number; lng: number; isValid
   return { lat: 0, lng: 0, isValid: false };
 };
 
+const extractVillageCode = (namaLahan: string): string => {
+  const m = (namaLahan || "").match(/^([A-Za-z]+)/);
+  return m ? m[1].toUpperCase() : "-";
+};
+
 const mapStyleLabels: Record<MapStyle, string> = {
   roadmap: "Jalan",
   satellite: "Satelit",
   hybrid: "Hybrid",
   terrain: "Terrain",
 };
+
+// Delay helper for sequential downloads
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export const LandMapTab: React.FC = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -74,23 +92,39 @@ export const LandMapTab: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [mapStyle, setMapStyle] = useState<MapStyle>("hybrid");
   const [downloading, setDownloading] = useState(false);
+  const [bulkDownloading, setBulkDownloading] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [clusteringEnabled, setClusteringEnabled] = useState(true);
+  const [showLabels, setShowLabels] = useState(true);
 
-  const [farmerFilter, setFarmerFilter] = useState<string>("all");
+  // Map mode: all farmers vs per village
+  const [mapMode, setMapMode] = useState<MapMode>("all");
+  const [villageFilter, setVillageFilter] = useState<string>("");
   const [organicFilter, setOrganicFilter] = useState<OrganicFilter>("all");
 
   const [editMode, setEditMode] = useState(false);
   const [selectedLandForEdit, setSelectedLandForEdit] = useState<LandWithFarmer | null>(null);
   const [newCoordinates, setNewCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const [newAddress, setNewAddress] = useState<string | null>(null);
+  const [geocoding, setGeocoding] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const { profile } = useCompanyProfile();
 
+  const villages = useMemo(() => {
+    const set = new Set<string>();
+    allLands.forEach((l) => {
+      if (l.villageCode && l.villageCode !== "-") set.add(l.villageCode);
+    });
+    return Array.from(set).sort();
+  }, [allLands]);
+
   const filteredLands = useMemo(() => {
     let result = allLands.filter((land) => land.parsedCoord);
-    if (farmerFilter !== "all") result = result.filter((l) => l.petani_id === farmerFilter);
+    if (mapMode === "village" && villageFilter) {
+      result = result.filter((l) => l.villageCode === villageFilter);
+    }
     if (organicFilter !== "all") {
       result = result.filter((l) => {
         const isOrganic = l.is_organic ?? l.petani?.is_organic;
@@ -98,15 +132,7 @@ export const LandMapTab: React.FC = () => {
       });
     }
     return result;
-  }, [allLands, farmerFilter, organicFilter]);
-
-  const uniqueFarmers = useMemo(() => {
-    const map: Record<string, { id: string; nama: string }> = {};
-    allLands.forEach((l) => {
-      if (l.petani_id && l.petani) map[l.petani_id] = { id: l.petani_id, nama: l.petani.nama };
-    });
-    return Object.values(map);
-  }, [allLands]);
+  }, [allLands, mapMode, villageFilter, organicFilter]);
 
   const fetchLands = useCallback(async () => {
     try {
@@ -116,20 +142,29 @@ export const LandMapTab: React.FC = () => {
         .from("lahan")
         .select(`id, nama_lahan, lokasi, koordinat, luas, petani_id, is_organic,
           petani:petani_id ( nama, kode_petani, is_organic )`)
-        .limit(500);
+        .limit(1000);
       if (fetchError) throw fetchError;
       const lands = (data || []).map((land: any) => {
         const parsed = parseCoordinate(land.koordinat || "");
-        return { ...land, parsedCoord: parsed.isValid ? { lat: parsed.lat, lng: parsed.lng } : undefined };
+        return {
+          ...land,
+          parsedCoord: parsed.isValid ? { lat: parsed.lat, lng: parsed.lng } : undefined,
+          villageCode: extractVillageCode(land.nama_lahan || ""),
+        };
       });
       setAllLands(lands);
+      // Default village
+      if (mapMode === "village" && !villageFilter) {
+        const firstVillage = Array.from(new Set(lands.map((l: any) => l.villageCode).filter((v: string) => v && v !== "-"))).sort()[0];
+        if (firstVillage) setVillageFilter(firstVillage as string);
+      }
     } catch (err) {
       console.error("Error fetching lands:", err);
       setError("Gagal memuat data lahan");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [mapMode, villageFilter]);
 
   // Build markers from filtered lands
   const buildMarkers = useCallback(() => {
@@ -146,17 +181,26 @@ export const LandMapTab: React.FC = () => {
     filteredLands.forEach((land) => {
       const isOrganic = land.is_organic ?? land.petani?.is_organic ?? false;
       const color = isOrganic ? "#16a34a" : "#ea580c";
+
       const marker = new google.maps.Marker({
         position: { lat: land.parsedCoord!.lat, lng: land.parsedCoord!.lng },
-        title: land.nama_lahan,
+        title: `${land.nama_lahan} - ${land.petani?.nama || ""}`,
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
-          scale: 9,
+          scale: showLabels ? 14 : 9,
           fillColor: color,
           fillOpacity: 1,
           strokeColor: "#ffffff",
           strokeWeight: 2,
         },
+        label: showLabels
+          ? {
+              text: land.nama_lahan || "",
+              color: "#ffffff",
+              fontWeight: "700",
+              fontSize: "10px",
+            }
+          : undefined,
       });
 
       marker.addListener("click", () => {
@@ -177,6 +221,13 @@ export const LandMapTab: React.FC = () => {
           b.style.cssText = `background:${color};color:#fff;padding:2px 6px;border-radius:9999px;font-size:11px;`;
           b.textContent = isOrganic ? "🌿 Organik" : "🏭 Konvensional";
           div.appendChild(b);
+        }
+        if (land.villageCode && land.villageCode !== "-") {
+          const p = document.createElement("p");
+          p.style.cssText = "margin: 3px 0; font-size: 12px; color: #374151;";
+          p.innerHTML = `<strong>Desa:</strong> `;
+          p.appendChild(document.createTextNode(VILLAGE_NAMES[land.villageCode] || land.villageCode));
+          div.appendChild(p);
         }
         if (land.lokasi) {
           const p = document.createElement("p");
@@ -199,7 +250,9 @@ export const LandMapTab: React.FC = () => {
       bounds.extend(marker.getPosition()!);
     });
 
-    if (clusteringEnabled) {
+    // Disable clustering when labels are shown so codes remain visible
+    const useCluster = clusteringEnabled && !showLabels;
+    if (useCluster) {
       clustererRef.current = new MarkerClusterer({ map: mapRef.current, markers: markersRef.current });
     } else {
       markersRef.current.forEach((m) => m.setMap(mapRef.current!));
@@ -207,13 +260,11 @@ export const LandMapTab: React.FC = () => {
 
     if (filteredLands.length > 0) {
       mapRef.current.fitBounds(bounds, 60);
-      // Cap max zoom
-      const listener = google.maps.event.addListenerOnce(mapRef.current, "idle", () => {
-        if (mapRef.current && mapRef.current.getZoom()! > 15) mapRef.current.setZoom(15);
+      google.maps.event.addListenerOnce(mapRef.current, "idle", () => {
+        if (mapRef.current && mapRef.current.getZoom()! > 16) mapRef.current.setZoom(16);
       });
-      void listener;
     }
-  }, [filteredLands, clusteringEnabled, editMode]);
+  }, [filteredLands, clusteringEnabled, editMode, showLabels]);
 
   // Initialize map once
   const initializeMap = useCallback(async () => {
@@ -223,8 +274,8 @@ export const LandMapTab: React.FC = () => {
       const google = await loadGoogleMaps();
 
       mapRef.current = new google.maps.Map(mapContainer.current, {
-        center: { lat: -6.2088, lng: 106.8456 },
-        zoom: 8,
+        center: { lat: -7.5, lng: 109.3 },
+        zoom: 10,
         mapTypeId: mapStyle,
         mapTypeControl: false,
         streetViewControl: false,
@@ -249,15 +300,36 @@ export const LandMapTab: React.FC = () => {
     if (mapRef.current) mapRef.current.setMapTypeId(newStyle);
   }, []);
 
+  // Reverse geocoding
+  const reverseGeocode = useCallback(async (lat: number, lng: number): Promise<string | null> => {
+    try {
+      setGeocoding(true);
+      const { data, error } = await supabase.functions.invoke("reverse-geocode", {
+        body: { lat, lng },
+      });
+      if (error) {
+        console.error("reverse-geocode error", error);
+        return null;
+      }
+      return (data as any)?.address ?? null;
+    } catch (err) {
+      console.error("reverse-geocode threw", err);
+      return null;
+    } finally {
+      setGeocoding(false);
+    }
+  }, []);
+
   // Edit-mode click handler
   useEffect(() => {
     if (!mapRef.current || !mapReady) return;
     clickListenerRef.current?.remove();
-    clickListenerRef.current = mapRef.current.addListener("click", (e: google.maps.MapMouseEvent) => {
+    clickListenerRef.current = mapRef.current.addListener("click", async (e: google.maps.MapMouseEvent) => {
       if (!editMode || !selectedLandForEdit || !e.latLng) return;
       const lat = e.latLng.lat();
       const lng = e.latLng.lng();
       setNewCoordinates({ lat, lng });
+      setNewAddress(null);
       const google = (window as any).google;
       clickMarkerRef.current?.setMap(null);
       clickMarkerRef.current = new google.maps.Marker({
@@ -273,14 +345,16 @@ export const LandMapTab: React.FC = () => {
         },
       });
       setEditDialogOpen(true);
+      const addr = await reverseGeocode(lat, lng);
+      setNewAddress(addr);
     });
     return () => {
       clickListenerRef.current?.remove();
       clickListenerRef.current = null;
     };
-  }, [mapReady, editMode, selectedLandForEdit]);
+  }, [mapReady, editMode, selectedLandForEdit, reverseGeocode]);
 
-  useEffect(() => { fetchLands(); }, [fetchLands]);
+  useEffect(() => { fetchLands(); }, []);
 
   useEffect(() => {
     if (!loading && !mapRef.current) initializeMap();
@@ -291,7 +365,7 @@ export const LandMapTab: React.FC = () => {
       const t = setTimeout(() => buildMarkers(), 100);
       return () => clearTimeout(t);
     }
-  }, [filteredLands, mapReady, clusteringEnabled, buildMarkers]);
+  }, [filteredLands, mapReady, clusteringEnabled, showLabels, buildMarkers]);
 
   useEffect(() => {
     return () => {
@@ -310,14 +384,20 @@ export const LandMapTab: React.FC = () => {
     try {
       setSaving(true);
       const koordinat = `${newCoordinates.lat.toFixed(6)}, ${newCoordinates.lng.toFixed(6)}`;
-      const { error: updateError } = await supabase.from("lahan").update({ koordinat }).eq("id", selectedLandForEdit.id);
+      const update: Record<string, any> = { koordinat };
+      if (newAddress) update.lokasi = newAddress;
+      const { error: updateError } = await supabase.from("lahan").update(update).eq("id", selectedLandForEdit.id);
       if (updateError) throw updateError;
-      toast({ title: "Berhasil", description: `Koordinat lahan "${selectedLandForEdit.nama_lahan}" diperbarui` });
+      toast({
+        title: "Berhasil",
+        description: `Koordinat${newAddress ? " & alamat" : ""} lahan "${selectedLandForEdit.nama_lahan}" diperbarui`,
+      });
       await fetchLands();
       setEditDialogOpen(false);
       setEditMode(false);
       setSelectedLandForEdit(null);
       setNewCoordinates(null);
+      setNewAddress(null);
       clickMarkerRef.current?.setMap(null);
       clickMarkerRef.current = null;
     } catch (err) {
@@ -331,6 +411,7 @@ export const LandMapTab: React.FC = () => {
   const handleCancelEdit = () => {
     setEditDialogOpen(false);
     setNewCoordinates(null);
+    setNewAddress(null);
     clickMarkerRef.current?.setMap(null);
     clickMarkerRef.current = null;
   };
@@ -339,6 +420,7 @@ export const LandMapTab: React.FC = () => {
     setEditMode(false);
     setSelectedLandForEdit(null);
     setNewCoordinates(null);
+    setNewAddress(null);
     clickMarkerRef.current?.setMap(null);
     clickMarkerRef.current = null;
   };
@@ -348,10 +430,11 @@ export const LandMapTab: React.FC = () => {
       toast({ title: "Tidak ada data", description: "Tidak ada lahan untuk diekspor", variant: "destructive" });
       return;
     }
-    const headers = ["No", "Nama Lahan", "Petani", "Kode Petani", "Status", "Lokasi", "Latitude", "Longitude", "Luas (ha)"];
+    const headers = ["No", "Kode Lahan", "Desa", "Petani", "Kode Petani", "Status", "Lokasi", "Latitude", "Longitude", "Luas (ha)"];
     const rows = filteredLands.map((land, i) => [
       i + 1,
       `"${(land.nama_lahan || "").replace(/"/g, '""')}"`,
+      VILLAGE_NAMES[land.villageCode || ""] || land.villageCode || "-",
       `"${(land.petani?.nama || "-").replace(/"/g, '""')}"`,
       land.petani?.kode_petani || "-",
       (land.is_organic ?? land.petani?.is_organic) ? "Organik" : "Konvensional",
@@ -381,7 +464,9 @@ export const LandMapTab: React.FC = () => {
         type: "Feature",
         geometry: { type: "Point", coordinates: [land.parsedCoord!.lng, land.parsedCoord!.lat] },
         properties: {
-          id: land.id, number: i + 1, nama_lahan: land.nama_lahan, lokasi: land.lokasi,
+          id: land.id, number: i + 1, nama_lahan: land.nama_lahan,
+          desa: VILLAGE_NAMES[land.villageCode || ""] || land.villageCode,
+          lokasi: land.lokasi,
           luas_ha: land.luas, petani_nama: land.petani?.nama, petani_kode: land.petani?.kode_petani,
           is_organic: land.is_organic ?? land.petani?.is_organic ?? null,
           latitude: land.parsedCoord!.lat, longitude: land.parsedCoord!.lng,
@@ -397,15 +482,29 @@ export const LandMapTab: React.FC = () => {
     toast({ title: "Berhasil", description: `${filteredLands.length} lahan diekspor` });
   };
 
+  const captureCurrentView = async (filename: string) => {
+    if (!printRef.current) return;
+    const canvas = await html2canvas(printRef.current, {
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: "#ffffff",
+      scale: 2,
+    });
+    const a = document.createElement("a");
+    a.download = filename;
+    a.href = canvas.toDataURL("image/png");
+    a.click();
+  };
+
   const handleDownload = async () => {
     if (!printRef.current) return;
     try {
       setDownloading(true);
-      const canvas = await html2canvas(printRef.current, { useCORS: true, allowTaint: true, backgroundColor: "#ffffff", scale: 2 });
-      const a = document.createElement("a");
-      a.download = `peta-lahan-${new Date().toISOString().split("T")[0]}.png`;
-      a.href = canvas.toDataURL("image/png");
-      a.click();
+      const suffix =
+        mapMode === "village" && villageFilter
+          ? `desa-${(VILLAGE_NAMES[villageFilter] || villageFilter).toLowerCase()}`
+          : "semua-petani";
+      await captureCurrentView(`peta-lahan-${suffix}-${new Date().toISOString().split("T")[0]}.png`);
       toast({ title: "Berhasil", description: "Peta diunduh" });
     } catch (err) {
       console.error(err);
@@ -415,11 +514,43 @@ export const LandMapTab: React.FC = () => {
     }
   };
 
+  // Bulk download: one PNG per village so prints can be combined offline
+  const handleDownloadAllVillages = async () => {
+    if (villages.length === 0) {
+      toast({ title: "Tidak ada desa", description: "Tidak ada data desa untuk diunduh", variant: "destructive" });
+      return;
+    }
+    try {
+      setBulkDownloading(true);
+      const previousMode = mapMode;
+      const previousVillage = villageFilter;
+      setMapMode("village");
+      for (const v of villages) {
+        setVillageFilter(v);
+        // Wait for state → markers → map idle. Two ticks + generous delay.
+        await wait(1400);
+        const name = (VILLAGE_NAMES[v] || v).toLowerCase();
+        await captureCurrentView(`peta-lahan-desa-${name}-${new Date().toISOString().split("T")[0]}.png`);
+        await wait(400);
+      }
+      // Restore
+      setMapMode(previousMode);
+      if (previousVillage) setVillageFilter(previousVillage);
+      toast({ title: "Berhasil", description: `${villages.length} peta desa diunduh` });
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Gagal", description: "Gagal mengunduh peta per desa", variant: "destructive" });
+    } finally {
+      setBulkDownloading(false);
+    }
+  };
+
   const handlePrint = useReactToPrint({
     // @ts-ignore
     contentRef: printRef,
     documentTitle: `Peta Lahan - ${profile?.nama_perusahaan || ""}`,
   });
+
   const handleAddressSelect = useCallback(({ lat, lng, address }: { lat: number; lng: number; address: string }) => {
     if (!mapRef.current || !(window as any).google?.maps) return;
     const google = (window as any).google;
@@ -442,23 +573,9 @@ export const LandMapTab: React.FC = () => {
       title: address,
     });
 
-    if (infoRef.current) {
-      const div = document.createElement("div");
-      div.style.cssText = "padding: 6px; font-family: system-ui, sans-serif; max-width: 260px;";
-      const t = document.createElement("p");
-      t.style.cssText = "font-weight: 600; font-size: 13px; margin: 0 0 4px;";
-      t.textContent = address;
-      div.appendChild(t);
-      const c = document.createElement("p");
-      c.style.cssText = "font-size: 11px; color: #6b7280; margin: 0;";
-      c.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-      div.appendChild(c);
-      infoRef.current.setContent(div);
-      infoRef.current.open({ map: mapRef.current, anchor: searchMarkerRef.current });
-    }
-
     if (editMode && selectedLandForEdit) {
       setNewCoordinates({ lat, lng });
+      setNewAddress(address);
       clickMarkerRef.current?.setMap(null);
       clickMarkerRef.current = new google.maps.Marker({
         position: { lat, lng },
@@ -504,34 +621,68 @@ export const LandMapTab: React.FC = () => {
     );
   }
 
+  const activeVillageName =
+    mapMode === "village" && villageFilter
+      ? VILLAGE_NAMES[villageFilter] || villageFilter
+      : null;
+
   return (
     <div className="space-y-4">
       <Card className="shadow-gentle">
-        <CardContent className="p-4">
+        <CardContent className="p-4 space-y-3">
+          {/* Mode selector */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
-              <Layers className="h-4 w-4 text-muted-foreground" />
-              <Select value={mapStyle} onValueChange={(v) => updateMapStyle(v as MapStyle)}>
-                <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Mode Peta:</span>
+            </div>
+            <div className="inline-flex rounded-md border p-0.5">
+              <Button
+                size="sm"
+                variant={mapMode === "all" ? "default" : "ghost"}
+                onClick={() => setMapMode("all")}
+                className="rounded-sm"
+              >
+                Semua Petani
+              </Button>
+              <Button
+                size="sm"
+                variant={mapMode === "village" ? "default" : "ghost"}
+                onClick={() => {
+                  setMapMode("village");
+                  if (!villageFilter && villages.length > 0) setVillageFilter(villages[0]);
+                }}
+                className="rounded-sm"
+              >
+                Per Desa
+              </Button>
+            </div>
+
+            {mapMode === "village" && (
+              <Select value={villageFilter} onValueChange={setVillageFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Pilih desa..." />
+                </SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(mapStyleLabels) as MapStyle[]).map((s) => (
-                    <SelectItem key={s} value={s}>{mapStyleLabels[s]}</SelectItem>
+                  {villages.map((v) => (
+                    <SelectItem key={v} value={v}>
+                      {(VILLAGE_NAMES[v] || v)} ({v})
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            <MapAddressSearch onSelect={handleAddressSelect} className="w-full sm:w-[280px]" />
+            )}
 
             <div className="h-6 w-px bg-border" />
 
             <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <Select value={farmerFilter} onValueChange={setFarmerFilter}>
-                <SelectTrigger className="w-[160px]"><SelectValue placeholder="Semua Petani" /></SelectTrigger>
+              <Layers className="h-4 w-4 text-muted-foreground" />
+              <Select value={mapStyle} onValueChange={(v) => updateMapStyle(v as MapStyle)}>
+                <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Semua Petani</SelectItem>
-                  {uniqueFarmers.map((f) => (<SelectItem key={f.id} value={f.id}>{f.nama}</SelectItem>))}
+                  {(Object.keys(mapStyleLabels) as MapStyle[]).map((s) => (
+                    <SelectItem key={s} value={s}>{mapStyleLabels[s]}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -545,26 +696,54 @@ export const LandMapTab: React.FC = () => {
               </SelectContent>
             </Select>
 
-            <Button variant={clusteringEnabled ? "default" : "outline"} size="sm" onClick={() => setClusteringEnabled(!clusteringEnabled)} className="gap-2">
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <Checkbox checked={showLabels} onCheckedChange={(c) => setShowLabels(Boolean(c))} />
+              Tampilkan Kode Lahan
+            </label>
+
+            <Button
+              variant={clusteringEnabled ? "default" : "outline"}
+              size="sm"
+              onClick={() => setClusteringEnabled(!clusteringEnabled)}
+              className="gap-2"
+              disabled={showLabels}
+              title={showLabels ? "Nonaktifkan label untuk memakai cluster" : ""}
+            >
               <Layers className="h-4 w-4" />Cluster
             </Button>
+          </div>
 
+          {/* Search + actions */}
+          <div className="flex flex-wrap items-center gap-3">
+            <MapAddressSearch onSelect={handleAddressSelect} className="w-full sm:w-[280px]" />
             <div className="flex-1" />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm"><Download className="h-4 w-4 mr-2" />Export</Button>
+                <Button variant="outline" size="sm" disabled={bulkDownloading}>
+                  {bulkDownloading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                  Cetak / Unduh
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleExportCSV}><FileSpreadsheet className="h-4 w-4 mr-2" />Export CSV</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportGeoJSON}><FileJson className="h-4 w-4 mr-2" />Export GeoJSON</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleDownload} disabled={downloading}><Download className="h-4 w-4 mr-2" />Download Gambar</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDownload} disabled={downloading}>
+                  <Download className="h-4 w-4 mr-2" />Download Peta (view saat ini)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDownloadAllVillages} disabled={bulkDownloading || villages.length === 0}>
+                  <Images className="h-4 w-4 mr-2" />Download Peta Semua Desa
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handlePrint()}>
+                  <Printer className="h-4 w-4 mr-2" />Print
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleExportCSV}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />Export CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportGeoJSON}>
+                  <FileJson className="h-4 w-4 mr-2" />Export GeoJSON
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-
-            <Button variant="outline" size="sm" onClick={() => handlePrint()}>
-              <Printer className="h-4 w-4 mr-2" />Print
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -575,9 +754,15 @@ export const LandMapTab: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
-                  <Map className="h-5 w-5" />Peta Lahan (Google Maps)
+                  <Map className="h-5 w-5" />
+                  {activeVillageName
+                    ? `Peta Lahan Desa ${activeVillageName}`
+                    : "Peta Lahan - Semua Petani"}
                 </CardTitle>
-                <CardDescription>{filteredLands.length} lahan ditampilkan</CardDescription>
+                <CardDescription>
+                  {filteredLands.length} lahan ditampilkan
+                  {activeVillageName ? ` · Desa ${activeVillageName}` : ""}
+                </CardDescription>
               </div>
 
               {!editMode ? (
@@ -602,7 +787,7 @@ export const LandMapTab: React.FC = () => {
 
             {editMode && selectedLandForEdit && (
               <p className="text-sm text-muted-foreground mt-2">
-                Klik pada peta untuk memilih koordinat baru untuk "{selectedLandForEdit.nama_lahan}"
+                Klik pada peta untuk memilih koordinat baru "{selectedLandForEdit.nama_lahan}". Alamat akan diisi otomatis dari Google.
               </p>
             )}
           </CardHeader>
@@ -610,16 +795,34 @@ export const LandMapTab: React.FC = () => {
           <CardContent className="p-0">
             <div className="relative">
               <div ref={mapContainer} className="w-full h-[500px] bg-muted" style={{ minHeight: "400px" }} />
-              {mapLoading && (
+              {(mapLoading || bulkDownloading) && (
                 <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
                   <div className="text-center space-y-2">
                     <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-                    <p className="text-sm text-muted-foreground">Memuat peta...</p>
+                    <p className="text-sm text-muted-foreground">
+                      {bulkDownloading ? "Menyiapkan peta per desa..." : "Memuat peta..."}
+                    </p>
                   </div>
                 </div>
               )}
             </div>
           </CardContent>
+
+          {/* Codes on this map (also captured on print) */}
+          {filteredLands.length > 0 && (
+            <div className="p-4 border-t bg-muted/30">
+              <p className="text-sm font-medium mb-2">
+                Kode Lahan pada peta ini ({filteredLands.length}):
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {filteredLands.map((l) => (
+                  <Badge key={l.id} variant="secondary" className="text-xs font-mono">
+                    {l.nama_lahan}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </Card>
 
@@ -632,6 +835,9 @@ export const LandMapTab: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded-full bg-orange-500" /><span className="text-sm">Konvensional</span>
+            </div>
+            <div className="ml-auto text-xs text-muted-foreground">
+              Kode lahan: prefix huruf = kode desa (contoh MT = Metenggeng, PK = Pekuncen)
             </div>
           </div>
         </CardContent>
@@ -646,7 +852,8 @@ export const LandMapTab: React.FC = () => {
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-2 px-3">No</th>
-                    <th className="text-left py-2 px-3">Nama Lahan</th>
+                    <th className="text-left py-2 px-3">Kode Lahan</th>
+                    <th className="text-left py-2 px-3">Desa</th>
                     <th className="text-left py-2 px-3">Petani</th>
                     <th className="text-left py-2 px-3">Status</th>
                     <th className="text-left py-2 px-3">Luas</th>
@@ -654,12 +861,13 @@ export const LandMapTab: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredLands.slice(0, 50).map((land, idx) => {
+                  {filteredLands.slice(0, 100).map((land, idx) => {
                     const isOrganic = land.is_organic ?? land.petani?.is_organic;
                     return (
                       <tr key={land.id} className="border-b hover:bg-muted/50">
                         <td className="py-2 px-3">{idx + 1}</td>
-                        <td className="py-2 px-3 font-medium">{land.nama_lahan}</td>
+                        <td className="py-2 px-3 font-mono font-medium">{land.nama_lahan}</td>
+                        <td className="py-2 px-3">{VILLAGE_NAMES[land.villageCode || ""] || land.villageCode || "-"}</td>
                         <td className="py-2 px-3">{land.petani?.nama || "-"}</td>
                         <td className="py-2 px-3">
                           <Badge variant={isOrganic ? "default" : "secondary"} className="text-xs">
@@ -675,9 +883,9 @@ export const LandMapTab: React.FC = () => {
                   })}
                 </tbody>
               </table>
-              {filteredLands.length > 50 && (
+              {filteredLands.length > 100 && (
                 <p className="text-sm text-muted-foreground text-center py-2">
-                  Menampilkan 50 dari {filteredLands.length} lahan
+                  Menampilkan 100 dari {filteredLands.length} lahan
                 </p>
               )}
             </div>
@@ -690,7 +898,7 @@ export const LandMapTab: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Konfirmasi Koordinat Baru</DialogTitle>
             <DialogDescription>
-              Anda akan mengubah koordinat lahan "{selectedLandForEdit?.nama_lahan}"
+              Anda akan mengubah koordinat dan alamat lahan "{selectedLandForEdit?.nama_lahan}"
             </DialogDescription>
           </DialogHeader>
           {newCoordinates && (
@@ -705,11 +913,25 @@ export const LandMapTab: React.FC = () => {
                   <p className="font-mono">{newCoordinates.lng.toFixed(6)}</p>
                 </div>
               </div>
+              <div>
+                <Label className="text-muted-foreground">Alamat (reverse geocoding)</Label>
+                {geocoding ? (
+                  <p className="text-sm flex items-center gap-2 mt-1">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Mengambil alamat dari Google...
+                  </p>
+                ) : newAddress ? (
+                  <p className="text-sm mt-1">{newAddress}</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Alamat tidak ditemukan. Koordinat tetap akan disimpan.
+                  </p>
+                )}
+              </div>
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={handleCancelEdit}>Batal</Button>
-            <Button onClick={handleSaveCoordinates} disabled={saving}>
+            <Button onClick={handleSaveCoordinates} disabled={saving || geocoding}>
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Simpan
             </Button>
           </DialogFooter>
