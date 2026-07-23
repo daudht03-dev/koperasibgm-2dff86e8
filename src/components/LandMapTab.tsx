@@ -65,6 +65,7 @@ export const LandMapTab: React.FC = () => {
   const clustererRef = useRef<MarkerClusterer | null>(null);
   const clickMarkerRef = useRef<google.maps.Marker | null>(null);
   const infoRef = useRef<google.maps.InfoWindow | null>(null);
+  const searchMarkerRef = useRef<google.maps.Marker | null>(null);
   const clickListenerRef = useRef<google.maps.MapsEventListener | null>(null);
 
   const [allLands, setAllLands] = useState<LandWithFarmer[]>([]);
