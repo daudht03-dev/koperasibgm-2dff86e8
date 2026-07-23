@@ -31,7 +31,7 @@ export function loadGoogleMaps(): Promise<typeof globalThis.google> {
       key: apiKey,
       loading: "async",
       callback: cbName,
-      libraries: "marker",
+      libraries: "marker,places",
     });
     if (channel) params.set("channel", channel);
     script.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
