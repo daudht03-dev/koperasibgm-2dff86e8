@@ -727,6 +727,13 @@ export const LandMapTab: React.FC = () => {
             <MapAddressSearch onSelect={handleAddressSelect} className="w-full sm:w-[280px]" />
             <div className="flex-1" />
 
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/admin/village-prefixes">
+                <Settings className="h-4 w-4 mr-2" />
+                Kelola Kode Desa
+              </Link>
+            </Button>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" disabled={bulkDownloading}>
