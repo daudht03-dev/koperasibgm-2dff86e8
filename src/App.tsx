@@ -34,6 +34,7 @@ const Install = lazy(() => import("./pages/Install"));
 const Changelog = lazy(() => import("./pages/Changelog"));
 const Traceability = lazy(() => import("./pages/Traceability"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
+const VillagePrefixSettings = lazy(() => import("./pages/VillagePrefixSettings"));
 
 const queryClient = new QueryClient();
 
@@ -181,6 +182,14 @@ const AppContent = () => {
             } 
           />
           <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+          <Route
+            path="/admin/village-prefixes"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <VillagePrefixSettings />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </PageTransition>
