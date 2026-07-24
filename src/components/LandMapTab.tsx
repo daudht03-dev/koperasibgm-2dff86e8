@@ -114,6 +114,12 @@ export const LandMapTab: React.FC = () => {
   const [saving, setSaving] = useState(false);
 
   const { profile } = useCompanyProfile();
+  const { map: villagePrefixMap } = useVillagePrefixes();
+  const VILLAGE_NAMES = useMemo(
+    () => ({ ...VILLAGE_NAMES_FALLBACK, ...villagePrefixMap }),
+    [villagePrefixMap]
+  );
+
 
   const villages = useMemo(() => {
     const set = new Set<string>();
