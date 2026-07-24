@@ -34,6 +34,7 @@ const Install = lazy(() => import("./pages/Install"));
 const Changelog = lazy(() => import("./pages/Changelog"));
 const Traceability = lazy(() => import("./pages/Traceability"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
+const VillagePrefixSettings = lazy(() => import("./pages/VillagePrefixSettings"));
 
 const queryClient = new QueryClient();
 
