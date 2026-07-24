@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, Printer, Map, Loader2, AlertCircle, Filter, MousePointer, X, FileSpreadsheet, FileJson, Layers, MapPin, Images } from "lucide-react";
+import { Download, Printer, Map, Loader2, AlertCircle, Filter, MousePointer, X, FileSpreadsheet, FileJson, Layers, MapPin, Images, Settings } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import html2canvas from "html2canvas";
 import { toast } from "@/hooks/use-toast";
@@ -17,6 +17,8 @@ import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { loadGoogleMaps } from "@/lib/google-maps-loader";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
 import { MapAddressSearch } from "@/components/MapAddressSearch";
+import { useVillagePrefixes } from "@/hooks/use-village-prefixes";
+import { Link } from "react-router-dom";
 
 interface LandWithFarmer {
   id: string;
@@ -39,7 +41,8 @@ type MapStyle = "roadmap" | "satellite" | "hybrid" | "terrain";
 type OrganicFilter = "all" | "organic" | "conventional";
 type MapMode = "all" | "village";
 
-const VILLAGE_NAMES: Record<string, string> = {
+// Fallback names used only if the DB has no matching prefix (kept for backwards compat).
+const VILLAGE_NAMES_FALLBACK: Record<string, string> = {
   MT: "Metenggeng",
   PK: "Pekuncen",
   BN: "Banjaranyar",

@@ -182,6 +182,14 @@ const AppContent = () => {
             } 
           />
           <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+          <Route
+            path="/admin/village-prefixes"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <VillagePrefixSettings />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </PageTransition>
