@@ -824,23 +824,65 @@ export const LandMapTab: React.FC = () => {
             </div>
           </CardContent>
 
-          {/* Codes on this map (also captured on print) */}
+          {/* Legend + coordinates list (captured on print/PNG export) */}
           {filteredLands.length > 0 && (
-            <div className="p-4 border-t bg-muted/30">
-              <p className="text-sm font-medium mb-2">
-                Kode Lahan pada peta ini ({filteredLands.length}):
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {filteredLands.map((l) => (
-                  <Badge key={l.id} variant="secondary" className="text-xs font-mono">
-                    {l.nama_lahan}
-                  </Badge>
-                ))}
+            <div className="p-4 border-t bg-muted/30 space-y-4">
+              {/* Legend */}
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+                <span className="font-semibold">Legenda:</span>
+                <div className="flex items-center gap-2">
+                  <span className="inline-block w-3.5 h-3.5 rounded-full bg-green-600 border-2 border-white ring-1 ring-border" />
+                  <span>Organik</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-block w-3.5 h-3.5 rounded-full bg-orange-500 border-2 border-white ring-1 ring-border" />
+                  <span>Konvensional</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-block w-3.5 h-3.5 rounded-full bg-blue-600 border-2 border-white ring-1 ring-border" />
+                  <span>Hasil pencarian</span>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Format kode lahan: <span className="font-mono">[Kode Desa][No Petani][Huruf Lahan]</span> — contoh <span className="font-mono">MT23e</span> = Metenggeng, petani 23, lahan ke-5.
+                </div>
+              </div>
+
+              {/* Codes chips */}
+              <div>
+                <p className="text-sm font-medium mb-2">
+                  Kode Lahan pada peta ini ({filteredLands.length}):
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {filteredLands.map((l) => (
+                    <Badge key={l.id} variant="secondary" className="text-xs font-mono">
+                      {l.nama_lahan}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* Coordinate list — for verification of printed map */}
+              <div>
+                <p className="text-sm font-medium mb-2">
+                  Daftar Koordinat (Lintang, Bujur):
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1 text-xs font-mono">
+                  {filteredLands.map((l, i) => (
+                    <div key={l.id} className="flex items-baseline gap-2 border-b border-dashed border-border/60 py-0.5">
+                      <span className="text-muted-foreground w-6 text-right">{i + 1}.</span>
+                      <span className="font-semibold w-16 truncate">{l.nama_lahan}</span>
+                      <span className="tabular-nums">
+                        {l.parsedCoord!.lat.toFixed(6)}, {l.parsedCoord!.lng.toFixed(6)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
         </div>
       </Card>
+
 
       <Card className="shadow-gentle">
         <CardContent className="p-4">
