@@ -32,6 +32,9 @@ interface LandWithFarmer {
     nama: string;
     kode_petani: string;
     is_organic: boolean | null;
+    alamat_rumah?: string | null;
+    koordinat_lat?: number | null;
+    koordinat_lng?: number | null;
   } | null;
   parsedCoord?: { lat: number; lng: number };
   villageCode?: string;
