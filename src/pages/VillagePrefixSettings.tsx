@@ -8,9 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Plus, Trash2, Save, Pencil, X, MapPin, Loader2 } from "lucide-react";
 import { useVillagePrefixes, VillagePrefix } from "@/hooks/use-village-prefixes";
 
+const sanitizeCode = (raw: string) =>
+  raw.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 10);
+
 const VillagePrefixSettings = () => {
   const navigate = useNavigate();
-  const { prefixes, loading, addPrefix, updatePrefix, deletePrefix } = useVillagePrefixes();
+  const { prefixes, loading, addPrefix, updatePrefix, deletePrefix, validatePrefixInput } = useVillagePrefixes();
 
   const [newCode, setNewCode] = useState("");
   const [newName, setNewName] = useState("");
@@ -20,8 +23,14 @@ const VillagePrefixSettings = () => {
   const [editCode, setEditCode] = useState("");
   const [editName, setEditName] = useState("");
 
+  const newError = newCode || newName ? validatePrefixInput(newCode, newName) : null;
+  const editError =
+    editingId && (editCode || editName)
+      ? validatePrefixInput(editCode, editName, editingId)
+      : null;
+
   const handleAdd = async () => {
-    if (!newCode.trim() || !newName.trim()) return;
+    if (!newCode.trim() || !newName.trim() || newError) return;
     setSaving(true);
     const ok = await addPrefix(newCode, newName);
     setSaving(false);
@@ -44,6 +53,7 @@ const VillagePrefixSettings = () => {
   };
 
   const handleSaveEdit = async (id: string) => {
+    if (editError) return;
     const ok = await updatePrefix(id, editCode, editName);
     if (ok) cancelEdit();
   };
