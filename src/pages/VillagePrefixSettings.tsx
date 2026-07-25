@@ -145,46 +145,51 @@ const VillagePrefixSettings = () => {
             ) : (
               <div className="divide-y">
                 {prefixes.map((p) => (
-                  <div key={p.id} className="py-3 flex items-center gap-3">
-                    {editingId === p.id ? (
-                      <>
-                        <Input
-                          value={editCode}
-                          onChange={(e) => setEditCode(e.target.value.toUpperCase())}
-                          className="w-28 font-mono uppercase"
-                          maxLength={10}
-                        />
-                        <Input
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          className="flex-1"
-                          maxLength={100}
-                        />
-                        <Button size="sm" onClick={() => handleSaveEdit(p.id)}>
-                          <Save className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={cancelEdit}>
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Badge variant="secondary" className="font-mono w-20 justify-center">
-                          {p.code}
-                        </Badge>
-                        <span className="flex-1 font-medium">{p.name}</span>
-                        <Button size="sm" variant="ghost" onClick={() => startEdit(p)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(p.id, `${p.code} → ${p.name}`)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </>
+                  <div key={p.id} className="py-3 space-y-1">
+                    <div className="flex items-center gap-3">
+                      {editingId === p.id ? (
+                        <>
+                          <Input
+                            value={editCode}
+                            onChange={(e) => setEditCode(sanitizeCode(e.target.value))}
+                            className="w-28 font-mono uppercase"
+                            maxLength={10}
+                          />
+                          <Input
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="flex-1"
+                            maxLength={100}
+                          />
+                          <Button size="sm" onClick={() => handleSaveEdit(p.id)} disabled={!!editError}>
+                            <Save className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={cancelEdit}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Badge variant="secondary" className="font-mono w-20 justify-center">
+                            {p.code}
+                          </Badge>
+                          <span className="flex-1 font-medium">{p.name}</span>
+                          <Button size="sm" variant="ghost" onClick={() => startEdit(p)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDelete(p.id, `${p.code} → ${p.name}`)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                    {editingId === p.id && editError && (
+                      <p className="text-xs text-destructive pl-1">{editError}</p>
                     )}
                   </div>
                 ))}
