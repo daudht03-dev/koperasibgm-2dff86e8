@@ -102,6 +102,18 @@ export const LandMapTab: React.FC = () => {
   const [mapReady, setMapReady] = useState(false);
   const [clusteringEnabled, setClusteringEnabled] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
+  const [coordPrecision, setCoordPrecision] = useState<number>(() => {
+    const raw = typeof window !== "undefined" ? localStorage.getItem("map:coordPrecision") : null;
+    const n = raw ? parseInt(raw, 10) : 6;
+    return Number.isFinite(n) && n >= 4 && n <= 8 ? n : 6;
+  });
+  useEffect(() => {
+    localStorage.setItem("map:coordPrecision", String(coordPrecision));
+  }, [coordPrecision]);
+  const fmtCoord = useCallback(
+    (n: number) => n.toFixed(coordPrecision),
+    [coordPrecision]
+  );
 
   // Map mode: all farmers vs per village
   const [mapMode, setMapMode] = useState<MapMode>("all");
