@@ -8,9 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Plus, Trash2, Save, Pencil, X, MapPin, Loader2 } from "lucide-react";
 import { useVillagePrefixes, VillagePrefix } from "@/hooks/use-village-prefixes";
 
+const sanitizeCode = (raw: string) =>
+  raw.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 10);
+
 const VillagePrefixSettings = () => {
   const navigate = useNavigate();
-  const { prefixes, loading, addPrefix, updatePrefix, deletePrefix } = useVillagePrefixes();
+  const { prefixes, loading, addPrefix, updatePrefix, deletePrefix, validatePrefixInput } = useVillagePrefixes();
 
   const [newCode, setNewCode] = useState("");
   const [newName, setNewName] = useState("");
@@ -20,8 +23,14 @@ const VillagePrefixSettings = () => {
   const [editCode, setEditCode] = useState("");
   const [editName, setEditName] = useState("");
 
+  const newError = newCode || newName ? validatePrefixInput(newCode, newName) : null;
+  const editError =
+    editingId && (editCode || editName)
+      ? validatePrefixInput(editCode, editName, editingId)
+      : null;
+
   const handleAdd = async () => {
-    if (!newCode.trim() || !newName.trim()) return;
+    if (!newCode.trim() || !newName.trim() || newError) return;
     setSaving(true);
     const ok = await addPrefix(newCode, newName);
     setSaving(false);
@@ -44,6 +53,7 @@ const VillagePrefixSettings = () => {
   };
 
   const handleSaveEdit = async (id: string) => {
+    if (editError) return;
     const ok = await updatePrefix(id, editCode, editName);
     if (ok) cancelEdit();
   };
@@ -78,7 +88,7 @@ const VillagePrefixSettings = () => {
               Contoh: kode <Badge variant="secondary" className="mx-1 font-mono">MT</Badge> untuk desa Metenggeng.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-2">
             <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr_auto] gap-3 items-end">
               <div>
                 <Label htmlFor="new-code">Kode Prefix</Label>
@@ -86,7 +96,7 @@ const VillagePrefixSettings = () => {
                   id="new-code"
                   placeholder="MT"
                   value={newCode}
-                  onChange={(e) => setNewCode(e.target.value.toUpperCase())}
+                  onChange={(e) => setNewCode(sanitizeCode(e.target.value))}
                   maxLength={10}
                   className="font-mono uppercase"
                 />
@@ -101,11 +111,20 @@ const VillagePrefixSettings = () => {
                   maxLength={100}
                 />
               </div>
-              <Button onClick={handleAdd} disabled={saving || !newCode.trim() || !newName.trim()}>
+              <Button
+                onClick={handleAdd}
+                disabled={saving || !newCode.trim() || !newName.trim() || !!newError}
+              >
                 {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
                 Tambah
               </Button>
             </div>
+            {newError && (
+              <p className="text-xs text-destructive">{newError}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Format: hanya huruf besar/angka, tanpa spasi/simbol, 1–10 karakter. Kode harus unik.
+            </p>
           </CardContent>
         </Card>
 
@@ -126,46 +145,51 @@ const VillagePrefixSettings = () => {
             ) : (
               <div className="divide-y">
                 {prefixes.map((p) => (
-                  <div key={p.id} className="py-3 flex items-center gap-3">
-                    {editingId === p.id ? (
-                      <>
-                        <Input
-                          value={editCode}
-                          onChange={(e) => setEditCode(e.target.value.toUpperCase())}
-                          className="w-28 font-mono uppercase"
-                          maxLength={10}
-                        />
-                        <Input
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          className="flex-1"
-                          maxLength={100}
-                        />
-                        <Button size="sm" onClick={() => handleSaveEdit(p.id)}>
-                          <Save className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={cancelEdit}>
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Badge variant="secondary" className="font-mono w-20 justify-center">
-                          {p.code}
-                        </Badge>
-                        <span className="flex-1 font-medium">{p.name}</span>
-                        <Button size="sm" variant="ghost" onClick={() => startEdit(p)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(p.id, `${p.code} → ${p.name}`)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </>
+                  <div key={p.id} className="py-3 space-y-1">
+                    <div className="flex items-center gap-3">
+                      {editingId === p.id ? (
+                        <>
+                          <Input
+                            value={editCode}
+                            onChange={(e) => setEditCode(sanitizeCode(e.target.value))}
+                            className="w-28 font-mono uppercase"
+                            maxLength={10}
+                          />
+                          <Input
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="flex-1"
+                            maxLength={100}
+                          />
+                          <Button size="sm" onClick={() => handleSaveEdit(p.id)} disabled={!!editError}>
+                            <Save className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={cancelEdit}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Badge variant="secondary" className="font-mono w-20 justify-center">
+                            {p.code}
+                          </Badge>
+                          <span className="flex-1 font-medium">{p.name}</span>
+                          <Button size="sm" variant="ghost" onClick={() => startEdit(p)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDelete(p.id, `${p.code} → ${p.name}`)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                    {editingId === p.id && editError && (
+                      <p className="text-xs text-destructive pl-1">{editError}</p>
                     )}
                   </div>
                 ))}

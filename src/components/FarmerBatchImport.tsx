@@ -39,6 +39,10 @@ interface ParsedFarmer {
   kode_petani: string;
   nama: string;
   alamat: string;
+  alamat_rumah: string;
+  koordinat_lat_rumah: number | null;
+  koordinat_lng_rumah: number | null;
+  koordinat_rumah_error?: string;
   is_organic: boolean;
   rata_rata_panen: number | null;
   regulasi: string; // "EU", "COR", "EU,COR", or ""
@@ -133,10 +137,10 @@ export const FarmerBatchImport = ({
   }, [open]);
 
   const downloadTemplate = () => {
-    const template = `kode_petani;nama;alamat;is_organic;rata_rata_panen;regulasi
-PK1;Nama Petani 1;Alamat Petani 1;true;5.5;EU
-PK2;Nama Petani 2;Alamat Petani 2;false;4.2;COR
-PK3;Nama Petani 3;Alamat Petani 3;true;6.0;EU,COR`;
+    const template = `kode_petani;nama;alamat;alamat_rumah;koordinat_lat_rumah;koordinat_lng_rumah;is_organic;rata_rata_panen;regulasi
+PK1;Nama Petani 1;Alamat Petani 1;RT 01 RW 02 Desa Pekuncen;-7.123456;109.234567;true;5.5;EU
+PK2;Nama Petani 2;Alamat Petani 2;;;;false;4.2;COR
+PK3;Nama Petani 3;Alamat Petani 3;RT 03 RW 01 Desa Pekuncen;-7.130000;109.240000;true;6.0;EU,COR`;
     
     const blob = new Blob([template], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
@@ -147,7 +151,7 @@ PK3;Nama Petani 3;Alamat Petani 3;true;6.0;EU,COR`;
     
     toast({
       title: "Template didownload",
-      description: "Isi data petani dengan rata-rata panen dan regulasi (EU/COR)",
+      description: "Termasuk kolom alamat_rumah + koordinat rumah petani (opsional)",
     });
   };
 
@@ -209,6 +213,9 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
     const codeIndex = headers.indexOf("kode_petani");
     const namaIndex = headers.indexOf("nama");
     const alamatIndex = headers.indexOf("alamat");
+    const alamatRumahIndex = headers.indexOf("alamat_rumah");
+    const latRumahIndex = headers.indexOf("koordinat_lat_rumah");
+    const lngRumahIndex = headers.indexOf("koordinat_lng_rumah");
     const organicIndex = headers.indexOf("is_organic");
     const rataRataIndex = headers.indexOf("rata_rata_panen");
     const regulasiIndex = headers.indexOf("regulasi");
@@ -225,6 +232,7 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
       const kode_petani = values[codeIndex]?.trim() || "";
       const nama = values[namaIndex]?.trim() || "";
       const alamat = alamatIndex >= 0 ? values[alamatIndex]?.trim() || "" : "";
+      const alamat_rumah = alamatRumahIndex >= 0 ? values[alamatRumahIndex]?.trim() || "" : "";
       const is_organic_raw = organicIndex >= 0 ? values[organicIndex]?.trim().toLowerCase() : "true";
       const is_organic = is_organic_raw === "true" || is_organic_raw === "1" || is_organic_raw === "ya" || is_organic_raw === "yes";
       
@@ -235,6 +243,25 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
       // Parse regulasi (EU, COR, EU,COR)
       const regulasiRaw = regulasiIndex >= 0 ? values[regulasiIndex]?.trim().toUpperCase() || "" : "";
       const regulasi = regulasiRaw.split(",").map(r => r.trim()).filter(r => r === "EU" || r === "COR").join(",");
+
+      // Parse home coordinates (optional)
+      const latRumahRaw = latRumahIndex >= 0 ? values[latRumahIndex]?.trim() || "" : "";
+      const lngRumahRaw = lngRumahIndex >= 0 ? values[lngRumahIndex]?.trim() || "" : "";
+      let koordinat_lat_rumah: number | null = null;
+      let koordinat_lng_rumah: number | null = null;
+      let koordinat_rumah_error: string | undefined;
+      if (latRumahRaw || lngRumahRaw) {
+        const latNum = parseFloat(latRumahRaw.replace(",", "."));
+        const lngNum = parseFloat(lngRumahRaw.replace(",", "."));
+        if (latRumahRaw && (isNaN(latNum) || latNum < -90 || latNum > 90)) {
+          koordinat_rumah_error = "Koordinat lat rumah tidak valid (-90..90)";
+        } else if (lngRumahRaw && (isNaN(lngNum) || lngNum < -180 || lngNum > 180)) {
+          koordinat_rumah_error = "Koordinat lng rumah tidak valid (-180..180)";
+        } else {
+          koordinat_lat_rumah = latRumahRaw ? latNum : null;
+          koordinat_lng_rumah = lngRumahRaw ? lngNum : null;
+        }
+      }
 
       let error: string | undefined;
       let isValid = true;
@@ -253,6 +280,9 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
       } else if (existingId && !updateMode) {
         error = "Kode petani sudah ada (aktifkan mode update)";
         isValid = false;
+      } else if (koordinat_rumah_error) {
+        error = koordinat_rumah_error;
+        isValid = false;
       }
 
       seenCodes.add(kode_petani.toUpperCase());
@@ -261,6 +291,10 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
         kode_petani,
         nama,
         alamat,
+        alamat_rumah,
+        koordinat_lat_rumah,
+        koordinat_lng_rumah,
+        koordinat_rumah_error,
         is_organic,
         rata_rata_panen: isNaN(rata_rata_panen as number) ? null : rata_rata_panen,
         regulasi,
@@ -555,11 +589,14 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
             .update({
               nama: farmer.nama,
               alamat: farmer.alamat || null,
+              alamat_rumah: farmer.alamat_rumah || null,
+              koordinat_lat: farmer.koordinat_lat_rumah,
+              koordinat_lng: farmer.koordinat_lng_rumah,
               is_organic: farmer.is_organic,
               rata_rata_panen: farmer.rata_rata_panen,
               regulasi: farmer.regulasi || null,
               pengepul_id: selectedPengepulId && selectedPengepulId !== "none" ? selectedPengepulId : null,
-            })
+            } as any)
             .eq("id", farmer.existingId);
 
           if (error) throw error;
@@ -572,11 +609,14 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
               kode_petani: farmer.kode_petani,
               nama: farmer.nama,
               alamat: farmer.alamat || null,
+              alamat_rumah: farmer.alamat_rumah || null,
+              koordinat_lat: farmer.koordinat_lat_rumah,
+              koordinat_lng: farmer.koordinat_lng_rumah,
               is_organic: farmer.is_organic,
               rata_rata_panen: farmer.rata_rata_panen,
               regulasi: farmer.regulasi || null,
               pengepul_id: selectedPengepulId && selectedPengepulId !== "none" ? selectedPengepulId : null,
-            });
+            } as any);
 
           if (error) throw error;
           success++;
