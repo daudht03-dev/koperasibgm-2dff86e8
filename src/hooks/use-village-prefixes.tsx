@@ -27,10 +27,35 @@ export const useVillagePrefixes = () => {
     setLoading(false);
   }, []);
 
-  const addPrefix = async (code: string, name: string) => {
+  // Client-side validation: uppercase alphanumeric, no spaces, 1–10 chars, unique.
+  const PREFIX_FORMAT = /^[A-Z0-9]{1,10}$/;
+  const validatePrefixInput = (
+    code: string,
+    name: string,
+    excludeId?: string
+  ): string | null => {
     const c = code.trim().toUpperCase();
     const n = name.trim();
-    if (!c || !n) return false;
+    if (!c) return "Kode prefix wajib diisi";
+    if (!n) return "Nama desa wajib diisi";
+    if (/\s/.test(code)) return "Kode tidak boleh mengandung spasi";
+    if (!PREFIX_FORMAT.test(c))
+      return "Kode hanya boleh huruf besar/angka (1–10 karakter), tanpa spasi/simbol";
+    const conflict = prefixes.find(
+      (p) => p.code === c && p.id !== excludeId
+    );
+    if (conflict) return `Kode "${c}" sudah dipakai untuk desa "${conflict.name}"`;
+    return null;
+  };
+
+  const addPrefix = async (code: string, name: string) => {
+    const err = validatePrefixInput(code, name);
+    if (err) {
+      toast({ title: "Validasi gagal", description: err, variant: "destructive" });
+      return false;
+    }
+    const c = code.trim().toUpperCase();
+    const n = name.trim();
     const { error } = await supabase.from("village_prefixes").insert({ code: c, name: n });
     if (error) {
       toast({ title: "Gagal", description: error.message, variant: "destructive" });
@@ -42,9 +67,13 @@ export const useVillagePrefixes = () => {
   };
 
   const updatePrefix = async (id: string, code: string, name: string) => {
+    const err = validatePrefixInput(code, name, id);
+    if (err) {
+      toast({ title: "Validasi gagal", description: err, variant: "destructive" });
+      return false;
+    }
     const c = code.trim().toUpperCase();
     const n = name.trim();
-    if (!c || !n) return false;
     const { error } = await supabase.from("village_prefixes").update({ code: c, name: n }).eq("id", id);
     if (error) {
       toast({ title: "Gagal", description: error.message, variant: "destructive" });
