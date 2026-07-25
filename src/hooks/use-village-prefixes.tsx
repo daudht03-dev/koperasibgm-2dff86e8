@@ -108,5 +108,5 @@ export const useVillagePrefixes = () => {
 
   const map: Record<string, string> = Object.fromEntries(prefixes.map((p) => [p.code, p.name]));
 
-  return { prefixes, loading, addPrefix, updatePrefix, deletePrefix, refetch: fetchPrefixes, nameByCode, map };
+  return { prefixes, loading, addPrefix, updatePrefix, deletePrefix, refetch: fetchPrefixes, nameByCode, map, validatePrefixInput };
 };
