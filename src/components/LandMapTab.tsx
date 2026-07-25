@@ -165,7 +165,7 @@ export const LandMapTab: React.FC = () => {
       const { data, error: fetchError } = await supabase
         .from("lahan")
         .select(`id, nama_lahan, lokasi, koordinat, luas, petani_id, is_organic,
-          petani:petani_id ( nama, kode_petani, is_organic )`)
+          petani:petani_id ( nama, kode_petani, is_organic, alamat_rumah, koordinat_lat, koordinat_lng )`)
         .limit(1000);
       if (fetchError) throw fetchError;
       const lands = (data || []).map((land: any) => {
