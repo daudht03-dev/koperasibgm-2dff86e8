@@ -39,6 +39,10 @@ interface ParsedFarmer {
   kode_petani: string;
   nama: string;
   alamat: string;
+  alamat_rumah: string;
+  koordinat_lat_rumah: number | null;
+  koordinat_lng_rumah: number | null;
+  koordinat_rumah_error?: string;
   is_organic: boolean;
   rata_rata_panen: number | null;
   regulasi: string; // "EU", "COR", "EU,COR", or ""
