@@ -902,23 +902,20 @@ export const LandMapTab: React.FC = () => {
                   </div>
                 </div>
                 {(() => {
-                  // Group lands by farmer
-                  const byFarmer = new Map<
-                    string,
-                    {
-                      kode: string;
-                      nama: string;
-                      alamat_rumah?: string | null;
-                      home?: { lat: number; lng: number };
-                      lands: typeof filteredLands;
-                    }
-                  >();
+                  type FarmerGroup = {
+                    kode: string;
+                    nama: string;
+                    alamat_rumah?: string | null;
+                    home?: { lat: number; lng: number };
+                    lands: typeof filteredLands;
+                  };
+                  const byFarmer: Record<string, FarmerGroup> = {};
                   filteredLands.forEach((l) => {
                     const kode = l.petani?.kode_petani || "-";
-                    if (!byFarmer.has(kode)) {
+                    if (!byFarmer[kode]) {
                       const homeLat = l.petani?.koordinat_lat;
                       const homeLng = l.petani?.koordinat_lng;
-                      byFarmer.set(kode, {
+                      byFarmer[kode] = {
                         kode,
                         nama: l.petani?.nama || "-",
                         alamat_rumah: l.petani?.alamat_rumah ?? null,
@@ -926,12 +923,12 @@ export const LandMapTab: React.FC = () => {
                           typeof homeLat === "number" && typeof homeLng === "number"
                             ? { lat: homeLat, lng: homeLng }
                             : undefined,
-                        lands: [] as typeof filteredLands,
-                      });
+                        lands: [],
+                      };
                     }
-                    byFarmer.get(kode)!.lands.push(l);
+                    byFarmer[kode].lands.push(l);
                   });
-                  const groups = Array.from(byFarmer.values()).sort((a, b) =>
+                  const groups: FarmerGroup[] = Object.values(byFarmer).sort((a, b) =>
                     a.kode.localeCompare(b.kode, undefined, { numeric: true, sensitivity: "base" })
                   );
                   groups.forEach((g) =>
