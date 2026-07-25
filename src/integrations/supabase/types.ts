@@ -687,11 +687,14 @@ export type Database = {
       petani: {
         Row: {
           alamat: string | null
+          alamat_rumah: string | null
           created_at: string | null
           foto_url: string | null
           id: string
           is_organic: boolean | null
           kode_petani: string
+          koordinat_lat: number | null
+          koordinat_lng: number | null
           logo_url: string | null
           nama: string
           no_telepon: string | null
@@ -704,11 +707,14 @@ export type Database = {
         }
         Insert: {
           alamat?: string | null
+          alamat_rumah?: string | null
           created_at?: string | null
           foto_url?: string | null
           id?: string
           is_organic?: boolean | null
           kode_petani: string
+          koordinat_lat?: number | null
+          koordinat_lng?: number | null
           logo_url?: string | null
           nama: string
           no_telepon?: string | null
@@ -721,11 +727,14 @@ export type Database = {
         }
         Update: {
           alamat?: string | null
+          alamat_rumah?: string | null
           created_at?: string | null
           foto_url?: string | null
           id?: string
           is_organic?: boolean | null
           kode_petani?: string
+          koordinat_lat?: number | null
+          koordinat_lng?: number | null
           logo_url?: string | null
           nama?: string
           no_telepon?: string | null
