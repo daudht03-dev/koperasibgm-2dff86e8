@@ -133,10 +133,10 @@ export const FarmerBatchImport = ({
   }, [open]);
 
   const downloadTemplate = () => {
-    const template = `kode_petani;nama;alamat;is_organic;rata_rata_panen;regulasi
-PK1;Nama Petani 1;Alamat Petani 1;true;5.5;EU
-PK2;Nama Petani 2;Alamat Petani 2;false;4.2;COR
-PK3;Nama Petani 3;Alamat Petani 3;true;6.0;EU,COR`;
+    const template = `kode_petani;nama;alamat;alamat_rumah;koordinat_lat_rumah;koordinat_lng_rumah;is_organic;rata_rata_panen;regulasi
+PK1;Nama Petani 1;Alamat Petani 1;RT 01 RW 02 Desa Pekuncen;-7.123456;109.234567;true;5.5;EU
+PK2;Nama Petani 2;Alamat Petani 2;;;;false;4.2;COR
+PK3;Nama Petani 3;Alamat Petani 3;RT 03 RW 01 Desa Pekuncen;-7.130000;109.240000;true;6.0;EU,COR`;
     
     const blob = new Blob([template], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
@@ -147,7 +147,7 @@ PK3;Nama Petani 3;Alamat Petani 3;true;6.0;EU,COR`;
     
     toast({
       title: "Template didownload",
-      description: "Isi data petani dengan rata-rata panen dan regulasi (EU/COR)",
+      description: "Termasuk kolom alamat_rumah + koordinat rumah petani (opsional)",
     });
   };
 
