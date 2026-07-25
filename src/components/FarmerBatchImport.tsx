@@ -589,11 +589,14 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
             .update({
               nama: farmer.nama,
               alamat: farmer.alamat || null,
+              alamat_rumah: farmer.alamat_rumah || null,
+              koordinat_lat: farmer.koordinat_lat_rumah,
+              koordinat_lng: farmer.koordinat_lng_rumah,
               is_organic: farmer.is_organic,
               rata_rata_panen: farmer.rata_rata_panen,
               regulasi: farmer.regulasi || null,
               pengepul_id: selectedPengepulId && selectedPengepulId !== "none" ? selectedPengepulId : null,
-            })
+            } as any)
             .eq("id", farmer.existingId);
 
           if (error) throw error;
@@ -606,11 +609,14 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
               kode_petani: farmer.kode_petani,
               nama: farmer.nama,
               alamat: farmer.alamat || null,
+              alamat_rumah: farmer.alamat_rumah || null,
+              koordinat_lat: farmer.koordinat_lat_rumah,
+              koordinat_lng: farmer.koordinat_lng_rumah,
               is_organic: farmer.is_organic,
               rata_rata_panen: farmer.rata_rata_panen,
               regulasi: farmer.regulasi || null,
               pengepul_id: selectedPengepulId && selectedPengepulId !== "none" ? selectedPengepulId : null,
-            });
+            } as any);
 
           if (error) throw error;
           success++;
