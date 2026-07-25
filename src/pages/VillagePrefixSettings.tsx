@@ -88,7 +88,7 @@ const VillagePrefixSettings = () => {
               Contoh: kode <Badge variant="secondary" className="mx-1 font-mono">MT</Badge> untuk desa Metenggeng.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-2">
             <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr_auto] gap-3 items-end">
               <div>
                 <Label htmlFor="new-code">Kode Prefix</Label>
@@ -96,7 +96,7 @@ const VillagePrefixSettings = () => {
                   id="new-code"
                   placeholder="MT"
                   value={newCode}
-                  onChange={(e) => setNewCode(e.target.value.toUpperCase())}
+                  onChange={(e) => setNewCode(sanitizeCode(e.target.value))}
                   maxLength={10}
                   className="font-mono uppercase"
                 />
@@ -111,11 +111,20 @@ const VillagePrefixSettings = () => {
                   maxLength={100}
                 />
               </div>
-              <Button onClick={handleAdd} disabled={saving || !newCode.trim() || !newName.trim()}>
+              <Button
+                onClick={handleAdd}
+                disabled={saving || !newCode.trim() || !newName.trim() || !!newError}
+              >
                 {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
                 Tambah
               </Button>
             </div>
+            {newError && (
+              <p className="text-xs text-destructive">{newError}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Format: hanya huruf besar/angka, tanpa spasi/simbol, 1–10 karakter. Kode harus unik.
+            </p>
           </CardContent>
         </Card>
 
