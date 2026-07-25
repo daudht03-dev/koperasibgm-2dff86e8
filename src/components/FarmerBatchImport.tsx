@@ -213,6 +213,9 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
     const codeIndex = headers.indexOf("kode_petani");
     const namaIndex = headers.indexOf("nama");
     const alamatIndex = headers.indexOf("alamat");
+    const alamatRumahIndex = headers.indexOf("alamat_rumah");
+    const latRumahIndex = headers.indexOf("koordinat_lat_rumah");
+    const lngRumahIndex = headers.indexOf("koordinat_lng_rumah");
     const organicIndex = headers.indexOf("is_organic");
     const rataRataIndex = headers.indexOf("rata_rata_panen");
     const regulasiIndex = headers.indexOf("regulasi");
@@ -229,6 +232,7 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
       const kode_petani = values[codeIndex]?.trim() || "";
       const nama = values[namaIndex]?.trim() || "";
       const alamat = alamatIndex >= 0 ? values[alamatIndex]?.trim() || "" : "";
+      const alamat_rumah = alamatRumahIndex >= 0 ? values[alamatRumahIndex]?.trim() || "" : "";
       const is_organic_raw = organicIndex >= 0 ? values[organicIndex]?.trim().toLowerCase() : "true";
       const is_organic = is_organic_raw === "true" || is_organic_raw === "1" || is_organic_raw === "ya" || is_organic_raw === "yes";
       
@@ -239,6 +243,25 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
       // Parse regulasi (EU, COR, EU,COR)
       const regulasiRaw = regulasiIndex >= 0 ? values[regulasiIndex]?.trim().toUpperCase() || "" : "";
       const regulasi = regulasiRaw.split(",").map(r => r.trim()).filter(r => r === "EU" || r === "COR").join(",");
+
+      // Parse home coordinates (optional)
+      const latRumahRaw = latRumahIndex >= 0 ? values[latRumahIndex]?.trim() || "" : "";
+      const lngRumahRaw = lngRumahIndex >= 0 ? values[lngRumahIndex]?.trim() || "" : "";
+      let koordinat_lat_rumah: number | null = null;
+      let koordinat_lng_rumah: number | null = null;
+      let koordinat_rumah_error: string | undefined;
+      if (latRumahRaw || lngRumahRaw) {
+        const latNum = parseFloat(latRumahRaw.replace(",", "."));
+        const lngNum = parseFloat(lngRumahRaw.replace(",", "."));
+        if (latRumahRaw && (isNaN(latNum) || latNum < -90 || latNum > 90)) {
+          koordinat_rumah_error = "Koordinat lat rumah tidak valid (-90..90)";
+        } else if (lngRumahRaw && (isNaN(lngNum) || lngNum < -180 || lngNum > 180)) {
+          koordinat_rumah_error = "Koordinat lng rumah tidak valid (-180..180)";
+        } else {
+          koordinat_lat_rumah = latRumahRaw ? latNum : null;
+          koordinat_lng_rumah = lngRumahRaw ? lngNum : null;
+        }
+      }
 
       let error: string | undefined;
       let isValid = true;
@@ -257,6 +280,9 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
       } else if (existingId && !updateMode) {
         error = "Kode petani sudah ada (aktifkan mode update)";
         isValid = false;
+      } else if (koordinat_rumah_error) {
+        error = koordinat_rumah_error;
+        isValid = false;
       }
 
       seenCodes.add(kode_petani.toUpperCase());
@@ -265,6 +291,10 @@ PK2A;Desa XYZ;-6,789;106,123;aktif`;
         kode_petani,
         nama,
         alamat,
+        alamat_rumah,
+        koordinat_lat_rumah,
+        koordinat_lng_rumah,
+        koordinat_rumah_error,
         is_organic,
         rata_rata_panen: isNaN(rata_rata_panen as number) ? null : rata_rata_panen,
         regulasi,
