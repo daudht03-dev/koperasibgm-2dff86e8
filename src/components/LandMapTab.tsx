@@ -876,27 +876,134 @@ export const LandMapTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* Coordinate list — for verification of printed map */}
+              {/* Coordinate list — grouped by farmer, sorted by kode_petani (natural) */}
               <div>
-                <p className="text-sm font-medium mb-2">
-                  Daftar Koordinat (Lintang, Bujur):
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1 text-xs font-mono">
-                  {filteredLands.map((l, i) => (
-                    <div key={l.id} className="flex items-baseline gap-2 border-b border-dashed border-border/60 py-0.5">
-                      <span className="text-muted-foreground w-6 text-right">{i + 1}.</span>
-                      <span className="font-semibold w-16 truncate">{l.nama_lahan}</span>
-                      <span className="tabular-nums">
-                        {l.parsedCoord!.lat.toFixed(6)}, {l.parsedCoord!.lng.toFixed(6)}
-                      </span>
-                    </div>
-                  ))}
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <p className="text-sm font-medium">
+                    Daftar Koordinat (Lintang, Bujur) — dikelompokkan per petani
+                  </p>
+                  <div className="flex items-center gap-2 print:hidden">
+                    <Label htmlFor="coord-precision" className="text-xs text-muted-foreground">
+                      Presisi desimal
+                    </Label>
+                    <Select
+                      value={String(coordPrecision)}
+                      onValueChange={(v) => setCoordPrecision(parseInt(v, 10))}
+                    >
+                      <SelectTrigger id="coord-precision" className="h-8 w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[4, 5, 6, 7, 8].map((n) => (
+                          <SelectItem key={n} value={String(n)}>{n} digit</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+                {(() => {
+                  // Group lands by farmer
+                  const byFarmer = new Map<
+                    string,
+                    {
+                      kode: string;
+                      nama: string;
+                      alamat_rumah?: string | null;
+                      home?: { lat: number; lng: number };
+                      lands: typeof filteredLands;
+                    }
+                  >();
+                  filteredLands.forEach((l) => {
+                    const kode = l.petani?.kode_petani || "-";
+                    if (!byFarmer.has(kode)) {
+                      const homeLat = l.petani?.koordinat_lat;
+                      const homeLng = l.petani?.koordinat_lng;
+                      byFarmer.set(kode, {
+                        kode,
+                        nama: l.petani?.nama || "-",
+                        alamat_rumah: l.petani?.alamat_rumah ?? null,
+                        home:
+                          typeof homeLat === "number" && typeof homeLng === "number"
+                            ? { lat: homeLat, lng: homeLng }
+                            : undefined,
+                        lands: [] as typeof filteredLands,
+                      });
+                    }
+                    byFarmer.get(kode)!.lands.push(l);
+                  });
+                  const groups = Array.from(byFarmer.values()).sort((a, b) =>
+                    a.kode.localeCompare(b.kode, undefined, { numeric: true, sensitivity: "base" })
+                  );
+                  groups.forEach((g) =>
+                    g.lands.sort((a, b) =>
+                      (a.nama_lahan || "").localeCompare(b.nama_lahan || "", undefined, {
+                        numeric: true,
+                        sensitivity: "base",
+                      })
+                    )
+                  );
+                  return (
+                    <div className="space-y-3 text-xs">
+                      {groups.map((g) => (
+                        <div key={g.kode} className="border rounded-md p-2">
+                          <div className="flex items-baseline gap-2 mb-1">
+                            <Badge variant="secondary" className="font-mono">
+                              {g.kode}
+                            </Badge>
+                            <span className="font-semibold">{g.nama}</span>
+                            <span className="text-muted-foreground">
+                              ({g.lands.length} lahan)
+                            </span>
+                          </div>
+                          {(g.home || g.alamat_rumah) && (
+                            <div className="pl-2 mb-1 border-l-2 border-primary/40">
+                              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                                Rumah
+                              </div>
+                              {g.alamat_rumah && (
+                                <div className="text-xs">{g.alamat_rumah}</div>
+                              )}
+                              {g.home && (
+                                <div className="font-mono tabular-nums">
+                                  {fmtCoord(g.home.lat)}, {fmtCoord(g.home.lng)}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          <div className="pl-2 border-l-2 border-border">
+                            <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-0.5">
+                              Lahan
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+                              {g.lands.map((l, i) => (
+                                <div
+                                  key={l.id}
+                                  className="flex items-baseline gap-2 py-0.5 border-b border-dashed border-border/60"
+                                >
+                                  <span className="text-muted-foreground w-5 text-right">
+                                    {i + 1}.
+                                  </span>
+                                  <span className="font-mono font-semibold w-16 truncate">
+                                    {l.nama_lahan}
+                                  </span>
+                                  <span className="font-mono tabular-nums">
+                                    {fmtCoord(l.parsedCoord!.lat)}, {fmtCoord(l.parsedCoord!.lng)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
         </div>
       </Card>
+
 
 
       <Card className="shadow-gentle">
