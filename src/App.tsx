@@ -35,6 +35,10 @@ const Changelog = lazy(() => import("./pages/Changelog"));
 const Traceability = lazy(() => import("./pages/Traceability"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 const VillagePrefixSettings = lazy(() => import("./pages/VillagePrefixSettings"));
+const AuditorLogin = lazy(() => import("./pages/AuditorLogin"));
+const AuditorMap = lazy(() => import("./pages/AuditorMap"));
+const AdminAuditors = lazy(() => import("./pages/AdminAuditors"));
+import AuditorRoute from "./components/AuditorRoute";
 
 const queryClient = new QueryClient();
 
@@ -190,6 +194,24 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/admin/auditors"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <AdminAuditors />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/auditor/login" element={<AuditorLogin />} />
+          <Route
+            path="/auditor/map"
+            element={
+              <AuditorRoute>
+                <AuditorMap />
+              </AuditorRoute>
+            }
+          />
+          <Route path="/auditor" element={<Navigate to="/auditor/map" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </PageTransition>

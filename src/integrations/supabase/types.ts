@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      auditor_access_log: {
+        Row: {
+          accessed_at: string
+          email: string | null
+          event: string
+          id: string
+          ip: string | null
+          path: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          accessed_at?: string
+          email?: string | null
+          event?: string
+          id?: string
+          ip?: string | null
+          path: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          accessed_at?: string
+          email?: string | null
+          event?: string
+          id?: string
+          ip?: string | null
+          path?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       batch_panen: {
         Row: {
           batch_number: string
@@ -1023,7 +1056,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user"
+      app_role: "admin" | "moderator" | "user" | "auditor"
       batch_status:
         | "penerimaan"
         | "pengeringan"
@@ -1160,7 +1193,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user"],
+      app_role: ["admin", "moderator", "user", "auditor"],
       batch_status: [
         "penerimaan",
         "pengeringan",
