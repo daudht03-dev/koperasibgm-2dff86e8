@@ -194,6 +194,24 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/admin/auditors"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <AdminAuditors />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/auditor/login" element={<AuditorLogin />} />
+          <Route
+            path="/auditor/map"
+            element={
+              <AuditorRoute>
+                <AuditorMap />
+              </AuditorRoute>
+            }
+          />
+          <Route path="/auditor" element={<Navigate to="/auditor/map" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </PageTransition>
