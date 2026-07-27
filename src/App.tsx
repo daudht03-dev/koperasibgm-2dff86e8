@@ -35,6 +35,10 @@ const Changelog = lazy(() => import("./pages/Changelog"));
 const Traceability = lazy(() => import("./pages/Traceability"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 const VillagePrefixSettings = lazy(() => import("./pages/VillagePrefixSettings"));
+const AuditorLogin = lazy(() => import("./pages/AuditorLogin"));
+const AuditorMap = lazy(() => import("./pages/AuditorMap"));
+const AdminAuditors = lazy(() => import("./pages/AdminAuditors"));
+import AuditorRoute from "./components/AuditorRoute";
 
 const queryClient = new QueryClient();
 
