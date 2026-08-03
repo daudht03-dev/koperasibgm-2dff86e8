@@ -20,9 +20,11 @@ const Auth = () => {
   const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
-  const { signIn, signUp, user, isAdmin } = useAuth();
+  const { signIn, signUp, signInWithGoogle, user } = useAuth();
+  const { roles, loading: rolesLoading, home } = useUserRoles();
   const { profile, loading: profileLoading } = useCompanyProfile();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -30,15 +32,34 @@ const Auth = () => {
 
   // Only allow same-origin relative paths for `next`.
   const rawNext = searchParams.get("next") ?? "";
-  const nextPath = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/admin";
+  const explicitNext = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
+  const nextPath = explicitNext ?? home;
 
-  // Auto-redirect if already logged in as admin
+  // Auto-redirect once the signed-in user's roles are known
   useEffect(() => {
-    if (user && isAdmin) {
-      setIsRedirecting(true);
-      navigate(nextPath);
+    if (!user || rolesLoading) return;
+    if (roles.length === 0) return; // no role assigned yet
+    setIsRedirecting(true);
+    navigate(nextPath, { replace: true });
+  }, [user, roles, rolesLoading, navigate, nextPath]);
+
+  const handleGoogle = async () => {
+    setGoogleLoading(true);
+    try {
+      const { error, redirected } = await signInWithGoogle();
+      if (redirected) return;
+      if (error) {
+        toast({
+          title: "Login Google gagal",
+          description: (error as any)?.message || String(error),
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setGoogleLoading(false);
     }
-  }, [user, isAdmin, navigate, nextPath]);
+  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
