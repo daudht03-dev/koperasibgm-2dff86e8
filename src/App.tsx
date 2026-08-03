@@ -38,6 +38,7 @@ const VillagePrefixSettings = lazy(() => import("./pages/VillagePrefixSettings")
 const AuditorLogin = lazy(() => import("./pages/AuditorLogin"));
 const AuditorMap = lazy(() => import("./pages/AuditorMap"));
 const AdminAuditors = lazy(() => import("./pages/AdminAuditors"));
+const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 import AuditorRoute from "./components/AuditorRoute";
 
 const queryClient = new QueryClient();
@@ -72,11 +73,12 @@ const AppContent = () => {
           <Route 
             path="/admin" 
             element={
-              <ProtectedRoute requireAdmin={true}>
+              <ProtectedRoute allowedRoles={["admin", "pengawas", "staf_lapang"]}>
                 <AdminDashboard />
               </ProtectedRoute>
             } 
           />
+
           <Route 
             path="/label-settings" 
             element={
@@ -202,6 +204,15 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute allowedRoles={["developer"]}>
+                <AdminUsers />
+              </ProtectedRoute>
+            }
+          />
+
           <Route path="/auditor/login" element={<AuditorLogin />} />
           <Route
             path="/auditor/map"

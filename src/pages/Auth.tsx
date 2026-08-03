@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Leaf, Eye, EyeOff, ArrowLeft, Download, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useUserRoles } from "@/hooks/use-user-role";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -20,9 +21,11 @@ const Auth = () => {
   const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
-  const { signIn, signUp, user, isAdmin } = useAuth();
+  const { signIn, signUp, signInWithGoogle, signOut, user } = useAuth();
+  const { roles, loading: rolesLoading, home } = useUserRoles();
   const { profile, loading: profileLoading } = useCompanyProfile();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -30,15 +33,34 @@ const Auth = () => {
 
   // Only allow same-origin relative paths for `next`.
   const rawNext = searchParams.get("next") ?? "";
-  const nextPath = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/admin";
+  const explicitNext = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
+  const nextPath = explicitNext ?? home;
 
-  // Auto-redirect if already logged in as admin
+  // Auto-redirect once the signed-in user's roles are known
   useEffect(() => {
-    if (user && isAdmin) {
-      setIsRedirecting(true);
-      navigate(nextPath);
+    if (!user || rolesLoading) return;
+    if (roles.length === 0) return; // no role assigned yet
+    setIsRedirecting(true);
+    navigate(nextPath, { replace: true });
+  }, [user, roles, rolesLoading, navigate, nextPath]);
+
+  const handleGoogle = async () => {
+    setGoogleLoading(true);
+    try {
+      const { error, redirected } = await signInWithGoogle();
+      if (redirected) return;
+      if (error) {
+        toast({
+          title: "Login Google gagal",
+          description: (error as any)?.message || String(error),
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setGoogleLoading(false);
     }
-  }, [user, isAdmin, navigate, nextPath]);
+  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,11 +98,13 @@ const Auth = () => {
         } else {
           toast({
             title: "Login Berhasil",
-            description: "Selamat datang di dashboard admin!",
+            description: "Mengarahkan sesuai peran akun Anda...",
           });
-          // Show redirecting state and navigate
-          setIsRedirecting(true);
-          navigate(nextPath);
+          if (explicitNext) {
+            setIsRedirecting(true);
+            navigate(explicitNext, { replace: true });
+          }
+
         }
       } else {
         const { error } = await signUp(result.data.email, result.data.password, result.data.fullName || "");
@@ -123,6 +147,29 @@ const Auth = () => {
       </div>
     );
   }
+
+  // Signed in but no role assigned yet
+  if (user && !rolesLoading && roles.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-natural flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardHeader className="text-center">
+            <CardTitle>Menunggu Persetujuan</CardTitle>
+            <CardDescription>
+              Akun <strong>{user.email}</strong> berhasil masuk, tetapi belum diberi peran.
+              Hubungi Developer untuk mendapatkan akses.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" className="w-full" onClick={() => signOut()}>
+              Keluar
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
 
   return (
     <div className="min-h-screen bg-gradient-natural flex items-center justify-center p-4">
@@ -240,11 +287,41 @@ const Auth = () => {
               <Button 
                 type="submit" 
                 className="w-full bg-gradient-organic shadow-organic hover:shadow-warm transition-all duration-300" 
-                disabled={loading}
+                disabled={loading || googleLoading}
               >
                 {loading ? "Memproses..." : isLogin ? "Login" : "Daftar"}
               </Button>
             </form>
+
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border/60" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">atau</span>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleGoogle}
+              disabled={loading || googleLoading}
+            >
+              {googleLoading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.76h3.57c2.08-1.92 3.27-4.74 3.27-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.76c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.11a6.6 6.6 0 0 1 0-4.22V7.05H2.18a11 11 0 0 0 0 9.9l3.66-2.84z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.05l3.66 2.84C6.71 7.29 9.14 5.38 12 5.38z" />
+                </svg>
+              )}
+              Masuk dengan Google
+            </Button>
+
 
             <div className="mt-6 text-center">
               <Button

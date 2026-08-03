@@ -47,6 +47,57 @@ export type Database = {
         }
         Relationships: []
       }
+      auditor_route_history: {
+        Row: {
+          created_at: string
+          dest_code: string | null
+          dest_label: string | null
+          dest_lat: number | null
+          dest_lng: number | null
+          distance_meters: number | null
+          duration_seconds: number | null
+          email: string | null
+          id: string
+          origin_label: string | null
+          origin_lat: number | null
+          origin_lng: number | null
+          travel_mode: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dest_code?: string | null
+          dest_label?: string | null
+          dest_lat?: number | null
+          dest_lng?: number | null
+          distance_meters?: number | null
+          duration_seconds?: number | null
+          email?: string | null
+          id?: string
+          origin_label?: string | null
+          origin_lat?: number | null
+          origin_lng?: number | null
+          travel_mode?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dest_code?: string | null
+          dest_label?: string | null
+          dest_lat?: number | null
+          dest_lng?: number | null
+          distance_meters?: number | null
+          duration_seconds?: number | null
+          email?: string | null
+          id?: string
+          origin_label?: string | null
+          origin_lat?: number | null
+          origin_lng?: number | null
+          travel_mode?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       batch_panen: {
         Row: {
           batch_number: string
@@ -196,6 +247,84 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      foto_lahan: {
+        Row: {
+          alamat: string | null
+          catatan: string | null
+          created_at: string
+          created_by: string | null
+          file_path: string
+          file_url: string
+          id: string
+          judul: string | null
+          kode: string | null
+          koordinat_lat: number | null
+          koordinat_lng: number | null
+          lahan_id: string | null
+          nama_petani: string | null
+          petani_id: string | null
+          plus_code: string | null
+          taken_at: string
+          tipe: string
+          updated_at: string
+        }
+        Insert: {
+          alamat?: string | null
+          catatan?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_path: string
+          file_url: string
+          id?: string
+          judul?: string | null
+          kode?: string | null
+          koordinat_lat?: number | null
+          koordinat_lng?: number | null
+          lahan_id?: string | null
+          nama_petani?: string | null
+          petani_id?: string | null
+          plus_code?: string | null
+          taken_at?: string
+          tipe?: string
+          updated_at?: string
+        }
+        Update: {
+          alamat?: string | null
+          catatan?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_path?: string
+          file_url?: string
+          id?: string
+          judul?: string | null
+          kode?: string | null
+          koordinat_lat?: number | null
+          koordinat_lng?: number | null
+          lahan_id?: string | null
+          nama_petani?: string | null
+          petani_id?: string | null
+          plus_code?: string | null
+          taken_at?: string
+          tipe?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "foto_lahan_lahan_id_fkey"
+            columns: ["lahan_id"]
+            isOneToOne: false
+            referencedRelation: "lahan"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "foto_lahan_petani_id_fkey"
+            columns: ["petani_id"]
+            isOneToOne: false
+            referencedRelation: "petani"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       gudang_stok: {
         Row: {
@@ -1047,6 +1176,13 @@ export type Database = {
       generate_batch_number: { Args: never; Returns: string }
       generate_invoice_number: { Args: never; Returns: string }
       generate_kode_pengepul: { Args: never; Returns: string }
+      has_any_role: {
+        Args: {
+          _roles: Database["public"]["Enums"]["app_role"][]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1056,7 +1192,14 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user" | "auditor"
+      app_role:
+        | "admin"
+        | "moderator"
+        | "user"
+        | "auditor"
+        | "developer"
+        | "pengawas"
+        | "staf_lapang"
       batch_status:
         | "penerimaan"
         | "pengeringan"
@@ -1193,7 +1336,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user", "auditor"],
+      app_role: [
+        "admin",
+        "moderator",
+        "user",
+        "auditor",
+        "developer",
+        "pengawas",
+        "staf_lapang",
+      ],
       batch_status: [
         "penerimaan",
         "pengeringan",

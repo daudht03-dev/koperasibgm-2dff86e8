@@ -16,6 +16,7 @@ import { StatisticsChart } from "@/components/StatisticsChart";
 import { QRPreviewDialog } from "@/components/QRPreviewDialog";
 import { DownloadAllQRCodes } from "@/components/DownloadAllQRCodes";
 import { useAuth } from "@/hooks/use-auth";
+import { useUserRoles } from "@/hooks/use-user-role";
 import { useFarmers } from "@/hooks/use-farmers";
 import { useLands } from "@/hooks/use-lands";
 import { useProducts } from "@/hooks/use-products";
@@ -40,6 +41,9 @@ import PublicProfileSettings from "@/components/PublicProfileSettings";
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
+  const { isDeveloper, isAdmin, isPengawas, isStafLapang } = useUserRoles();
+  // Pengawas & Staf Lapang only get Petani / Lahan / Peta.
+  const fieldOnly = !isAdmin && (isPengawas || isStafLapang);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"farmers" | "lands" | "map" | "products" | "statistics" | "profile" | "labels" | "public-profile">("farmers");
@@ -558,7 +562,9 @@ const AdminDashboard = () => {
         </div>
 
         {/* Quick Actions */}
+        {!fieldOnly && (
         <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
           <Button
             variant="outline"
             asChild
@@ -648,7 +654,70 @@ const AdminDashboard = () => {
               </div>
             </Link>
           </Button>
+
+          {isAdmin && (
+            <Button
+              variant="outline"
+              asChild
+              className="justify-start h-auto p-4 border-organic-green/20 hover:bg-organic-green/5"
+            >
+              <Link to="/admin/auditors">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-gradient-organic p-3 rounded-lg">
+                    <Eye className="h-5 w-5 text-primary-foreground" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-semibold text-foreground">Akun Auditor</p>
+                    <p className="text-sm text-muted-foreground">Kelola akses & log auditor</p>
+                  </div>
+                </div>
+              </Link>
+            </Button>
+          )}
+
+          {isDeveloper && (
+            <>
+              <Button
+                variant="outline"
+                asChild
+                className="justify-start h-auto p-4 border-organic-green/20 hover:bg-organic-green/5"
+              >
+                <Link to="/admin/users">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-gradient-organic p-3 rounded-lg">
+                      <Users className="h-5 w-5 text-primary-foreground" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-semibold text-foreground">Manajemen User</p>
+                      <p className="text-sm text-muted-foreground">Kelola akun & peran pengguna</p>
+                    </div>
+                  </div>
+                </Link>
+              </Button>
+
+              <Button
+                variant="outline"
+                asChild
+                className="justify-start h-auto p-4 border-organic-green/20 hover:bg-organic-green/5"
+              >
+                <Link to="/auditor/map">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-gradient-organic p-3 rounded-lg">
+                      <MapIcon className="h-5 w-5 text-primary-foreground" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-semibold text-foreground">Pratinjau Portal Auditor</p>
+                      <p className="text-sm text-muted-foreground">Lihat peta seperti auditor</p>
+                    </div>
+                  </div>
+                </Link>
+              </Button>
+            </>
+          )}
         </div>
+
+        )}
+
 
         {/* Tab Navigation */}
         <div className="mb-6">
@@ -662,7 +731,10 @@ const AdminDashboard = () => {
               { key: "profile", label: "Profil", icon: Building },
               { key: "labels", label: "Label Kemasan", icon: Printer },
               { key: "public-profile", label: "Profil Publik", icon: Eye },
-            ].map(({ key, label, icon: Icon }) => (
+            ]
+              .filter(({ key }) => !fieldOnly || ["farmers", "lands", "map"].includes(key))
+              .map(({ key, label, icon: Icon }) => (
+
               <button
                 key={key}
                 onClick={() => setActiveTab(key as any)}
