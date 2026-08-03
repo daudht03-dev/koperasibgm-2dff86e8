@@ -72,11 +72,12 @@ const AppContent = () => {
           <Route 
             path="/admin" 
             element={
-              <ProtectedRoute requireAdmin={true}>
+              <ProtectedRoute allowedRoles={["admin", "pengawas", "staf_lapang"]}>
                 <AdminDashboard />
               </ProtectedRoute>
             } 
           />
+
           <Route 
             path="/label-settings" 
             element={
