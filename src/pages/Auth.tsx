@@ -98,11 +98,13 @@ const Auth = () => {
         } else {
           toast({
             title: "Login Berhasil",
-            description: "Selamat datang di dashboard admin!",
+            description: "Mengarahkan sesuai peran akun Anda...",
           });
-          // Show redirecting state and navigate
-          setIsRedirecting(true);
-          navigate(nextPath);
+          if (explicitNext) {
+            setIsRedirecting(true);
+            navigate(explicitNext, { replace: true });
+          }
+
         }
       } else {
         const { error } = await signUp(result.data.email, result.data.password, result.data.fullName || "");
