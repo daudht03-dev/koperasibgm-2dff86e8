@@ -16,6 +16,7 @@ import { StatisticsChart } from "@/components/StatisticsChart";
 import { QRPreviewDialog } from "@/components/QRPreviewDialog";
 import { DownloadAllQRCodes } from "@/components/DownloadAllQRCodes";
 import { useAuth } from "@/hooks/use-auth";
+import { useUserRoles } from "@/hooks/use-user-role";
 import { useFarmers } from "@/hooks/use-farmers";
 import { useLands } from "@/hooks/use-lands";
 import { useProducts } from "@/hooks/use-products";
