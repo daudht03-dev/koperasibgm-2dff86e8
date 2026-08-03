@@ -24,7 +24,7 @@ const Auth = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
-  const { signIn, signUp, signInWithGoogle, user } = useAuth();
+  const { signIn, signUp, signInWithGoogle, signOut, user } = useAuth();
   const { roles, loading: rolesLoading, home } = useUserRoles();
   const { profile, loading: profileLoading } = useCompanyProfile();
   const navigate = useNavigate();
