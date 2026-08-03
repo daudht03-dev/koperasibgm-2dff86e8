@@ -203,6 +203,15 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute allowedRoles={["developer"]}>
+                <AdminUsers />
+              </ProtectedRoute>
+            }
+          />
+
           <Route path="/auditor/login" element={<AuditorLogin />} />
           <Route
             path="/auditor/map"
