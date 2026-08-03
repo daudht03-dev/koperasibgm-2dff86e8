@@ -41,6 +41,9 @@ import PublicProfileSettings from "@/components/PublicProfileSettings";
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
+  const { isDeveloper, isAdmin, isPengawas, isStafLapang } = useUserRoles();
+  // Pengawas & Staf Lapang only get Petani / Lahan / Peta.
+  const fieldOnly = !isAdmin && (isPengawas || isStafLapang);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"farmers" | "lands" | "map" | "products" | "statistics" | "profile" | "labels" | "public-profile">("farmers");
