@@ -161,7 +161,7 @@ const Auth = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="outline" className="w-full" onClick={() => signOutAndReload()}>
+            <Button variant="outline" className="w-full" onClick={() => signOut()}>
               Keluar
             </Button>
           </CardContent>
