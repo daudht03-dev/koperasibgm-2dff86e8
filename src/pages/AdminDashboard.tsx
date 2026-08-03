@@ -654,7 +654,68 @@ const AdminDashboard = () => {
               </div>
             </Link>
           </Button>
+
+          {isAdmin && (
+            <Button
+              variant="outline"
+              asChild
+              className="justify-start h-auto p-4 border-organic-green/20 hover:bg-organic-green/5"
+            >
+              <Link to="/admin/auditors">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-gradient-organic p-3 rounded-lg">
+                    <Eye className="h-5 w-5 text-primary-foreground" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-semibold text-foreground">Akun Auditor</p>
+                    <p className="text-sm text-muted-foreground">Kelola akses & log auditor</p>
+                  </div>
+                </div>
+              </Link>
+            </Button>
+          )}
+
+          {isDeveloper && (
+            <>
+              <Button
+                variant="outline"
+                asChild
+                className="justify-start h-auto p-4 border-organic-green/20 hover:bg-organic-green/5"
+              >
+                <Link to="/admin/users">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-gradient-organic p-3 rounded-lg">
+                      <Users className="h-5 w-5 text-primary-foreground" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-semibold text-foreground">Manajemen User</p>
+                      <p className="text-sm text-muted-foreground">Kelola akun & peran pengguna</p>
+                    </div>
+                  </div>
+                </Link>
+              </Button>
+
+              <Button
+                variant="outline"
+                asChild
+                className="justify-start h-auto p-4 border-organic-green/20 hover:bg-organic-green/5"
+              >
+                <Link to="/auditor/map">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-gradient-organic p-3 rounded-lg">
+                      <MapIcon className="h-5 w-5 text-primary-foreground" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-semibold text-foreground">Pratinjau Portal Auditor</p>
+                      <p className="text-sm text-muted-foreground">Lihat peta seperti auditor</p>
+                    </div>
+                  </div>
+                </Link>
+              </Button>
+            </>
+          )}
         </div>
+
         )}
 
 
