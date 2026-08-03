@@ -148,6 +148,29 @@ const Auth = () => {
     );
   }
 
+  // Signed in but no role assigned yet
+  if (user && !rolesLoading && roles.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-natural flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardHeader className="text-center">
+            <CardTitle>Menunggu Persetujuan</CardTitle>
+            <CardDescription>
+              Akun <strong>{user.email}</strong> berhasil masuk, tetapi belum diberi peran.
+              Hubungi Developer untuk mendapatkan akses.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" className="w-full" onClick={() => signOutAndReload()}>
+              Keluar
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+
   return (
     <div className="min-h-screen bg-gradient-natural flex items-center justify-center p-4">
       <div className="w-full max-w-md">
