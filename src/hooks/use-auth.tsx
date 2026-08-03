@@ -97,6 +97,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return { error };
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      const lovableAuth = createLovableAuth();
+      const result = await lovableAuth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+
+      if (result.error) return { error: result.error };
+      if (result.redirected) return { error: null, redirected: true };
+
+      const { error } = await supabase.auth.setSession({
+        access_token: result.tokens!.access_token,
+        refresh_token: result.tokens!.refresh_token,
+      });
+      if (error) return { error };
+
+      const { data } = await supabase.auth.getUser();
+      if (data.user) await checkUserRole(data.user.id);
+      return { error: null };
+    } catch (err) {
+      return { error: err };
+    }
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
@@ -107,6 +131,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     loading,
     isAdmin,
     signIn,
+    signInWithGoogle,
     signUp,
     signOut,
   };
