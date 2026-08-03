@@ -38,6 +38,7 @@ const VillagePrefixSettings = lazy(() => import("./pages/VillagePrefixSettings")
 const AuditorLogin = lazy(() => import("./pages/AuditorLogin"));
 const AuditorMap = lazy(() => import("./pages/AuditorMap"));
 const AdminAuditors = lazy(() => import("./pages/AdminAuditors"));
+const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 import AuditorRoute from "./components/AuditorRoute";
 
 const queryClient = new QueryClient();
