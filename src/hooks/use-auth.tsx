@@ -99,19 +99,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInWithGoogle = async () => {
     try {
-      const lovableAuth = createLovableAuth();
-      const result = await lovableAuth.signInWithOAuth("google", {
+      const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
       });
 
-      if (result.error) return { error: result.error };
-      if (result.redirected) return { error: null, redirected: true };
-
-      const { error } = await supabase.auth.setSession({
-        access_token: result.tokens!.access_token,
-        refresh_token: result.tokens!.refresh_token,
-      });
-      if (error) return { error };
+      if ((result as any).error) return { error: (result as any).error };
+      if ((result as any).redirected) return { error: null, redirected: true };
 
       const { data } = await supabase.auth.getUser();
       if (data.user) await checkUserRole(data.user.id);
