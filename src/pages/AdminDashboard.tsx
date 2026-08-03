@@ -666,7 +666,10 @@ const AdminDashboard = () => {
               { key: "profile", label: "Profil", icon: Building },
               { key: "labels", label: "Label Kemasan", icon: Printer },
               { key: "public-profile", label: "Profil Publik", icon: Eye },
-            ].map(({ key, label, icon: Icon }) => (
+            ]
+              .filter(({ key }) => !fieldOnly || ["farmers", "lands", "map"].includes(key))
+              .map(({ key, label, icon: Icon }) => (
+
               <button
                 key={key}
                 onClick={() => setActiveTab(key as any)}
