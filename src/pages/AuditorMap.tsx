@@ -323,7 +323,26 @@ const AuditorMap = () => {
     return points;
   };
 
+  const fetchRouteHistory = useCallback(async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("auditor_route_history")
+      .select("id,origin_label,origin_lat,origin_lng,dest_label,dest_code,distance_meters,duration_seconds,created_at")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) {
+      console.error("Gagal memuat riwayat rute", error);
+      return;
+    }
+    setRouteHistory((data || []) as RouteHistoryEntry[]);
+  }, [user]);
+
+  useEffect(() => {
+    fetchRouteHistory();
+  }, [fetchRouteHistory]);
+
   const routeToSelected = async () => {
+
     if (!selectedPoint || !userLocation) return;
     setRouting(true);
     routePolylineRef.current?.setMap(null);
