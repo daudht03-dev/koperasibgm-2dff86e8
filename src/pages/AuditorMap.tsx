@@ -5,12 +5,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, LogOut, MapPin, Navigation, Search, ShieldCheck, X, Home, Leaf, Factory, Route as RouteIcon, Layers } from "lucide-react";
+import { Loader2, LogOut, MapPin, Navigation, Search, ShieldCheck, X, Home, Leaf, Factory, Route as RouteIcon, Layers, FileDown, History } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { loadGoogleMaps } from "@/lib/google-maps-loader";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
 import { toast } from "@/hooks/use-toast";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
+interface RouteHistoryEntry {
+  id: string;
+  origin_label: string | null;
+  origin_lat: number | null;
+  origin_lng: number | null;
+  dest_label: string | null;
+  dest_code: string | null;
+  distance_meters: number | null;
+  duration_seconds: number | null;
+  created_at: string;
+}
+
 
 interface Farmer {
   id: string;
