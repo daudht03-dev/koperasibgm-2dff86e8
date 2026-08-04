@@ -211,16 +211,55 @@ const AdminAuditors = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>Riwayat Akses</CardTitle>
-                    <CardDescription>500 aktivitas terakhir</CardDescription>
+                    <CardDescription>
+                      {filteredLogs.length} dari {logs.length} aktivitas terakhir
+                    </CardDescription>
                   </div>
-                  <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loadingLogs}>
-                    <RotateCw className={`h-4 w-4 mr-2 ${loadingLogs ? "animate-spin" : ""}`} /> Muat Ulang
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={exportLogsCSV} disabled={filteredLogs.length === 0}>
+                      <FileSpreadsheet className="h-4 w-4 mr-2" /> Export CSV
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loadingLogs}>
+                      <RotateCw className={`h-4 w-4 mr-2 ${loadingLogs ? "animate-spin" : ""}`} /> Muat Ulang
+                    </Button>
+                  </div>
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2 pt-3">
+                  <div className="relative md:col-span-2">
+                    <Search className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      className="pl-8"
+                      placeholder="Cari email auditor, kode petani/lahan, atau halaman..."
+                      value={logSearch}
+                      onChange={(e) => setLogSearch(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Dari tanggal</Label>
+                    <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Sampai tanggal</Label>
+                    <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+                  </div>
+                </div>
+                {(logSearch || dateFrom || dateTo) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-fit"
+                    onClick={() => { setLogSearch(""); setDateFrom(""); setDateTo(""); }}
+                  >
+                    Bersihkan filter
+                  </Button>
+                )}
               </CardHeader>
               <CardContent>
-                {logs.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">Belum ada aktivitas</p>
+                {filteredLogs.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    {logs.length === 0 ? "Belum ada aktivitas" : "Tidak ada aktivitas yang cocok dengan filter"}
+                  </p>
                 ) : (
                   <Table>
                     <TableHeader>
@@ -233,7 +272,7 @@ const AdminAuditors = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {logs.map((l) => (
+                      {filteredLogs.map((l) => (
                         <TableRow key={l.id}>
                           <TableCell className="text-xs">{new Date(l.accessed_at).toLocaleString("id-ID")}</TableCell>
                           <TableCell className="text-xs">{l.email || l.user_id}</TableCell>
@@ -247,6 +286,8 @@ const AdminAuditors = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
           </TabsContent>
         </Tabs>
       </div>
