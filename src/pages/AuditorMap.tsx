@@ -570,6 +570,10 @@ const AuditorMap = () => {
               <Button size="sm" onClick={locateMe} className="gap-1">
                 <Navigation className="h-4 w-4" /> Lokasi Saya
               </Button>
+              <Button size="sm" variant="outline" onClick={handleExportPDF} disabled={exporting} className="gap-1">
+                {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} Unduh PDF
+              </Button>
+
             </div>
 
             <div className="relative">
