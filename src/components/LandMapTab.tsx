@@ -749,6 +749,17 @@ export const LandMapTab: React.FC = () => {
               </Link>
             </Button>
 
+            <Button size="sm" onClick={() => setCameraOpen(true)}>
+              <Camera className="h-4 w-4 mr-2" />
+              Ambil Foto Lahan
+            </Button>
+
+            <Button variant="outline" size="sm" onClick={() => setGalleryOpen(true)}>
+              <Images className="h-4 w-4 mr-2" />
+              Galeri Foto
+            </Button>
+
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" disabled={bulkDownloading}>
