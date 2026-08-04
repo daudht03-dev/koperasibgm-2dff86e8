@@ -691,7 +691,34 @@ const AuditorMap = () => {
               </div>
             </CardContent>
           </Card>
+
+          <Card className="shadow-gentle">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <History className="h-4 w-4" /> Riwayat Rute
+              </CardTitle>
+              <CardDescription>{routeHistory.length} pencarian rute tersimpan</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="max-h-[280px] overflow-y-auto divide-y">
+                {routeHistory.map((h) => (
+                  <div key={h.id} className="px-3 py-2 text-xs space-y-0.5">
+                    <p className="font-medium truncate">{h.dest_label ?? h.dest_code ?? "-"}</p>
+                    <p className="text-muted-foreground">
+                      {h.distance_meters != null ? formatDistance(Number(h.distance_meters)) : "-"} ·{" "}
+                      {formatSeconds(h.duration_seconds != null ? Number(h.duration_seconds) : null)}
+                    </p>
+                    <p className="text-muted-foreground">{new Date(h.created_at).toLocaleString("id-ID")}</p>
+                  </div>
+                ))}
+                {routeHistory.length === 0 && (
+                  <p className="text-center text-sm text-muted-foreground py-6">Belum ada rute dicari</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
+
       </div>
     </div>
   );
