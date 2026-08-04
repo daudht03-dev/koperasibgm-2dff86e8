@@ -287,8 +287,6 @@ const AdminAuditors = () => {
               </CardContent>
             </Card>
           </TabsContent>
-
-          </TabsContent>
         </Tabs>
       </div>
 
