@@ -1131,7 +1131,11 @@ export const LandMapTab: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <GPSMapCamera open={cameraOpen} onOpenChange={setCameraOpen} onSaved={() => setGalleryOpen(true)} />
+      <LandPhotoGallery open={galleryOpen} onOpenChange={setGalleryOpen} />
     </div>
+
   );
 };
 
