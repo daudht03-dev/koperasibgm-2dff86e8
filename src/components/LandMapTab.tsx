@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, Printer, Map, Loader2, AlertCircle, Filter, MousePointer, X, FileSpreadsheet, FileJson, Layers, MapPin, Images, Settings } from "lucide-react";
+import { Download, Printer, Map, Loader2, AlertCircle, Filter, MousePointer, X, FileSpreadsheet, FileJson, Layers, MapPin, Images, Settings, Camera } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import html2canvas from "html2canvas";
 import { toast } from "@/hooks/use-toast";
@@ -19,6 +19,9 @@ import { MarkerClusterer } from "@googlemaps/markerclusterer";
 import { MapAddressSearch } from "@/components/MapAddressSearch";
 import { useVillagePrefixes } from "@/hooks/use-village-prefixes";
 import { Link } from "react-router-dom";
+import { GPSMapCamera } from "@/components/GPSMapCamera";
+import { LandPhotoGallery } from "@/components/LandPhotoGallery";
+
 
 interface LandWithFarmer {
   id: string;
@@ -127,6 +130,9 @@ export const LandMapTab: React.FC = () => {
   const [geocoding, setGeocoding] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+
 
   const { profile } = useCompanyProfile();
   const { map: villagePrefixMap } = useVillagePrefixes();
@@ -749,6 +755,17 @@ export const LandMapTab: React.FC = () => {
               </Link>
             </Button>
 
+            <Button size="sm" onClick={() => setCameraOpen(true)}>
+              <Camera className="h-4 w-4 mr-2" />
+              Ambil Foto Lahan
+            </Button>
+
+            <Button variant="outline" size="sm" onClick={() => setGalleryOpen(true)}>
+              <Images className="h-4 w-4 mr-2" />
+              Galeri Foto
+            </Button>
+
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" disabled={bulkDownloading}>
@@ -1114,7 +1131,11 @@ export const LandMapTab: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <GPSMapCamera open={cameraOpen} onOpenChange={setCameraOpen} onSaved={() => setGalleryOpen(true)} />
+      <LandPhotoGallery open={galleryOpen} onOpenChange={setGalleryOpen} />
     </div>
+
   );
 };
 

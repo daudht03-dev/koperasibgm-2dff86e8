@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, RotateCw, Trash2, Key, ArrowLeft, ShieldCheck, ExternalLink } from "lucide-react";
+import { Loader2, Plus, RotateCw, Trash2, Key, ArrowLeft, ShieldCheck, ExternalLink, Search, FileSpreadsheet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
@@ -47,6 +47,48 @@ const AdminAuditors = () => {
   const [resetting, setResetting] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<Auditor | null>(null);
+
+  const [logSearch, setLogSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  const filteredLogs = useMemo(() => {
+    const q = logSearch.trim().toLowerCase();
+    const from = dateFrom ? new Date(`${dateFrom}T00:00:00`) : null;
+    const to = dateTo ? new Date(`${dateTo}T23:59:59`) : null;
+    return logs.filter((l) => {
+      const at = new Date(l.accessed_at);
+      if (from && at < from) return false;
+      if (to && at > to) return false;
+      if (!q) return true;
+      return [l.email, l.user_id, l.path, l.event, l.ip].some((v) => (v || "").toLowerCase().includes(q));
+    });
+  }, [logs, logSearch, dateFrom, dateTo]);
+
+  const exportLogsCSV = () => {
+    const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const rows = [
+      ["Waktu", "Email", "User ID", "Event", "Halaman", "IP", "User Agent"],
+      ...filteredLogs.map((l) => [
+        new Date(l.accessed_at).toLocaleString("id-ID"),
+        l.email ?? "",
+        l.user_id ?? "",
+        l.event,
+        l.path,
+        l.ip ?? "",
+        l.user_agent ?? "",
+      ]),
+    ];
+    const csv = rows.map((r) => r.map(esc).join(",")).join("\n");
+    const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `log-auditor-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
 
   const fetchAuditors = async () => {
     setLoading(true);
@@ -211,16 +253,55 @@ const AdminAuditors = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>Riwayat Akses</CardTitle>
-                    <CardDescription>500 aktivitas terakhir</CardDescription>
+                    <CardDescription>
+                      {filteredLogs.length} dari {logs.length} aktivitas terakhir
+                    </CardDescription>
                   </div>
-                  <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loadingLogs}>
-                    <RotateCw className={`h-4 w-4 mr-2 ${loadingLogs ? "animate-spin" : ""}`} /> Muat Ulang
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={exportLogsCSV} disabled={filteredLogs.length === 0}>
+                      <FileSpreadsheet className="h-4 w-4 mr-2" /> Export CSV
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loadingLogs}>
+                      <RotateCw className={`h-4 w-4 mr-2 ${loadingLogs ? "animate-spin" : ""}`} /> Muat Ulang
+                    </Button>
+                  </div>
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2 pt-3">
+                  <div className="relative md:col-span-2">
+                    <Search className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      className="pl-8"
+                      placeholder="Cari email auditor, kode petani/lahan, atau halaman..."
+                      value={logSearch}
+                      onChange={(e) => setLogSearch(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Dari tanggal</Label>
+                    <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Sampai tanggal</Label>
+                    <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+                  </div>
+                </div>
+                {(logSearch || dateFrom || dateTo) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-fit"
+                    onClick={() => { setLogSearch(""); setDateFrom(""); setDateTo(""); }}
+                  >
+                    Bersihkan filter
+                  </Button>
+                )}
               </CardHeader>
               <CardContent>
-                {logs.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">Belum ada aktivitas</p>
+                {filteredLogs.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    {logs.length === 0 ? "Belum ada aktivitas" : "Tidak ada aktivitas yang cocok dengan filter"}
+                  </p>
                 ) : (
                   <Table>
                     <TableHeader>
@@ -233,7 +314,7 @@ const AdminAuditors = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {logs.map((l) => (
+                      {filteredLogs.map((l) => (
                         <TableRow key={l.id}>
                           <TableCell className="text-xs">{new Date(l.accessed_at).toLocaleString("id-ID")}</TableCell>
                           <TableCell className="text-xs">{l.email || l.user_id}</TableCell>

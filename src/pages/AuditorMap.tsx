@@ -5,12 +5,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, LogOut, MapPin, Navigation, Search, ShieldCheck, X, Home, Leaf, Factory, Route as RouteIcon, Layers } from "lucide-react";
+import { Loader2, LogOut, MapPin, Navigation, Search, ShieldCheck, X, Home, Leaf, Factory, Route as RouteIcon, Layers, FileDown, History } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { loadGoogleMaps } from "@/lib/google-maps-loader";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
 import { toast } from "@/hooks/use-toast";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
+interface RouteHistoryEntry {
+  id: string;
+  origin_label: string | null;
+  origin_lat: number | null;
+  origin_lng: number | null;
+  dest_label: string | null;
+  dest_code: string | null;
+  distance_meters: number | null;
+  duration_seconds: number | null;
+  created_at: string;
+}
+
 
 interface Farmer {
   id: string;
@@ -82,6 +97,9 @@ const AuditorMap = () => {
   const [selectedPoint, setSelectedPoint] = useState<Point | null>(null);
   const [route, setRoute] = useState<{ distanceMeters: number; duration: string; polyline: string } | null>(null);
   const [routing, setRouting] = useState(false);
+  const [routeHistory, setRouteHistory] = useState<RouteHistoryEntry[]>([]);
+  const [exporting, setExporting] = useState(false);
+
 
   const prefixMap = useMemo<Record<string, string>>(
     () => Object.fromEntries(prefixes.map((p) => [p.code, p.name])),
@@ -305,7 +323,26 @@ const AuditorMap = () => {
     return points;
   };
 
+  const fetchRouteHistory = useCallback(async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("auditor_route_history")
+      .select("id,origin_label,origin_lat,origin_lng,dest_label,dest_code,distance_meters,duration_seconds,created_at")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) {
+      console.error("Gagal memuat riwayat rute", error);
+      return;
+    }
+    setRouteHistory((data || []) as RouteHistoryEntry[]);
+  }, [user]);
+
+  useEffect(() => {
+    fetchRouteHistory();
+  }, [fetchRouteHistory]);
+
   const routeToSelected = async () => {
+
     if (!selectedPoint || !userLocation) return;
     setRouting(true);
     routePolylineRef.current?.setMap(null);
@@ -337,6 +374,25 @@ const AuditorMap = () => {
       path.forEach((p) => bounds.extend(p));
       mapRef.current.fitBounds(bounds, 80);
     }
+
+    // Simpan jejak audit rute
+    const durationSeconds = parseInt(String(d.duration ?? "").replace("s", ""), 10);
+    const { error: histErr } = await supabase.from("auditor_route_history").insert({
+      user_id: user?.id as string,
+      email: user?.email ?? null,
+      origin_label: "Lokasi Saya",
+      origin_lat: userLocation.lat,
+      origin_lng: userLocation.lng,
+      dest_label: `${selectedPoint.label} — ${selectedPoint.farmer.nama}`,
+      dest_code: selectedPoint.kind === "home" ? selectedPoint.farmer.kode_petani : selectedPoint.label,
+      dest_lat: selectedPoint.lat,
+      dest_lng: selectedPoint.lng,
+      travel_mode: "DRIVE",
+      distance_meters: d.distanceMeters ?? null,
+      duration_seconds: Number.isFinite(durationSeconds) ? durationSeconds : null,
+    });
+    if (histErr) console.error("Gagal menyimpan riwayat rute", histErr);
+    else fetchRouteHistory();
   };
 
   const closeSelection = () => {
@@ -346,14 +402,112 @@ const AuditorMap = () => {
   };
 
   const formatDistance = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`);
-  const formatDuration = (dur: string) => {
-    // "1234s"
-    const s = parseInt(dur.replace("s", ""), 10);
-    if (!Number.isFinite(s)) return dur;
+  const formatSeconds = (s: number | null) => {
+    if (s == null || !Number.isFinite(s)) return "-";
     const min = Math.round(s / 60);
     if (min < 60) return `${min} menit`;
     return `${Math.floor(min / 60)} jam ${min % 60} menit`;
   };
+  const formatDuration = (dur: string) => {
+    // "1234s"
+    const s = parseInt(dur.replace("s", ""), 10);
+    return formatSeconds(Number.isFinite(s) ? s : null) === "-" ? dur : formatSeconds(s);
+  };
+
+  const handleExportPDF = () => {
+    setExporting(true);
+    try {
+      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      const now = new Date();
+      doc.setFontSize(14);
+      doc.text("Laporan Audit — Peta Petani & Lahan", 14, 15);
+      doc.setFontSize(9);
+      doc.text(`Auditor: ${user?.email ?? "-"}`, 14, 21);
+      doc.text(`Dicetak: ${now.toLocaleString("id-ID")}`, 14, 26);
+      const filterInfo = [
+        `Desa: ${villageFilter === "all" ? "Semua" : `${prefixMap[villageFilter] || villageFilter} (${villageFilter})`}`,
+        `Status: ${organicFilter === "all" ? "Semua" : organicFilter === "organic" ? "Organik" : "Konvensional"}`,
+        `Pencarian: ${search.trim() || "-"}`,
+      ].join("   |   ");
+      doc.text(filterInfo, 14, 31);
+
+      const rows = [...filteredPoints]
+        .sort((a, b) => naturalSort(a.label, b.label))
+        .map((p, i) => [
+          String(i + 1),
+          p.kind === "home" ? "Rumah" : "Lahan",
+          p.label,
+          p.farmer.kode_petani,
+          p.farmer.nama,
+          (p.land?.is_organic ?? p.farmer.is_organic) ? "Organik" : "Konvensional",
+          p.lat.toFixed(6),
+          p.lng.toFixed(6),
+          p.kind === "home" ? p.farmer.alamat_rumah || "-" : p.land?.lokasi || "-",
+        ]);
+
+      autoTable(doc, {
+        startY: 36,
+        head: [["No", "Tipe", "Kode", "Kode Petani", "Nama Petani", "Status", "Latitude", "Longitude", "Alamat/Lokasi"]],
+        body: rows,
+        styles: { fontSize: 7, cellPadding: 1.5 },
+        headStyles: { fillColor: [37, 99, 235] },
+        columnStyles: { 8: { cellWidth: 70 } },
+      });
+
+      let y = (doc as any).lastAutoTable?.finalY ?? 40;
+
+      if (selectedPoint && route) {
+        y += 8;
+        doc.setFontSize(11);
+        doc.text("Ringkasan Rute", 14, y);
+        autoTable(doc, {
+          startY: y + 2,
+          head: [["Asal", "Tujuan", "Koordinat Tujuan", "Jarak", "Estimasi Waktu"]],
+          body: [
+            [
+              userLocation ? `Lokasi Saya (${userLocation.lat.toFixed(6)}, ${userLocation.lng.toFixed(6)})` : "-",
+              `${selectedPoint.label} — ${selectedPoint.farmer.nama}`,
+              `${selectedPoint.lat.toFixed(6)}, ${selectedPoint.lng.toFixed(6)}`,
+              formatDistance(route.distanceMeters),
+              formatDuration(route.duration),
+            ],
+          ],
+          styles: { fontSize: 8, cellPadding: 1.5 },
+          headStyles: { fillColor: [22, 163, 74] },
+        });
+        y = (doc as any).lastAutoTable?.finalY ?? y;
+      }
+
+      if (routeHistory.length > 0) {
+        y += 8;
+        doc.setFontSize(11);
+        doc.text("Riwayat Rute Auditor", 14, y);
+        autoTable(doc, {
+          startY: y + 2,
+          head: [["Waktu", "Asal", "Tujuan", "Kode", "Jarak", "Waktu Tempuh"]],
+          body: routeHistory
+            .slice(0, 30)
+            .map((h) => [
+              new Date(h.created_at).toLocaleString("id-ID"),
+              h.origin_lat != null ? `${h.origin_label ?? "Asal"} (${Number(h.origin_lat).toFixed(5)}, ${Number(h.origin_lng).toFixed(5)})` : h.origin_label ?? "-",
+              h.dest_label ?? "-",
+              h.dest_code ?? "-",
+              h.distance_meters != null ? formatDistance(Number(h.distance_meters)) : "-",
+              formatSeconds(h.duration_seconds != null ? Number(h.duration_seconds) : null),
+            ]),
+          styles: { fontSize: 7, cellPadding: 1.5 },
+          headStyles: { fillColor: [124, 58, 237] },
+        });
+      }
+
+      doc.save(`audit-peta-${now.toISOString().slice(0, 10)}.pdf`);
+    } catch (e: any) {
+      toast({ title: "Gagal membuat PDF", description: e.message, variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -416,6 +570,10 @@ const AuditorMap = () => {
               <Button size="sm" onClick={locateMe} className="gap-1">
                 <Navigation className="h-4 w-4" /> Lokasi Saya
               </Button>
+              <Button size="sm" variant="outline" onClick={handleExportPDF} disabled={exporting} className="gap-1">
+                {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} Unduh PDF
+              </Button>
+
             </div>
 
             <div className="relative">
@@ -533,7 +691,34 @@ const AuditorMap = () => {
               </div>
             </CardContent>
           </Card>
+
+          <Card className="shadow-gentle">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <History className="h-4 w-4" /> Riwayat Rute
+              </CardTitle>
+              <CardDescription>{routeHistory.length} pencarian rute tersimpan</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="max-h-[280px] overflow-y-auto divide-y">
+                {routeHistory.map((h) => (
+                  <div key={h.id} className="px-3 py-2 text-xs space-y-0.5">
+                    <p className="font-medium truncate">{h.dest_label ?? h.dest_code ?? "-"}</p>
+                    <p className="text-muted-foreground">
+                      {h.distance_meters != null ? formatDistance(Number(h.distance_meters)) : "-"} ·{" "}
+                      {formatSeconds(h.duration_seconds != null ? Number(h.duration_seconds) : null)}
+                    </p>
+                    <p className="text-muted-foreground">{new Date(h.created_at).toLocaleString("id-ID")}</p>
+                  </div>
+                ))}
+                {routeHistory.length === 0 && (
+                  <p className="text-center text-sm text-muted-foreground py-6">Belum ada rute dicari</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
+
       </div>
     </div>
   );
