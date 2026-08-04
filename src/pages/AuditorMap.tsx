@@ -97,6 +97,9 @@ const AuditorMap = () => {
   const [selectedPoint, setSelectedPoint] = useState<Point | null>(null);
   const [route, setRoute] = useState<{ distanceMeters: number; duration: string; polyline: string } | null>(null);
   const [routing, setRouting] = useState(false);
+  const [routeHistory, setRouteHistory] = useState<RouteHistoryEntry[]>([]);
+  const [exporting, setExporting] = useState(false);
+
 
   const prefixMap = useMemo<Record<string, string>>(
     () => Object.fromEntries(prefixes.map((p) => [p.code, p.name])),
