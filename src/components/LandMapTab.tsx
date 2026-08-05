@@ -1113,7 +1113,12 @@ export const LandMapTab: React.FC = () => {
                   {filteredLands.slice(0, 100).map((land, idx) => {
                     const isOrganic = land.is_organic ?? land.petani?.is_organic;
                     return (
-                      <tr key={land.id} className="border-b hover:bg-muted/50">
+                      <tr
+                        key={land.id}
+                        onClick={() => focusLand(land)}
+                        className="border-b hover:bg-muted/50 cursor-pointer"
+                        title="Klik untuk menuju titik lahan di peta"
+                      >
                         <td className="py-2 px-3">{idx + 1}</td>
                         <td className="py-2 px-3 font-mono font-medium">{land.nama_lahan}</td>
                         <td className="py-2 px-3">{VILLAGE_NAMES[land.villageCode || ""] || land.villageCode || "-"}</td>
