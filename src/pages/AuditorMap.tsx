@@ -78,6 +78,8 @@ const AuditorMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
+  const markerByIdRef = useRef<Record<string, google.maps.Marker>>({});
+  const focusMarkerRef = useRef<google.maps.Marker | null>(null);
   const clustererRef = useRef<MarkerClusterer | null>(null);
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
   const userAccuracyRef = useRef<google.maps.Circle | null>(null);
@@ -217,6 +219,7 @@ const AuditorMap = () => {
     clustererRef.current?.clearMarkers();
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
+    markerByIdRef.current = {};
 
     const bounds = new google.maps.LatLngBounds();
     filteredPoints.forEach((p) => {
@@ -240,6 +243,7 @@ const AuditorMap = () => {
         routePolylineRef.current?.setMap(null);
       });
       markersRef.current.push(marker);
+      markerByIdRef.current[p.id] = marker;
       bounds.extend(marker.getPosition()!);
     });
 
@@ -256,6 +260,35 @@ const AuditorMap = () => {
       });
     }
   }, [filteredPoints, mapReady]);
+
+  /** Pan/zoom precisely to a point, highlight it and select it. */
+  const focusPoint = useCallback((p: Point) => {
+    setSelectedPoint(p);
+    setRoute(null);
+    routePolylineRef.current?.setMap(null);
+    if (!mapRef.current || !(window as any).google?.maps) return;
+    const google = (window as any).google;
+    mapRef.current.panTo({ lat: p.lat, lng: p.lng });
+    mapRef.current.setZoom(18);
+    focusMarkerRef.current?.setMap(null);
+    focusMarkerRef.current = new google.maps.Marker({
+      position: { lat: p.lat, lng: p.lng },
+      map: mapRef.current,
+      zIndex: 9999,
+      animation: google.maps.Animation.BOUNCE,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 16,
+        fillColor: "#2563eb",
+        fillOpacity: 0.28,
+        strokeColor: "#2563eb",
+        strokeWeight: 3,
+      },
+      title: p.label,
+    });
+    mapContainer.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
+
 
   useEffect(() => {
     if (mapRef.current) mapRef.current.setMapTypeId(mapType);
@@ -677,7 +710,7 @@ const AuditorMap = () => {
                   .map((p) => (
                     <button
                       key={p.id}
-                      onClick={() => setSelectedPoint(p)}
+                      onClick={() => focusPoint(p)}
                       className="w-full text-left px-3 py-2 hover:bg-muted flex items-center gap-2 text-sm"
                     >
                       {p.kind === "home" ? <Home className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" /> : <MapPin className="h-3.5 w-3.5 flex-shrink-0" />}

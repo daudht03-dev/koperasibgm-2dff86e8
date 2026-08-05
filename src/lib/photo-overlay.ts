@@ -83,12 +83,14 @@ export interface RenderOptions {
   mapThumbSrc?: string | null;
   logoSrc?: string | null;
   maxWidth?: number;
+  /** Paint an opaque panel first — used when re-stamping an already watermarked photo. */
+  solidPanel?: boolean;
 }
 
 /** Draws the photo + watermark onto the given canvas. */
 export async function renderPhotoOverlay(
   canvas: HTMLCanvasElement,
-  { photoSrc, data, mapThumbSrc, logoSrc, maxWidth = 1600 }: RenderOptions,
+  { photoSrc, data, mapThumbSrc, logoSrc, maxWidth = 1600, solidPanel = false }: RenderOptions,
 ): Promise<void> {
   const [photo, mapThumb, logo] = await Promise.all([
     loadImage(photoSrc),
@@ -113,12 +115,18 @@ export async function renderPhotoOverlay(
   const panelH = Math.round(Math.max(W * 0.24, 190));
   const panelY = H - panelH;
 
+  if (solidPanel) {
+    ctx.fillStyle = "#0a0a0a";
+    ctx.fillRect(0, panelY - panelH * 0.1, W, panelH * 1.1);
+  }
+
   const grad = ctx.createLinearGradient(0, panelY - panelH * 0.25, 0, H);
   grad.addColorStop(0, "rgba(0,0,0,0)");
   grad.addColorStop(0.25, "rgba(0,0,0,0.55)");
   grad.addColorStop(1, "rgba(0,0,0,0.82)");
   ctx.fillStyle = grad;
   ctx.fillRect(0, panelY - panelH * 0.25, W, panelH * 1.25);
+
 
   // mini map
   const mapSize = panelH - pad * 2;

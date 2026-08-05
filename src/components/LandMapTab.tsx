@@ -89,6 +89,8 @@ export const LandMapTab: React.FC = () => {
   const printRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
+  const markerByIdRef = useRef<Record<string, google.maps.Marker>>({});
+  const focusMarkerRef = useRef<google.maps.Marker | null>(null);
   const clustererRef = useRef<MarkerClusterer | null>(null);
   const clickMarkerRef = useRef<google.maps.Marker | null>(null);
   const infoRef = useRef<google.maps.InfoWindow | null>(null);
@@ -205,6 +207,7 @@ export const LandMapTab: React.FC = () => {
     clustererRef.current?.clearMarkers();
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
+    markerByIdRef.current = {};
 
     const bounds = new google.maps.LatLngBounds();
 
@@ -277,6 +280,7 @@ export const LandMapTab: React.FC = () => {
       });
 
       markersRef.current.push(marker);
+      markerByIdRef.current[land.id] = marker;
       bounds.extend(marker.getPosition()!);
     });
 
@@ -295,6 +299,47 @@ export const LandMapTab: React.FC = () => {
       });
     }
   }, [filteredLands, clusteringEnabled, editMode, showLabels]);
+
+  /** Pan/zoom the map to a coordinate and flash a highlight marker. */
+  const focusOnCoordinate = useCallback((lat: number, lng: number, title?: string) => {
+    if (!mapRef.current || !(window as any).google?.maps) return;
+    const google = (window as any).google;
+    mapRef.current.panTo({ lat, lng });
+    mapRef.current.setZoom(18);
+    focusMarkerRef.current?.setMap(null);
+    focusMarkerRef.current = new google.maps.Marker({
+      position: { lat, lng },
+      map: mapRef.current,
+      zIndex: 9999,
+      animation: google.maps.Animation.BOUNCE,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 16,
+        fillColor: "#2563eb",
+        fillOpacity: 0.28,
+        strokeColor: "#2563eb",
+        strokeWeight: 3,
+      },
+      title: title || "",
+    });
+    mapContainer.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
+
+  /** Focus a land row: pan to it and open its info window. */
+  const focusLand = useCallback(
+    (land: { id: string; nama_lahan?: string | null; parsedCoord?: { lat: number; lng: number } | null }) => {
+      const c = land.parsedCoord;
+      if (!c) {
+        toast({ title: "Koordinat belum tersedia", description: `Lahan ${land.nama_lahan || ""} belum punya koordinat.`, variant: "destructive" });
+        return;
+      }
+      focusOnCoordinate(c.lat, c.lng, land.nama_lahan || undefined);
+      const marker = markerByIdRef.current[land.id];
+      if (marker) (window as any).google?.maps?.event?.trigger(marker, "click");
+    },
+    [focusOnCoordinate],
+  );
+
 
   // Initialize map once
   const initializeMap = useCallback(async () => {
@@ -385,6 +430,26 @@ export const LandMapTab: React.FC = () => {
   }, [mapReady, editMode, selectedLandForEdit, reverseGeocode]);
 
   useEffect(() => { fetchLands(); }, []);
+
+  // Auto-sync: refetch when farmer (home coordinates) or land data changes elsewhere,
+  // e.g. after a CSV import of farmers with koordinat_lat_rumah / koordinat_lng_rumah.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const schedule = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => { fetchLands(); }, 800);
+    };
+    const channel = supabase
+      .channel("land-map-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "petani" }, schedule)
+      .on("postgres_changes", { event: "*", schema: "public", table: "lahan" }, schedule)
+      .subscribe();
+    return () => {
+      if (timer) clearTimeout(timer);
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!loading && !mapRef.current) initializeMap();
@@ -978,9 +1043,14 @@ export const LandMapTab: React.FC = () => {
                                 <div className="text-xs">{g.alamat_rumah}</div>
                               )}
                               {g.home && (
-                                <div className="font-mono tabular-nums">
+                                <button
+                                  type="button"
+                                  onClick={() => focusOnCoordinate(g.home!.lat, g.home!.lng, `Rumah ${g.kode}`)}
+                                  className="font-mono tabular-nums text-primary hover:underline print:text-foreground print:no-underline"
+                                  title="Klik untuk menuju titik rumah di peta"
+                                >
                                   {fmtCoord(g.home.lat)}, {fmtCoord(g.home.lng)}
-                                </div>
+                                </button>
                               )}
                             </div>
                           )}
@@ -992,7 +1062,12 @@ export const LandMapTab: React.FC = () => {
                               {g.lands.map((l, i) => (
                                 <div
                                   key={l.id}
-                                  className="flex items-baseline gap-2 py-0.5 border-b border-dashed border-border/60"
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={() => focusLand(l)}
+                                  onKeyDown={(e) => { if (e.key === "Enter") focusLand(l); }}
+                                  className="flex items-baseline gap-2 py-0.5 border-b border-dashed border-border/60 cursor-pointer hover:bg-muted/60 rounded-sm print:cursor-auto"
+                                  title="Klik untuk menuju titik lahan di peta"
                                 >
                                   <span className="text-muted-foreground w-5 text-right">
                                     {i + 1}.
@@ -1058,7 +1133,12 @@ export const LandMapTab: React.FC = () => {
                   {filteredLands.slice(0, 100).map((land, idx) => {
                     const isOrganic = land.is_organic ?? land.petani?.is_organic;
                     return (
-                      <tr key={land.id} className="border-b hover:bg-muted/50">
+                      <tr
+                        key={land.id}
+                        onClick={() => focusLand(land)}
+                        className="border-b hover:bg-muted/50 cursor-pointer"
+                        title="Klik untuk menuju titik lahan di peta"
+                      >
                         <td className="py-2 px-3">{idx + 1}</td>
                         <td className="py-2 px-3 font-mono font-medium">{land.nama_lahan}</td>
                         <td className="py-2 px-3">{VILLAGE_NAMES[land.villageCode || ""] || land.villageCode || "-"}</td>
