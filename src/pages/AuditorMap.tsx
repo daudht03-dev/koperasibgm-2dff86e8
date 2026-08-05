@@ -261,6 +261,35 @@ const AuditorMap = () => {
     }
   }, [filteredPoints, mapReady]);
 
+  /** Pan/zoom precisely to a point, highlight it and select it. */
+  const focusPoint = useCallback((p: Point) => {
+    setSelectedPoint(p);
+    setRoute(null);
+    routePolylineRef.current?.setMap(null);
+    if (!mapRef.current || !(window as any).google?.maps) return;
+    const google = (window as any).google;
+    mapRef.current.panTo({ lat: p.lat, lng: p.lng });
+    mapRef.current.setZoom(18);
+    focusMarkerRef.current?.setMap(null);
+    focusMarkerRef.current = new google.maps.Marker({
+      position: { lat: p.lat, lng: p.lng },
+      map: mapRef.current,
+      zIndex: 9999,
+      animation: google.maps.Animation.BOUNCE,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 16,
+        fillColor: "#2563eb",
+        fillOpacity: 0.28,
+        strokeColor: "#2563eb",
+        strokeWeight: 3,
+      },
+      title: p.label,
+    });
+    mapContainer.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
+
+
   useEffect(() => {
     if (mapRef.current) mapRef.current.setMapTypeId(mapType);
   }, [mapType]);
