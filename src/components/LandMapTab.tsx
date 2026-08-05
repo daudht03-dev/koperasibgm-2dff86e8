@@ -1042,7 +1042,12 @@ export const LandMapTab: React.FC = () => {
                               {g.lands.map((l, i) => (
                                 <div
                                   key={l.id}
-                                  className="flex items-baseline gap-2 py-0.5 border-b border-dashed border-border/60"
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={() => focusLand(l)}
+                                  onKeyDown={(e) => { if (e.key === "Enter") focusLand(l); }}
+                                  className="flex items-baseline gap-2 py-0.5 border-b border-dashed border-border/60 cursor-pointer hover:bg-muted/60 rounded-sm print:cursor-auto"
+                                  title="Klik untuk menuju titik lahan di peta"
                                 >
                                   <span className="text-muted-foreground w-5 text-right">
                                     {i + 1}.
