@@ -279,6 +279,7 @@ export const LandMapTab: React.FC = () => {
       });
 
       markersRef.current.push(marker);
+      markerByIdRef.current[land.id] = marker;
       bounds.extend(marker.getPosition()!);
     });
 
