@@ -78,6 +78,8 @@ const AuditorMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
+  const markerByIdRef = useRef<Record<string, google.maps.Marker>>({});
+  const focusMarkerRef = useRef<google.maps.Marker | null>(null);
   const clustererRef = useRef<MarkerClusterer | null>(null);
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
   const userAccuracyRef = useRef<google.maps.Circle | null>(null);
