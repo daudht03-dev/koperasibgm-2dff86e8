@@ -1023,9 +1023,14 @@ export const LandMapTab: React.FC = () => {
                                 <div className="text-xs">{g.alamat_rumah}</div>
                               )}
                               {g.home && (
-                                <div className="font-mono tabular-nums">
+                                <button
+                                  type="button"
+                                  onClick={() => focusOnCoordinate(g.home!.lat, g.home!.lng, `Rumah ${g.kode}`)}
+                                  className="font-mono tabular-nums text-primary hover:underline print:text-foreground print:no-underline"
+                                  title="Klik untuk menuju titik rumah di peta"
+                                >
                                   {fmtCoord(g.home.lat)}, {fmtCoord(g.home.lng)}
-                                </div>
+                                </button>
                               )}
                             </div>
                           )}
