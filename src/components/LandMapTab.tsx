@@ -300,6 +300,47 @@ export const LandMapTab: React.FC = () => {
     }
   }, [filteredLands, clusteringEnabled, editMode, showLabels]);
 
+  /** Pan/zoom the map to a coordinate and flash a highlight marker. */
+  const focusOnCoordinate = useCallback((lat: number, lng: number, title?: string) => {
+    if (!mapRef.current || !(window as any).google?.maps) return;
+    const google = (window as any).google;
+    mapRef.current.panTo({ lat, lng });
+    mapRef.current.setZoom(18);
+    focusMarkerRef.current?.setMap(null);
+    focusMarkerRef.current = new google.maps.Marker({
+      position: { lat, lng },
+      map: mapRef.current,
+      zIndex: 9999,
+      animation: google.maps.Animation.BOUNCE,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 16,
+        fillColor: "#2563eb",
+        fillOpacity: 0.28,
+        strokeColor: "#2563eb",
+        strokeWeight: 3,
+      },
+      title: title || "",
+    });
+    mapContainer.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
+
+  /** Focus a land row: pan to it and open its info window. */
+  const focusLand = useCallback(
+    (land: { id: string; nama_lahan?: string | null; parsedCoord?: { lat: number; lng: number } | null }) => {
+      const c = land.parsedCoord;
+      if (!c) {
+        toast({ title: "Koordinat belum tersedia", description: `Lahan ${land.nama_lahan || ""} belum punya koordinat.`, variant: "destructive" });
+        return;
+      }
+      focusOnCoordinate(c.lat, c.lng, land.nama_lahan || undefined);
+      const marker = markerByIdRef.current[land.id];
+      if (marker) (window as any).google?.maps?.event?.trigger(marker, "click");
+    },
+    [focusOnCoordinate],
+  );
+
+
   // Initialize map once
   const initializeMap = useCallback(async () => {
     if (!mapContainer.current || mapRef.current) return;
