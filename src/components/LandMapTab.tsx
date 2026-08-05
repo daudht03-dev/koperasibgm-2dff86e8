@@ -431,6 +431,26 @@ export const LandMapTab: React.FC = () => {
 
   useEffect(() => { fetchLands(); }, []);
 
+  // Auto-sync: refetch when farmer (home coordinates) or land data changes elsewhere,
+  // e.g. after a CSV import of farmers with koordinat_lat_rumah / koordinat_lng_rumah.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const schedule = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => { fetchLands(); }, 800);
+    };
+    const channel = supabase
+      .channel("land-map-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "petani" }, schedule)
+      .on("postgres_changes", { event: "*", schema: "public", table: "lahan" }, schedule)
+      .subscribe();
+    return () => {
+      if (timer) clearTimeout(timer);
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!loading && !mapRef.current) initializeMap();
   }, [loading, initializeMap]);
