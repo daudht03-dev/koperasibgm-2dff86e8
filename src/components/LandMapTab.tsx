@@ -207,6 +207,7 @@ export const LandMapTab: React.FC = () => {
     clustererRef.current?.clearMarkers();
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
+    markerByIdRef.current = {};
 
     const bounds = new google.maps.LatLngBounds();
 
