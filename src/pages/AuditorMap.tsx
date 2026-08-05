@@ -243,6 +243,7 @@ const AuditorMap = () => {
         routePolylineRef.current?.setMap(null);
       });
       markersRef.current.push(marker);
+      markerByIdRef.current[p.id] = marker;
       bounds.extend(marker.getPosition()!);
     });
 
