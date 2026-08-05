@@ -710,7 +710,7 @@ const AuditorMap = () => {
                   .map((p) => (
                     <button
                       key={p.id}
-                      onClick={() => setSelectedPoint(p)}
+                      onClick={() => focusPoint(p)}
                       className="w-full text-left px-3 py-2 hover:bg-muted flex items-center gap-2 text-sm"
                     >
                       {p.kind === "home" ? <Home className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" /> : <MapPin className="h-3.5 w-3.5 flex-shrink-0" />}
