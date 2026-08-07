@@ -15,12 +15,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, RefreshCw, Save, FilePlus2, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { renderPhotoOverlay, canvasToBlob, OverlayData } from "@/lib/photo-overlay";
+import { evaluateCoordinate } from "@/lib/coordinate-accuracy";
+import CoordinateAccuracyIndicator from "@/components/CoordinateAccuracyIndicator";
+import MiniMapPicker from "@/components/MiniMapPicker";
+import PhotoVersionHistory from "@/components/PhotoVersionHistory";
 
 export interface EditablePhoto {
   id: string;
@@ -36,7 +41,10 @@ export interface EditablePhoto {
   lahan_id?: string | null;
   file_path: string;
   taken_at: string;
+  tampilkan_waktu?: boolean | null;
+  akurasi_meter?: number | null;
 }
+
 
 interface Props {
   open: boolean;
