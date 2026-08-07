@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.log_foto_lahan_versi() FROM PUBLIC, anon, authenticated;
