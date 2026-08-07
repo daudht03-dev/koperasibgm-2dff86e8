@@ -79,6 +79,33 @@ export const LandPhotoEditor = ({ open, onOpenChange, photo, imageUrl, onSaved }
   const [baseSrc, setBaseSrc] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
+  const [showTime, setShowTime] = useState(true);
+  const [takenAt, setTakenAt] = useState<Date>(new Date());
+  const [historyKey, setHistoryKey] = useState(0);
+
+  const accuracy = useMemo(
+    () =>
+      evaluateCoordinate({
+        lat: parseFloat(lat),
+        lng: parseFloat(lng),
+        gpsAccuracyMeters: photo?.akurasi_meter ?? null,
+        geocodedAddress: address,
+      }),
+    [lat, lng, address, photo?.akurasi_meter],
+  );
+
+  const applySnapshot = (s: Record<string, any>) => {
+    setNamaPetani(s.nama_petani || "");
+    setKode(s.kode || "");
+    setHeading(s.judul || "");
+    setAddress(s.alamat || "");
+    setNote(s.catatan || "");
+    setLat(s.koordinat_lat != null ? String(s.koordinat_lat) : "");
+    setLng(s.koordinat_lng != null ? String(s.koordinat_lng) : "");
+    if (s.tampilkan_waktu != null) setShowTime(!!s.tampilkan_waktu);
+    if (s.taken_at) setTakenAt(new Date(s.taken_at));
+    toast({ title: "Versi dimuat ke form", description: "Simpan untuk menerapkan perubahan." });
+  };
 
   // Hydrate form when a photo is opened
   useEffect(() => {
@@ -90,8 +117,11 @@ export const LandPhotoEditor = ({ open, onOpenChange, photo, imageUrl, onSaved }
     setNote(photo.catatan || (photo.tipe === "lahan" ? "Lahan Petani" : "Alamat Petani"));
     setLat(photo.koordinat_lat != null ? String(photo.koordinat_lat) : "");
     setLng(photo.koordinat_lng != null ? String(photo.koordinat_lng) : "");
+    setShowTime(photo.tampilkan_waktu !== false);
+    setTakenAt(new Date(photo.taken_at));
     setMapThumb(null);
   }, [open, photo?.id]);
+
 
   // Load the stored image as a data URL so the canvas stays untainted
   useEffect(() => {
