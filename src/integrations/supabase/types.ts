@@ -343,6 +343,7 @@ export type Database = {
           aksi: string
           changed_at: string
           changed_by: string | null
+          changed_by_email: string | null
           foto_id: string
           id: string
           perubahan: Json | null
@@ -353,6 +354,7 @@ export type Database = {
           aksi: string
           changed_at?: string
           changed_by?: string | null
+          changed_by_email?: string | null
           foto_id: string
           id?: string
           perubahan?: Json | null
@@ -363,6 +365,7 @@ export type Database = {
           aksi?: string
           changed_at?: string
           changed_by?: string | null
+          changed_by_email?: string | null
           foto_id?: string
           id?: string
           perubahan?: Json | null
