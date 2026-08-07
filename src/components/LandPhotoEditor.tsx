@@ -251,6 +251,7 @@ export const LandPhotoEditor = ({ open, onOpenChange, photo, imageUrl, onSaved }
       return;
     }
     toast({ title: "Metadata diperbarui" });
+    setHistoryKey((k) => k + 1);
     onSaved?.();
     onOpenChange(false);
   };
@@ -281,7 +282,7 @@ export const LandPhotoEditor = ({ open, onOpenChange, photo, imageUrl, onSaved }
         tipe: photo.tipe,
         file_path: path,
         file_url: signed?.signedUrl || path,
-        taken_at: photo.taken_at,
+        taken_at: takenAt.toISOString(),
         created_by: uid ?? null,
       });
       if (insErr) throw insErr;
@@ -318,6 +319,19 @@ export const LandPhotoEditor = ({ open, onOpenChange, photo, imageUrl, onSaved }
             )}
           </div>
 
+          <div className="space-y-3 md:col-span-1">
+            <MiniMapPicker
+              lat={Number.isFinite(parseFloat(lat)) ? parseFloat(lat) : null}
+              lng={Number.isFinite(parseFloat(lng)) ? parseFloat(lng) : null}
+              onChange={(la, ln) => {
+                setLat(la.toFixed(6));
+                setLng(ln.toFixed(6));
+              }}
+              height={170}
+            />
+            <CoordinateAccuracyIndicator result={accuracy} />
+          </div>
+
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -351,6 +365,30 @@ export const LandPhotoEditor = ({ open, onOpenChange, photo, imageUrl, onSaved }
               <Label>Catatan</Label>
               <Input value={note} onChange={(e) => setNote(e.target.value)} />
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label>Waktu Pengambilan</Label>
+                <Input
+                  type="datetime-local"
+                  value={(() => {
+                    const p2 = (n: number) => String(n).padStart(2, "0");
+                    const d = takenAt;
+                    return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}`;
+                  })()}
+                  onChange={(e) => {
+                    const d = new Date(e.target.value);
+                    if (!isNaN(d.getTime())) setTakenAt(d);
+                  }}
+                />
+              </div>
+              <div className="flex items-end">
+                <div className="flex items-center justify-between w-full rounded-md border px-3 h-10">
+                  <Label className="text-sm font-normal">Tampilkan waktu</Label>
+                  <Switch checked={showTime} onCheckedChange={setShowTime} />
+                </div>
+              </div>
+            </div>
+            <PhotoVersionHistory photoId={photo?.id ?? null} refreshKey={historyKey} onRestore={applySnapshot} />
             <Button variant="outline" size="sm" onClick={refreshAddress} disabled={geocoding}>
               {geocoding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
               Ambil ulang alamat dari koordinat
