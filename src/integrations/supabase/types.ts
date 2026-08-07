@@ -250,6 +250,9 @@ export type Database = {
       }
       foto_lahan: {
         Row: {
+          akurasi_catatan: string | null
+          akurasi_meter: number | null
+          akurasi_skor: number | null
           alamat: string | null
           catatan: string | null
           created_at: string
@@ -266,10 +269,14 @@ export type Database = {
           petani_id: string | null
           plus_code: string | null
           taken_at: string
+          tampilkan_waktu: boolean
           tipe: string
           updated_at: string
         }
         Insert: {
+          akurasi_catatan?: string | null
+          akurasi_meter?: number | null
+          akurasi_skor?: number | null
           alamat?: string | null
           catatan?: string | null
           created_at?: string
@@ -286,10 +293,14 @@ export type Database = {
           petani_id?: string | null
           plus_code?: string | null
           taken_at?: string
+          tampilkan_waktu?: boolean
           tipe?: string
           updated_at?: string
         }
         Update: {
+          akurasi_catatan?: string | null
+          akurasi_meter?: number | null
+          akurasi_skor?: number | null
           alamat?: string | null
           catatan?: string | null
           created_at?: string
@@ -306,6 +317,7 @@ export type Database = {
           petani_id?: string | null
           plus_code?: string | null
           taken_at?: string
+          tampilkan_waktu?: boolean
           tipe?: string
           updated_at?: string
         }
@@ -325,6 +337,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      foto_lahan_riwayat: {
+        Row: {
+          aksi: string
+          changed_at: string
+          changed_by: string | null
+          foto_id: string
+          id: string
+          perubahan: Json | null
+          snapshot: Json
+          versi: number
+        }
+        Insert: {
+          aksi: string
+          changed_at?: string
+          changed_by?: string | null
+          foto_id: string
+          id?: string
+          perubahan?: Json | null
+          snapshot: Json
+          versi?: number
+        }
+        Update: {
+          aksi?: string
+          changed_at?: string
+          changed_by?: string | null
+          foto_id?: string
+          id?: string
+          perubahan?: Json | null
+          snapshot?: Json
+          versi?: number
+        }
+        Relationships: []
       }
       gudang_stok: {
         Row: {
