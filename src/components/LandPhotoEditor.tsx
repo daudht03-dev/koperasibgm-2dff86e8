@@ -199,9 +199,9 @@ export const LandPhotoEditor = ({ open, onOpenChange, photo, imageUrl, onSaved }
       lng: parseFloat(lng) || 0,
       note,
       subject: [namaPetani, kode ? `(${kode})` : ""].filter(Boolean).join(" "),
-      timestamp: formatStamp(photo ? new Date(photo.taken_at) : new Date()),
+      timestamp: showTime ? formatStamp(takenAt) : "",
     }),
-    [heading, address, lat, lng, note, namaPetani, kode, photo?.taken_at],
+    [heading, address, lat, lng, note, namaPetani, kode, takenAt, showTime],
   );
 
   // Live preview: re-stamp overlay on top of the stored photo
@@ -235,7 +235,11 @@ export const LandPhotoEditor = ({ open, onOpenChange, photo, imageUrl, onSaved }
     catatan: note || null,
     koordinat_lat: Number.isFinite(parseFloat(lat)) ? parseFloat(lat) : null,
     koordinat_lng: Number.isFinite(parseFloat(lng)) ? parseFloat(lng) : null,
+    tampilkan_waktu: showTime,
+    akurasi_skor: accuracy.score,
+    akurasi_catatan: accuracy.summary,
   });
+
 
   const handleUpdateMetadata = async () => {
     if (!photo) return;
