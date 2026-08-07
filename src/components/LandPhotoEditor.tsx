@@ -15,12 +15,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, RefreshCw, Save, FilePlus2, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { renderPhotoOverlay, canvasToBlob, OverlayData } from "@/lib/photo-overlay";
+import { evaluateCoordinate } from "@/lib/coordinate-accuracy";
+import CoordinateAccuracyIndicator from "@/components/CoordinateAccuracyIndicator";
+import MiniMapPicker from "@/components/MiniMapPicker";
+import PhotoVersionHistory from "@/components/PhotoVersionHistory";
 
 export interface EditablePhoto {
   id: string;
@@ -36,7 +41,10 @@ export interface EditablePhoto {
   lahan_id?: string | null;
   file_path: string;
   taken_at: string;
+  tampilkan_waktu?: boolean | null;
+  akurasi_meter?: number | null;
 }
+
 
 interface Props {
   open: boolean;
@@ -71,6 +79,33 @@ export const LandPhotoEditor = ({ open, onOpenChange, photo, imageUrl, onSaved }
   const [baseSrc, setBaseSrc] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
+  const [showTime, setShowTime] = useState(true);
+  const [takenAt, setTakenAt] = useState<Date>(new Date());
+  const [historyKey, setHistoryKey] = useState(0);
+
+  const accuracy = useMemo(
+    () =>
+      evaluateCoordinate({
+        lat: parseFloat(lat),
+        lng: parseFloat(lng),
+        gpsAccuracyMeters: photo?.akurasi_meter ?? null,
+        geocodedAddress: address,
+      }),
+    [lat, lng, address, photo?.akurasi_meter],
+  );
+
+  const applySnapshot = (s: Record<string, any>) => {
+    setNamaPetani(s.nama_petani || "");
+    setKode(s.kode || "");
+    setHeading(s.judul || "");
+    setAddress(s.alamat || "");
+    setNote(s.catatan || "");
+    setLat(s.koordinat_lat != null ? String(s.koordinat_lat) : "");
+    setLng(s.koordinat_lng != null ? String(s.koordinat_lng) : "");
+    if (s.tampilkan_waktu != null) setShowTime(!!s.tampilkan_waktu);
+    if (s.taken_at) setTakenAt(new Date(s.taken_at));
+    toast({ title: "Versi dimuat ke form", description: "Simpan untuk menerapkan perubahan." });
+  };
 
   // Hydrate form when a photo is opened
   useEffect(() => {
@@ -82,8 +117,11 @@ export const LandPhotoEditor = ({ open, onOpenChange, photo, imageUrl, onSaved }
     setNote(photo.catatan || (photo.tipe === "lahan" ? "Lahan Petani" : "Alamat Petani"));
     setLat(photo.koordinat_lat != null ? String(photo.koordinat_lat) : "");
     setLng(photo.koordinat_lng != null ? String(photo.koordinat_lng) : "");
+    setShowTime(photo.tampilkan_waktu !== false);
+    setTakenAt(new Date(photo.taken_at));
     setMapThumb(null);
   }, [open, photo?.id]);
+
 
   // Load the stored image as a data URL so the canvas stays untainted
   useEffect(() => {
@@ -161,9 +199,9 @@ export const LandPhotoEditor = ({ open, onOpenChange, photo, imageUrl, onSaved }
       lng: parseFloat(lng) || 0,
       note,
       subject: [namaPetani, kode ? `(${kode})` : ""].filter(Boolean).join(" "),
-      timestamp: formatStamp(photo ? new Date(photo.taken_at) : new Date()),
+      timestamp: showTime ? formatStamp(takenAt) : "",
     }),
-    [heading, address, lat, lng, note, namaPetani, kode, photo?.taken_at],
+    [heading, address, lat, lng, note, namaPetani, kode, takenAt, showTime],
   );
 
   // Live preview: re-stamp overlay on top of the stored photo
@@ -197,7 +235,11 @@ export const LandPhotoEditor = ({ open, onOpenChange, photo, imageUrl, onSaved }
     catatan: note || null,
     koordinat_lat: Number.isFinite(parseFloat(lat)) ? parseFloat(lat) : null,
     koordinat_lng: Number.isFinite(parseFloat(lng)) ? parseFloat(lng) : null,
+    tampilkan_waktu: showTime,
+    akurasi_skor: accuracy.score,
+    akurasi_catatan: accuracy.summary,
   });
+
 
   const handleUpdateMetadata = async () => {
     if (!photo) return;
@@ -209,6 +251,7 @@ export const LandPhotoEditor = ({ open, onOpenChange, photo, imageUrl, onSaved }
       return;
     }
     toast({ title: "Metadata diperbarui" });
+    setHistoryKey((k) => k + 1);
     onSaved?.();
     onOpenChange(false);
   };
@@ -239,7 +282,7 @@ export const LandPhotoEditor = ({ open, onOpenChange, photo, imageUrl, onSaved }
         tipe: photo.tipe,
         file_path: path,
         file_url: signed?.signedUrl || path,
-        taken_at: photo.taken_at,
+        taken_at: takenAt.toISOString(),
         created_by: uid ?? null,
       });
       if (insErr) throw insErr;
@@ -276,6 +319,19 @@ export const LandPhotoEditor = ({ open, onOpenChange, photo, imageUrl, onSaved }
             )}
           </div>
 
+          <div className="space-y-3 md:col-span-1">
+            <MiniMapPicker
+              lat={Number.isFinite(parseFloat(lat)) ? parseFloat(lat) : null}
+              lng={Number.isFinite(parseFloat(lng)) ? parseFloat(lng) : null}
+              onChange={(la, ln) => {
+                setLat(la.toFixed(6));
+                setLng(ln.toFixed(6));
+              }}
+              height={170}
+            />
+            <CoordinateAccuracyIndicator result={accuracy} />
+          </div>
+
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -309,6 +365,30 @@ export const LandPhotoEditor = ({ open, onOpenChange, photo, imageUrl, onSaved }
               <Label>Catatan</Label>
               <Input value={note} onChange={(e) => setNote(e.target.value)} />
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label>Waktu Pengambilan</Label>
+                <Input
+                  type="datetime-local"
+                  value={(() => {
+                    const p2 = (n: number) => String(n).padStart(2, "0");
+                    const d = takenAt;
+                    return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}`;
+                  })()}
+                  onChange={(e) => {
+                    const d = new Date(e.target.value);
+                    if (!isNaN(d.getTime())) setTakenAt(d);
+                  }}
+                />
+              </div>
+              <div className="flex items-end">
+                <div className="flex items-center justify-between w-full rounded-md border px-3 h-10">
+                  <Label className="text-sm font-normal">Tampilkan waktu</Label>
+                  <Switch checked={showTime} onCheckedChange={setShowTime} />
+                </div>
+              </div>
+            </div>
+            <PhotoVersionHistory photoId={photo?.id ?? null} refreshKey={historyKey} onRestore={applySnapshot} />
             <Button variant="outline" size="sm" onClick={refreshAddress} disabled={geocoding}>
               {geocoding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
               Ambil ulang alamat dari koordinat
