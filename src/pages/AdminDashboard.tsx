@@ -788,12 +788,26 @@ const AdminDashboard = () => {
         {/* Farmers Tab */}
         {activeTab === "farmers" && (
           <Card className="shadow-gentle border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <CardTitle className="text-foreground">Daftar Petani</CardTitle>
                 <CardDescription>Kelola data petani yang terdaftar</CardDescription>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  className="border-organic-green/30"
+                  onClick={handleExportAFL}
+                  disabled={aflBusy || !farmers || !lands}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {aflBusy
+                    ? aflProgress
+                      ? `Menyiapkan AFL ${aflProgress.done}/${aflProgress.total}`
+                      : "Menyiapkan AFL..."
+                    : "Export AFL (ZIP)"}
+                </Button>
+
                 <Button 
                   variant="outline"
                   className="border-organic-green/30"
