@@ -93,6 +93,8 @@ const AuditorMap = () => {
   const [prefixes, setPrefixes] = useState<Prefix[]>([]);
   const [loading, setLoading] = useState(true);
   const [mapReady, setMapReady] = useState(false);
+  const [heatmapEnabled, setHeatmapEnabled] = useState(false);
+
   const [search, setSearch] = useState("");
   const [villageFilter, setVillageFilter] = useState<string>("all");
   const [organicFilter, setOrganicFilter] = useState<string>("all");
