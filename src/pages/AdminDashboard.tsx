@@ -23,7 +23,7 @@ import { useProducts } from "@/hooks/use-products";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { useHarvests } from "@/hooks/use-harvests";
 import { useNavigate, Link } from "react-router-dom";
-import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode, Printer, Upload, Map as MapIcon, ArrowUpDown, ArrowUp, ArrowDown, Search, History } from "lucide-react";
+import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode, Printer, Upload, Map as MapIcon, ArrowUpDown, ArrowUp, ArrowDown, Search, History, Download } from "lucide-react";
 import { LandMapTab } from "@/components/LandMapTab";
 import { FarmerBatchImport } from "@/components/FarmerBatchImport";
 import { toast } from "@/hooks/use-toast";
@@ -38,6 +38,10 @@ import {
 import { TableSkeleton, StatsSkeleton, CardSkeleton } from "@/components/ui/skeleton-templates";
 import { LabelManagement } from "@/pages/LabelManagement";
 import PublicProfileSettings from "@/components/PublicProfileSettings";
+import { useEntityPhotos } from "@/hooks/use-entity-photos";
+import { PhotoCell } from "@/components/PhotoCell";
+import { exportAFL } from "@/lib/afl-export";
+
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
@@ -63,6 +67,36 @@ const AdminDashboard = () => {
   const { products, createProduct, updateProduct, deleteProduct, uploadImage } = useProducts();
   const { profile, updateProfile, uploadLogo } = useCompanyProfile();
   const { harvests, addHarvest, deleteHarvest } = useHarvests();
+
+  // Photos attached to farmers / lands (realtime) + AFL export state
+  const { photos, byFarmer: photosByFarmer, byLand: photosByLand } = useEntityPhotos();
+  const [aflBusy, setAflBusy] = useState(false);
+  const [aflProgress, setAflProgress] = useState<{ done: number; total: number } | null>(null);
+
+  const handleExportAFL = async () => {
+    if (!farmers || !lands) return;
+    setAflBusy(true);
+    setAflProgress(null);
+    try {
+      await exportAFL({
+        farmers,
+        lands,
+        photos,
+        onProgress: (done, total) => setAflProgress({ done, total }),
+      });
+      toast({
+        title: "AFL berhasil dibuat",
+        description: `Approved Farmer List: ${farmers.length} petani, ${lands.length} lahan, ${photos.length} foto.`,
+      });
+    } catch (e: any) {
+      toast({ title: "Gagal membuat AFL", description: e?.message, variant: "destructive" });
+    } finally {
+      setAflBusy(false);
+      setAflProgress(null);
+    }
+  };
+
+
 
   // Form states for farmers
   const [farmerForm, setFarmerForm] = useState({
@@ -754,12 +788,26 @@ const AdminDashboard = () => {
         {/* Farmers Tab */}
         {activeTab === "farmers" && (
           <Card className="shadow-gentle border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <CardTitle className="text-foreground">Daftar Petani</CardTitle>
                 <CardDescription>Kelola data petani yang terdaftar</CardDescription>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  className="border-organic-green/30"
+                  onClick={handleExportAFL}
+                  disabled={aflBusy || !farmers || !lands}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {aflBusy
+                    ? aflProgress
+                      ? `Menyiapkan AFL ${aflProgress.done}/${aflProgress.total}`
+                      : "Menyiapkan AFL..."
+                    : "Export AFL (ZIP)"}
+                </Button>
+
                 <Button 
                   variant="outline"
                   className="border-organic-green/30"
@@ -878,9 +926,11 @@ const AdminDashboard = () => {
                 </div>
               </div>
               {!farmers ? (
-                <TableSkeleton rows={8} columns={4} />
+                <TableSkeleton rows={8} columns={5} />
               ) : (
+                <div className="w-full overflow-x-auto">
                 <Table>
+
                   <TableHeader>
                     <TableRow>
                       <TableHead>
@@ -902,7 +952,9 @@ const AdminDashboard = () => {
                       </TableHead>
                       <TableHead>Nama</TableHead>
                       <TableHead>Alamat</TableHead>
+                      <TableHead>Foto</TableHead>
                       <TableHead>Aksi</TableHead>
+
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -925,6 +977,13 @@ const AdminDashboard = () => {
                       <TableCell className="font-medium">{farmer.kode_petani}</TableCell>
                       <TableCell>{farmer.nama}</TableCell>
                       <TableCell className="max-w-xs truncate">{farmer.alamat}</TableCell>
+                      <TableCell>
+                        <PhotoCell
+                          photos={photosByFarmer[farmer.id]}
+                          title={`Foto ${farmer.kode_petani} — ${farmer.nama}`}
+                        />
+                      </TableCell>
+
                        <TableCell>
                         <div className="flex space-x-2">
                           <Button
@@ -988,7 +1047,9 @@ const AdminDashboard = () => {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               )}
+
             </CardContent>
           </Card>
         )}
@@ -1113,9 +1174,11 @@ const AdminDashboard = () => {
                 </div>
               </div>
               {!lands ? (
-                <TableSkeleton rows={8} columns={4} />
+                <TableSkeleton rows={8} columns={5} />
               ) : (
+                <div className="w-full overflow-x-auto">
                 <Table>
+
                   <TableHeader>
                     <TableRow>
                       <TableHead>
@@ -1139,7 +1202,9 @@ const AdminDashboard = () => {
                       <TableHead>Status</TableHead>
                       <TableHead>Lokasi</TableHead>
                       <TableHead>Koordinat</TableHead>
+                      <TableHead>Foto</TableHead>
                       <TableHead>Aksi</TableHead>
+
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1185,6 +1250,10 @@ const AdminDashboard = () => {
                         {land.koordinat || "-"}
                       </TableCell>
                       <TableCell>
+                        <PhotoCell photos={photosByLand[land.id]} title={`Foto lahan ${land.nama_lahan}`} />
+                      </TableCell>
+
+                      <TableCell>
                         <div className="flex space-x-2">
                           <Button
                             variant="outline"
@@ -1223,7 +1292,9 @@ const AdminDashboard = () => {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               )}
+
             </CardContent>
           </Card>
         )}

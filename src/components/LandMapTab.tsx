@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, Printer, Map, Loader2, AlertCircle, Filter, MousePointer, X, FileSpreadsheet, FileJson, Layers, MapPin, Images, Settings, Camera } from "lucide-react";
+import { Download, Printer, Map, Loader2, AlertCircle, Filter, MousePointer, X, FileSpreadsheet, FileJson, Layers, MapPin, Images, Settings, Camera, Flame } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import html2canvas from "html2canvas";
 import { toast } from "@/hooks/use-toast";
@@ -92,6 +92,8 @@ export const LandMapTab: React.FC = () => {
   const markerByIdRef = useRef<Record<string, google.maps.Marker>>({});
   const focusMarkerRef = useRef<google.maps.Marker | null>(null);
   const clustererRef = useRef<MarkerClusterer | null>(null);
+  const heatmapRef = useRef<any>(null);
+
   const clickMarkerRef = useRef<google.maps.Marker | null>(null);
   const infoRef = useRef<google.maps.InfoWindow | null>(null);
   const searchMarkerRef = useRef<google.maps.Marker | null>(null);
@@ -106,6 +108,8 @@ export const LandMapTab: React.FC = () => {
   const [bulkDownloading, setBulkDownloading] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [clusteringEnabled, setClusteringEnabled] = useState(true);
+  const [heatmapEnabled, setHeatmapEnabled] = useState(false);
+
   const [showLabels, setShowLabels] = useState(true);
   const [coordPrecision, setCoordPrecision] = useState<number>(() => {
     const raw = typeof window !== "undefined" ? localStorage.getItem("map:coordPrecision") : null;
@@ -284,12 +288,27 @@ export const LandMapTab: React.FC = () => {
       bounds.extend(marker.getPosition()!);
     });
 
+    // Heatmap keeps rendering cheap when there are thousands of points.
+    heatmapRef.current?.setMap(null);
+    if (heatmapEnabled && google.maps.visualization?.HeatmapLayer) {
+      heatmapRef.current = new google.maps.visualization.HeatmapLayer({
+        data: filteredLands.map(
+          (l) => new google.maps.LatLng(l.parsedCoord!.lat, l.parsedCoord!.lng),
+        ),
+        map: mapRef.current,
+        radius: 28,
+        opacity: 0.75,
+      });
+    } else {
+      heatmapRef.current = null;
+    }
+
     // Disable clustering when labels are shown so codes remain visible
-    const useCluster = clusteringEnabled && !showLabels;
+    const useCluster = clusteringEnabled && !showLabels && !heatmapEnabled;
     if (useCluster) {
       clustererRef.current = new MarkerClusterer({ map: mapRef.current, markers: markersRef.current });
     } else {
-      markersRef.current.forEach((m) => m.setMap(mapRef.current!));
+      markersRef.current.forEach((m) => m.setMap(heatmapEnabled ? null : mapRef.current!));
     }
 
     if (filteredLands.length > 0) {
@@ -298,7 +317,8 @@ export const LandMapTab: React.FC = () => {
         if (mapRef.current && mapRef.current.getZoom()! > 16) mapRef.current.setZoom(16);
       });
     }
-  }, [filteredLands, clusteringEnabled, editMode, showLabels]);
+  }, [filteredLands, clusteringEnabled, editMode, showLabels, heatmapEnabled]);
+
 
   /** Pan/zoom the map to a coordinate and flash a highlight marker. */
   const focusOnCoordinate = useCallback((lat: number, lng: number, title?: string) => {
@@ -460,7 +480,7 @@ export const LandMapTab: React.FC = () => {
       const t = setTimeout(() => buildMarkers(), 100);
       return () => clearTimeout(t);
     }
-  }, [filteredLands, mapReady, clusteringEnabled, showLabels, buildMarkers]);
+  }, [filteredLands, mapReady, clusteringEnabled, showLabels, heatmapEnabled, buildMarkers]);
 
   useEffect(() => {
     return () => {
@@ -755,7 +775,7 @@ export const LandMapTab: React.FC = () => {
 
             {mapMode === "village" && (
               <Select value={villageFilter} onValueChange={setVillageFilter}>
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-full min-[420px]:w-[200px]">
                   <SelectValue placeholder="Pilih desa..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -773,7 +793,7 @@ export const LandMapTab: React.FC = () => {
             <div className="flex items-center gap-2">
               <Layers className="h-4 w-4 text-muted-foreground" />
               <Select value={mapStyle} onValueChange={(v) => updateMapStyle(v as MapStyle)}>
-                <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full min-[420px]:w-[120px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {(Object.keys(mapStyleLabels) as MapStyle[]).map((s) => (
                     <SelectItem key={s} value={s}>{mapStyleLabels[s]}</SelectItem>
@@ -783,7 +803,7 @@ export const LandMapTab: React.FC = () => {
             </div>
 
             <Select value={organicFilter} onValueChange={(v) => setOrganicFilter(v as OrganicFilter)}>
-              <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full min-[420px]:w-[140px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Status</SelectItem>
                 <SelectItem value="organic">🌿 Organik</SelectItem>
@@ -801,11 +821,22 @@ export const LandMapTab: React.FC = () => {
               size="sm"
               onClick={() => setClusteringEnabled(!clusteringEnabled)}
               className="gap-2"
-              disabled={showLabels}
+              disabled={showLabels || heatmapEnabled}
               title={showLabels ? "Nonaktifkan label untuk memakai cluster" : ""}
             >
               <Layers className="h-4 w-4" />Cluster
             </Button>
+
+            <Button
+              variant={heatmapEnabled ? "default" : "outline"}
+              size="sm"
+              onClick={() => setHeatmapEnabled(!heatmapEnabled)}
+              className="gap-2"
+              title="Tampilkan kepadatan titik (performa cepat untuk data sangat banyak)"
+            >
+              <Flame className="h-4 w-4" />Heatmap
+            </Button>
+
           </div>
 
           {/* Search + actions */}
@@ -888,7 +919,7 @@ export const LandMapTab: React.FC = () => {
                     const l = allLands.find((x) => x.id === id);
                     setSelectedLandForEdit(l || null);
                   }}>
-                    <SelectTrigger className="w-[200px]"><SelectValue placeholder="Pilih lahan..." /></SelectTrigger>
+                    <SelectTrigger className="w-full min-[420px]:w-[200px]"><SelectValue placeholder="Pilih lahan..." /></SelectTrigger>
                     <SelectContent>
                       {allLands.map((l) => (<SelectItem key={l.id} value={l.id}>{l.nama_lahan}</SelectItem>))}
                     </SelectContent>

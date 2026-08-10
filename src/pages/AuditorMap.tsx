@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, LogOut, MapPin, Navigation, Search, ShieldCheck, X, Home, Leaf, Factory, Route as RouteIcon, Layers, FileDown, History } from "lucide-react";
+import { Loader2, LogOut, MapPin, Navigation, Search, ShieldCheck, X, Home, Leaf, Factory, Route as RouteIcon, Layers, FileDown, History, Flame } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { loadGoogleMaps } from "@/lib/google-maps-loader";
@@ -81,6 +81,8 @@ const AuditorMap = () => {
   const markerByIdRef = useRef<Record<string, google.maps.Marker>>({});
   const focusMarkerRef = useRef<google.maps.Marker | null>(null);
   const clustererRef = useRef<MarkerClusterer | null>(null);
+  const heatmapRef = useRef<any>(null);
+
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
   const userAccuracyRef = useRef<google.maps.Circle | null>(null);
   const routePolylineRef = useRef<google.maps.Polyline | null>(null);
@@ -91,6 +93,8 @@ const AuditorMap = () => {
   const [prefixes, setPrefixes] = useState<Prefix[]>([]);
   const [loading, setLoading] = useState(true);
   const [mapReady, setMapReady] = useState(false);
+  const [heatmapEnabled, setHeatmapEnabled] = useState(false);
+
   const [search, setSearch] = useState("");
   const [villageFilter, setVillageFilter] = useState<string>("all");
   const [organicFilter, setOrganicFilter] = useState<string>("all");
@@ -247,7 +251,21 @@ const AuditorMap = () => {
       bounds.extend(marker.getPosition()!);
     });
 
-    if (filteredPoints.length > 20) {
+    heatmapRef.current?.setMap(null);
+    if (heatmapEnabled && google.maps.visualization?.HeatmapLayer) {
+      heatmapRef.current = new google.maps.visualization.HeatmapLayer({
+        data: filteredPoints.map((p) => new google.maps.LatLng(p.lat, p.lng)),
+        map: mapRef.current!,
+        radius: 28,
+        opacity: 0.75,
+      });
+    } else {
+      heatmapRef.current = null;
+    }
+
+    if (heatmapEnabled) {
+      markersRef.current.forEach((m) => m.setMap(null));
+    } else if (filteredPoints.length > 20) {
       clustererRef.current = new MarkerClusterer({ map: mapRef.current!, markers: markersRef.current });
     } else {
       markersRef.current.forEach((m) => m.setMap(mapRef.current!));
@@ -259,7 +277,8 @@ const AuditorMap = () => {
         if (mapRef.current && (mapRef.current.getZoom() ?? 0) > 16) mapRef.current.setZoom(16);
       });
     }
-  }, [filteredPoints, mapReady]);
+  }, [filteredPoints, mapReady, heatmapEnabled]);
+
 
   /** Pan/zoom precisely to a point, highlight it and select it. */
   const focusPoint = useCallback((p: Point) => {
@@ -575,7 +594,7 @@ const AuditorMap = () => {
                 />
               </div>
               <Select value={villageFilter} onValueChange={setVillageFilter}>
-                <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full min-[420px]:w-[160px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Desa</SelectItem>
                   {villages.map((v) => (
@@ -584,7 +603,7 @@ const AuditorMap = () => {
                 </SelectContent>
               </Select>
               <Select value={organicFilter} onValueChange={setOrganicFilter}>
-                <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full min-[420px]:w-[150px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Status</SelectItem>
                   <SelectItem value="organic">🌿 Organik</SelectItem>
@@ -592,7 +611,7 @@ const AuditorMap = () => {
                 </SelectContent>
               </Select>
               <Select value={mapType} onValueChange={setMapType}>
-                <SelectTrigger className="w-[130px]"><Layers className="h-4 w-4 mr-1" /><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full min-[420px]:w-[130px]"><Layers className="h-4 w-4 mr-1" /><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="roadmap">Jalan</SelectItem>
                   <SelectItem value="satellite">Satelit</SelectItem>
@@ -600,9 +619,19 @@ const AuditorMap = () => {
                   <SelectItem value="terrain">Terrain</SelectItem>
                 </SelectContent>
               </Select>
+              <Button
+                size="sm"
+                variant={heatmapEnabled ? "default" : "outline"}
+                onClick={() => setHeatmapEnabled((v) => !v)}
+                className="gap-1"
+                title="Tampilkan kepadatan titik"
+              >
+                <Flame className="h-4 w-4" /> Heatmap
+              </Button>
               <Button size="sm" onClick={locateMe} className="gap-1">
                 <Navigation className="h-4 w-4" /> Lokasi Saya
               </Button>
+
               <Button size="sm" variant="outline" onClick={handleExportPDF} disabled={exporting} className="gap-1">
                 {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} Unduh PDF
               </Button>
