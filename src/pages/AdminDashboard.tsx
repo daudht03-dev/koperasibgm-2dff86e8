@@ -38,6 +38,10 @@ import {
 import { TableSkeleton, StatsSkeleton, CardSkeleton } from "@/components/ui/skeleton-templates";
 import { LabelManagement } from "@/pages/LabelManagement";
 import PublicProfileSettings from "@/components/PublicProfileSettings";
+import { useEntityPhotos } from "@/hooks/use-entity-photos";
+import { PhotoCell } from "@/components/PhotoCell";
+import { exportAFL } from "@/lib/afl-export";
+
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
