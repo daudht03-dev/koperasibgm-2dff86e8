@@ -594,7 +594,7 @@ const AuditorMap = () => {
                 />
               </div>
               <Select value={villageFilter} onValueChange={setVillageFilter}>
-                <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full min-[420px]:w-[160px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Desa</SelectItem>
                   {villages.map((v) => (
@@ -603,7 +603,7 @@ const AuditorMap = () => {
                 </SelectContent>
               </Select>
               <Select value={organicFilter} onValueChange={setOrganicFilter}>
-                <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full min-[420px]:w-[150px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Status</SelectItem>
                   <SelectItem value="organic">🌿 Organik</SelectItem>
@@ -611,7 +611,7 @@ const AuditorMap = () => {
                 </SelectContent>
               </Select>
               <Select value={mapType} onValueChange={setMapType}>
-                <SelectTrigger className="w-[130px]"><Layers className="h-4 w-4 mr-1" /><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full min-[420px]:w-[130px]"><Layers className="h-4 w-4 mr-1" /><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="roadmap">Jalan</SelectItem>
                   <SelectItem value="satellite">Satelit</SelectItem>

@@ -775,7 +775,7 @@ export const LandMapTab: React.FC = () => {
 
             {mapMode === "village" && (
               <Select value={villageFilter} onValueChange={setVillageFilter}>
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-full min-[420px]:w-[200px]">
                   <SelectValue placeholder="Pilih desa..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -793,7 +793,7 @@ export const LandMapTab: React.FC = () => {
             <div className="flex items-center gap-2">
               <Layers className="h-4 w-4 text-muted-foreground" />
               <Select value={mapStyle} onValueChange={(v) => updateMapStyle(v as MapStyle)}>
-                <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full min-[420px]:w-[120px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {(Object.keys(mapStyleLabels) as MapStyle[]).map((s) => (
                     <SelectItem key={s} value={s}>{mapStyleLabels[s]}</SelectItem>
@@ -803,7 +803,7 @@ export const LandMapTab: React.FC = () => {
             </div>
 
             <Select value={organicFilter} onValueChange={(v) => setOrganicFilter(v as OrganicFilter)}>
-              <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full min-[420px]:w-[140px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Status</SelectItem>
                 <SelectItem value="organic">🌿 Organik</SelectItem>
@@ -919,7 +919,7 @@ export const LandMapTab: React.FC = () => {
                     const l = allLands.find((x) => x.id === id);
                     setSelectedLandForEdit(l || null);
                   }}>
-                    <SelectTrigger className="w-[200px]"><SelectValue placeholder="Pilih lahan..." /></SelectTrigger>
+                    <SelectTrigger className="w-full min-[420px]:w-[200px]"><SelectValue placeholder="Pilih lahan..." /></SelectTrigger>
                     <SelectContent>
                       {allLands.map((l) => (<SelectItem key={l.id} value={l.id}>{l.nama_lahan}</SelectItem>))}
                     </SelectContent>
