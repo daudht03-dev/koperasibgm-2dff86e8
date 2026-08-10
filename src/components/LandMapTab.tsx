@@ -821,11 +821,22 @@ export const LandMapTab: React.FC = () => {
               size="sm"
               onClick={() => setClusteringEnabled(!clusteringEnabled)}
               className="gap-2"
-              disabled={showLabels}
+              disabled={showLabels || heatmapEnabled}
               title={showLabels ? "Nonaktifkan label untuk memakai cluster" : ""}
             >
               <Layers className="h-4 w-4" />Cluster
             </Button>
+
+            <Button
+              variant={heatmapEnabled ? "default" : "outline"}
+              size="sm"
+              onClick={() => setHeatmapEnabled(!heatmapEnabled)}
+              className="gap-2"
+              title="Tampilkan kepadatan titik (performa cepat untuk data sangat banyak)"
+            >
+              <Flame className="h-4 w-4" />Heatmap
+            </Button>
+
           </div>
 
           {/* Search + actions */}
