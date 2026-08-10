@@ -247,7 +247,21 @@ const AuditorMap = () => {
       bounds.extend(marker.getPosition()!);
     });
 
-    if (filteredPoints.length > 20) {
+    heatmapRef.current?.setMap(null);
+    if (heatmapEnabled && google.maps.visualization?.HeatmapLayer) {
+      heatmapRef.current = new google.maps.visualization.HeatmapLayer({
+        data: filteredPoints.map((p) => new google.maps.LatLng(p.lat, p.lng)),
+        map: mapRef.current!,
+        radius: 28,
+        opacity: 0.75,
+      });
+    } else {
+      heatmapRef.current = null;
+    }
+
+    if (heatmapEnabled) {
+      markersRef.current.forEach((m) => m.setMap(null));
+    } else if (filteredPoints.length > 20) {
       clustererRef.current = new MarkerClusterer({ map: mapRef.current!, markers: markersRef.current });
     } else {
       markersRef.current.forEach((m) => m.setMap(mapRef.current!));
@@ -259,7 +273,8 @@ const AuditorMap = () => {
         if (mapRef.current && (mapRef.current.getZoom() ?? 0) > 16) mapRef.current.setZoom(16);
       });
     }
-  }, [filteredPoints, mapReady]);
+  }, [filteredPoints, mapReady, heatmapEnabled]);
+
 
   /** Pan/zoom precisely to a point, highlight it and select it. */
   const focusPoint = useCallback((p: Point) => {
