@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, Printer, Map, Loader2, AlertCircle, Filter, MousePointer, X, FileSpreadsheet, FileJson, Layers, MapPin, Images, Settings, Camera } from "lucide-react";
+import { Download, Printer, Map, Loader2, AlertCircle, Filter, MousePointer, X, FileSpreadsheet, FileJson, Layers, MapPin, Images, Settings, Camera, Flame } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import html2canvas from "html2canvas";
 import { toast } from "@/hooks/use-toast";
@@ -480,7 +480,7 @@ export const LandMapTab: React.FC = () => {
       const t = setTimeout(() => buildMarkers(), 100);
       return () => clearTimeout(t);
     }
-  }, [filteredLands, mapReady, clusteringEnabled, showLabels, buildMarkers]);
+  }, [filteredLands, mapReady, clusteringEnabled, showLabels, heatmapEnabled, buildMarkers]);
 
   useEffect(() => {
     return () => {
