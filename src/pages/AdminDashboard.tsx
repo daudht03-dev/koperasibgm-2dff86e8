@@ -23,7 +23,7 @@ import { useProducts } from "@/hooks/use-products";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { useHarvests } from "@/hooks/use-harvests";
 import { useNavigate, Link } from "react-router-dom";
-import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode, Printer, Upload, Map as MapIcon, ArrowUpDown, ArrowUp, ArrowDown, Search, History } from "lucide-react";
+import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode, Printer, Upload, Map as MapIcon, ArrowUpDown, ArrowUp, ArrowDown, Search, History, Download } from "lucide-react";
 import { LandMapTab } from "@/components/LandMapTab";
 import { FarmerBatchImport } from "@/components/FarmerBatchImport";
 import { toast } from "@/hooks/use-toast";
