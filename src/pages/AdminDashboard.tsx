@@ -1174,9 +1174,11 @@ const AdminDashboard = () => {
                 </div>
               </div>
               {!lands ? (
-                <TableSkeleton rows={8} columns={4} />
+                <TableSkeleton rows={8} columns={5} />
               ) : (
+                <div className="w-full overflow-x-auto">
                 <Table>
+
                   <TableHeader>
                     <TableRow>
                       <TableHead>
