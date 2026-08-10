@@ -619,9 +619,19 @@ const AuditorMap = () => {
                   <SelectItem value="terrain">Terrain</SelectItem>
                 </SelectContent>
               </Select>
+              <Button
+                size="sm"
+                variant={heatmapEnabled ? "default" : "outline"}
+                onClick={() => setHeatmapEnabled((v) => !v)}
+                className="gap-1"
+                title="Tampilkan kepadatan titik"
+              >
+                <Flame className="h-4 w-4" /> Heatmap
+              </Button>
               <Button size="sm" onClick={locateMe} className="gap-1">
                 <Navigation className="h-4 w-4" /> Lokasi Saya
               </Button>
+
               <Button size="sm" variant="outline" onClick={handleExportPDF} disabled={exporting} className="gap-1">
                 {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} Unduh PDF
               </Button>
