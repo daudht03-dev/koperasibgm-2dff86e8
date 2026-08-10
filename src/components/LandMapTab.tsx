@@ -108,6 +108,8 @@ export const LandMapTab: React.FC = () => {
   const [bulkDownloading, setBulkDownloading] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [clusteringEnabled, setClusteringEnabled] = useState(true);
+  const [heatmapEnabled, setHeatmapEnabled] = useState(false);
+
   const [showLabels, setShowLabels] = useState(true);
   const [coordPrecision, setCoordPrecision] = useState<number>(() => {
     const raw = typeof window !== "undefined" ? localStorage.getItem("map:coordPrecision") : null;
