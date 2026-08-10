@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, LogOut, MapPin, Navigation, Search, ShieldCheck, X, Home, Leaf, Factory, Route as RouteIcon, Layers, FileDown, History } from "lucide-react";
+import { Loader2, LogOut, MapPin, Navigation, Search, ShieldCheck, X, Home, Leaf, Factory, Route as RouteIcon, Layers, FileDown, History, Flame } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { loadGoogleMaps } from "@/lib/google-maps-loader";
