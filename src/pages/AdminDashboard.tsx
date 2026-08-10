@@ -977,6 +977,13 @@ const AdminDashboard = () => {
                       <TableCell className="font-medium">{farmer.kode_petani}</TableCell>
                       <TableCell>{farmer.nama}</TableCell>
                       <TableCell className="max-w-xs truncate">{farmer.alamat}</TableCell>
+                      <TableCell>
+                        <PhotoCell
+                          photos={photosByFarmer[farmer.id]}
+                          title={`Foto ${farmer.kode_petani} — ${farmer.nama}`}
+                        />
+                      </TableCell>
+
                        <TableCell>
                         <div className="flex space-x-2">
                           <Button
