@@ -1250,6 +1250,10 @@ const AdminDashboard = () => {
                         {land.koordinat || "-"}
                       </TableCell>
                       <TableCell>
+                        <PhotoCell photos={photosByLand[land.id]} title={`Foto lahan ${land.nama_lahan}`} />
+                      </TableCell>
+
+                      <TableCell>
                         <div className="flex space-x-2">
                           <Button
                             variant="outline"
