@@ -81,6 +81,8 @@ const AuditorMap = () => {
   const markerByIdRef = useRef<Record<string, google.maps.Marker>>({});
   const focusMarkerRef = useRef<google.maps.Marker | null>(null);
   const clustererRef = useRef<MarkerClusterer | null>(null);
+  const heatmapRef = useRef<any>(null);
+
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
   const userAccuracyRef = useRef<google.maps.Circle | null>(null);
   const routePolylineRef = useRef<google.maps.Polyline | null>(null);
