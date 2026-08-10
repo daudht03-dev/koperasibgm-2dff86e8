@@ -68,6 +68,36 @@ const AdminDashboard = () => {
   const { profile, updateProfile, uploadLogo } = useCompanyProfile();
   const { harvests, addHarvest, deleteHarvest } = useHarvests();
 
+  // Photos attached to farmers / lands (realtime) + AFL export state
+  const { photos, byFarmer: photosByFarmer, byLand: photosByLand } = useEntityPhotos();
+  const [aflBusy, setAflBusy] = useState(false);
+  const [aflProgress, setAflProgress] = useState<{ done: number; total: number } | null>(null);
+
+  const handleExportAFL = async () => {
+    if (!farmers || !lands) return;
+    setAflBusy(true);
+    setAflProgress(null);
+    try {
+      await exportAFL({
+        farmers,
+        lands,
+        photos,
+        onProgress: (done, total) => setAflProgress({ done, total }),
+      });
+      toast({
+        title: "AFL berhasil dibuat",
+        description: `Approved Farmer List: ${farmers.length} petani, ${lands.length} lahan, ${photos.length} foto.`,
+      });
+    } catch (e: any) {
+      toast({ title: "Gagal membuat AFL", description: e?.message, variant: "destructive" });
+    } finally {
+      setAflBusy(false);
+      setAflProgress(null);
+    }
+  };
+
+
+
   // Form states for farmers
   const [farmerForm, setFarmerForm] = useState({
     nama: "",
