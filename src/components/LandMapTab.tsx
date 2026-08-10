@@ -284,12 +284,27 @@ export const LandMapTab: React.FC = () => {
       bounds.extend(marker.getPosition()!);
     });
 
+    // Heatmap keeps rendering cheap when there are thousands of points.
+    heatmapRef.current?.setMap(null);
+    if (heatmapEnabled && google.maps.visualization?.HeatmapLayer) {
+      heatmapRef.current = new google.maps.visualization.HeatmapLayer({
+        data: filteredLands.map(
+          (l) => new google.maps.LatLng(l.parsedCoord!.lat, l.parsedCoord!.lng),
+        ),
+        map: mapRef.current,
+        radius: 28,
+        opacity: 0.75,
+      });
+    } else {
+      heatmapRef.current = null;
+    }
+
     // Disable clustering when labels are shown so codes remain visible
-    const useCluster = clusteringEnabled && !showLabels;
+    const useCluster = clusteringEnabled && !showLabels && !heatmapEnabled;
     if (useCluster) {
       clustererRef.current = new MarkerClusterer({ map: mapRef.current, markers: markersRef.current });
     } else {
-      markersRef.current.forEach((m) => m.setMap(mapRef.current!));
+      markersRef.current.forEach((m) => m.setMap(heatmapEnabled ? null : mapRef.current!));
     }
 
     if (filteredLands.length > 0) {
@@ -298,7 +313,8 @@ export const LandMapTab: React.FC = () => {
         if (mapRef.current && mapRef.current.getZoom()! > 16) mapRef.current.setZoom(16);
       });
     }
-  }, [filteredLands, clusteringEnabled, editMode, showLabels]);
+  }, [filteredLands, clusteringEnabled, editMode, showLabels, heatmapEnabled]);
+
 
   /** Pan/zoom the map to a coordinate and flash a highlight marker. */
   const focusOnCoordinate = useCallback((lat: number, lng: number, title?: string) => {
