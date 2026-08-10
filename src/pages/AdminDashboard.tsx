@@ -1202,7 +1202,9 @@ const AdminDashboard = () => {
                       <TableHead>Status</TableHead>
                       <TableHead>Lokasi</TableHead>
                       <TableHead>Koordinat</TableHead>
+                      <TableHead>Foto</TableHead>
                       <TableHead>Aksi</TableHead>
+
                     </TableRow>
                   </TableHeader>
                   <TableBody>
