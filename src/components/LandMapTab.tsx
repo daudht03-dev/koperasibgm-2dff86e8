@@ -92,6 +92,8 @@ export const LandMapTab: React.FC = () => {
   const markerByIdRef = useRef<Record<string, google.maps.Marker>>({});
   const focusMarkerRef = useRef<google.maps.Marker | null>(null);
   const clustererRef = useRef<MarkerClusterer | null>(null);
+  const heatmapRef = useRef<google.maps.visualization.HeatmapLayer | null>(null);
+
   const clickMarkerRef = useRef<google.maps.Marker | null>(null);
   const infoRef = useRef<google.maps.InfoWindow | null>(null);
   const searchMarkerRef = useRef<google.maps.Marker | null>(null);
