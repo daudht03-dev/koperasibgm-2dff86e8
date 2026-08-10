@@ -952,7 +952,9 @@ const AdminDashboard = () => {
                       </TableHead>
                       <TableHead>Nama</TableHead>
                       <TableHead>Alamat</TableHead>
+                      <TableHead>Foto</TableHead>
                       <TableHead>Aksi</TableHead>
+
                     </TableRow>
                   </TableHeader>
                   <TableBody>
