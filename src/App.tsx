@@ -65,11 +65,27 @@ const AppContent = () => {
     <Suspense fallback={<PageLoader />}>
       <PageTransition>
         <Routes>
-          <Route path="/" element={<Navigate to="/admin" replace />} />
+          <Route path="/" element={<RoleLanding />} />
           <Route path="/login" element={<Auth />} />
           <Route path="/install" element={<Install />} />
           <Route path="/produk" element={<Products />} />
           <Route path="/produk/:id" element={<ProductDetail />} />
+          <Route
+            path="/lapangan"
+            element={
+              <ProtectedRoute allowedRoles={["staf_lapang", "admin"]}>
+                <FieldStaffDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pengawas"
+            element={
+              <ProtectedRoute allowedRoles={["pengawas", "admin"]}>
+                <SupervisorDashboard />
+              </ProtectedRoute>
+            }
+          />
           <Route 
             path="/admin" 
             element={
@@ -78,6 +94,7 @@ const AppContent = () => {
               </ProtectedRoute>
             } 
           />
+
 
           <Route 
             path="/label-settings" 
