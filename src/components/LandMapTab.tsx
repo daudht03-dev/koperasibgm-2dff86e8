@@ -16,6 +16,8 @@ import { toast } from "@/hooks/use-toast";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { loadGoogleMaps } from "@/lib/google-maps-loader";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
+import { getMapDetail, type MapDetail } from "@/lib/map-performance";
+
 import { MapAddressSearch } from "@/components/MapAddressSearch";
 import { useVillagePrefixes } from "@/hooks/use-village-prefixes";
 import { Link } from "react-router-dom";
@@ -109,6 +111,8 @@ export const LandMapTab: React.FC = () => {
   const [mapReady, setMapReady] = useState(false);
   const [clusteringEnabled, setClusteringEnabled] = useState(true);
   const [heatmapEnabled, setHeatmapEnabled] = useState(false);
+  const [autoDetail, setAutoDetail] = useState<MapDetail | null>(null);
+
 
   const [showLabels, setShowLabels] = useState(true);
   const [coordPrecision, setCoordPrecision] = useState<number>(() => {
@@ -214,6 +218,7 @@ export const LandMapTab: React.FC = () => {
     markerByIdRef.current = {};
 
     const bounds = new google.maps.LatLngBounds();
+    const detail = getMapDetail(filteredLands.length, showLabels);
 
     filteredLands.forEach((land) => {
       const isOrganic = land.is_organic ?? land.petani?.is_organic ?? false;
@@ -222,15 +227,16 @@ export const LandMapTab: React.FC = () => {
       const marker = new google.maps.Marker({
         position: { lat: land.parsedCoord!.lat, lng: land.parsedCoord!.lng },
         title: `${land.nama_lahan} - ${land.petani?.nama || ""}`,
+        optimized: detail.optimized,
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
-          scale: showLabels ? 14 : 9,
+          scale: detail.scale,
           fillColor: color,
           fillOpacity: 1,
           strokeColor: "#ffffff",
-          strokeWeight: 2,
+          strokeWeight: detail.strokeWeight,
         },
-        label: showLabels
+        label: detail.showLabels
           ? {
               text: land.nama_lahan || "",
               color: "#ffffff",
@@ -239,6 +245,7 @@ export const LandMapTab: React.FC = () => {
             }
           : undefined,
       });
+
 
       marker.addListener("click", () => {
         if (editMode || !mapRef.current) return;
@@ -303,13 +310,15 @@ export const LandMapTab: React.FC = () => {
       heatmapRef.current = null;
     }
 
-    // Disable clustering when labels are shown so codes remain visible
-    const useCluster = clusteringEnabled && !showLabels && !heatmapEnabled;
+    // Clustering follows the automatic detail level; labels only survive at full detail.
+    const useCluster = (clusteringEnabled || detail.cluster) && !detail.showLabels && !heatmapEnabled;
     if (useCluster) {
       clustererRef.current = new MarkerClusterer({ map: mapRef.current, markers: markersRef.current });
     } else {
       markersRef.current.forEach((m) => m.setMap(heatmapEnabled ? null : mapRef.current!));
     }
+    setAutoDetail(detail);
+
 
     if (filteredLands.length > 0) {
       mapRef.current.fitBounds(bounds, 60);
