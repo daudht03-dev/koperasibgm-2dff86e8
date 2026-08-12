@@ -16,6 +16,8 @@ import { toast } from "@/hooks/use-toast";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { loadGoogleMaps } from "@/lib/google-maps-loader";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
+import { getMapDetail, type MapDetail } from "@/lib/map-performance";
+
 import { MapAddressSearch } from "@/components/MapAddressSearch";
 import { useVillagePrefixes } from "@/hooks/use-village-prefixes";
 import { Link } from "react-router-dom";
@@ -109,6 +111,8 @@ export const LandMapTab: React.FC = () => {
   const [mapReady, setMapReady] = useState(false);
   const [clusteringEnabled, setClusteringEnabled] = useState(true);
   const [heatmapEnabled, setHeatmapEnabled] = useState(false);
+  const [autoDetail, setAutoDetail] = useState<MapDetail | null>(null);
+
 
   const [showLabels, setShowLabels] = useState(true);
   const [coordPrecision, setCoordPrecision] = useState<number>(() => {
@@ -214,6 +218,7 @@ export const LandMapTab: React.FC = () => {
     markerByIdRef.current = {};
 
     const bounds = new google.maps.LatLngBounds();
+    const detail = getMapDetail(filteredLands.length, showLabels);
 
     filteredLands.forEach((land) => {
       const isOrganic = land.is_organic ?? land.petani?.is_organic ?? false;
@@ -222,15 +227,16 @@ export const LandMapTab: React.FC = () => {
       const marker = new google.maps.Marker({
         position: { lat: land.parsedCoord!.lat, lng: land.parsedCoord!.lng },
         title: `${land.nama_lahan} - ${land.petani?.nama || ""}`,
+        optimized: detail.optimized,
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
-          scale: showLabels ? 14 : 9,
+          scale: detail.scale,
           fillColor: color,
           fillOpacity: 1,
           strokeColor: "#ffffff",
-          strokeWeight: 2,
+          strokeWeight: detail.strokeWeight,
         },
-        label: showLabels
+        label: detail.showLabels
           ? {
               text: land.nama_lahan || "",
               color: "#ffffff",
@@ -239,6 +245,7 @@ export const LandMapTab: React.FC = () => {
             }
           : undefined,
       });
+
 
       marker.addListener("click", () => {
         if (editMode || !mapRef.current) return;
@@ -288,6 +295,56 @@ export const LandMapTab: React.FC = () => {
       bounds.extend(marker.getPosition()!);
     });
 
+    // Farmer home locations (imported via koordinat_lat_rumah / koordinat_lng_rumah)
+    const seenHome = new Set<string>();
+    filteredLands.forEach((land) => {
+      const p = land.petani;
+      const hLat = p?.koordinat_lat;
+      const hLng = p?.koordinat_lng;
+      const code = p?.kode_petani || "";
+      if (!p || hLat == null || hLng == null || seenHome.has(code)) return;
+      seenHome.add(code);
+      const homeMarker = new google.maps.Marker({
+        position: { lat: Number(hLat), lng: Number(hLng) },
+        title: `Rumah ${p.nama} (${code})`,
+        optimized: detail.optimized,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: detail.scale,
+          fillColor: "#7c3aed",
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: detail.strokeWeight,
+        },
+        label: detail.showLabels
+          ? { text: code, color: "#ffffff", fontWeight: "700", fontSize: "10px" }
+          : undefined,
+      });
+      homeMarker.addListener("click", () => {
+        const div = document.createElement("div");
+        div.style.cssText = "min-width:180px;font-family:system-ui";
+        const h = document.createElement("h3");
+        h.style.cssText = "margin:0 0 4px;font-size:14px;font-weight:600;";
+        h.textContent = `Rumah ${p.nama}`;
+        div.appendChild(h);
+        const c = document.createElement("p");
+        c.style.cssText = "margin:2px 0;font-size:12px;color:#6b7280;";
+        c.textContent = code;
+        div.appendChild(c);
+        if (p.alamat_rumah) {
+          const a = document.createElement("p");
+          a.style.cssText = "margin:2px 0;font-size:12px;color:#374151;";
+          a.textContent = p.alamat_rumah;
+          div.appendChild(a);
+        }
+        infoRef.current!.setContent(div);
+        infoRef.current!.open({ map: mapRef.current!, anchor: homeMarker });
+      });
+      markersRef.current.push(homeMarker);
+      bounds.extend(homeMarker.getPosition()!);
+    });
+
+
     // Heatmap keeps rendering cheap when there are thousands of points.
     heatmapRef.current?.setMap(null);
     if (heatmapEnabled && google.maps.visualization?.HeatmapLayer) {
@@ -303,13 +360,15 @@ export const LandMapTab: React.FC = () => {
       heatmapRef.current = null;
     }
 
-    // Disable clustering when labels are shown so codes remain visible
-    const useCluster = clusteringEnabled && !showLabels && !heatmapEnabled;
+    // Clustering follows the automatic detail level; labels only survive at full detail.
+    const useCluster = (clusteringEnabled || detail.cluster) && !detail.showLabels && !heatmapEnabled;
     if (useCluster) {
       clustererRef.current = new MarkerClusterer({ map: mapRef.current, markers: markersRef.current });
     } else {
       markersRef.current.forEach((m) => m.setMap(heatmapEnabled ? null : mapRef.current!));
     }
+    setAutoDetail(detail);
+
 
     if (filteredLands.length > 0) {
       mapRef.current.fitBounds(bounds, 60);
@@ -812,7 +871,11 @@ export const LandMapTab: React.FC = () => {
             </Select>
 
             <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <Checkbox checked={showLabels} onCheckedChange={(c) => setShowLabels(Boolean(c))} />
+              <Checkbox
+                checked={showLabels}
+                onCheckedChange={(c) => setShowLabels(Boolean(c))}
+                disabled={autoDetail ? !autoDetail.showLabels && autoDetail.level !== "full" : false}
+              />
               Tampilkan Kode Lahan
             </label>
 
@@ -821,11 +884,12 @@ export const LandMapTab: React.FC = () => {
               size="sm"
               onClick={() => setClusteringEnabled(!clusteringEnabled)}
               className="gap-2"
-              disabled={showLabels || heatmapEnabled}
+              disabled={(autoDetail?.showLabels ?? showLabels) || heatmapEnabled || (autoDetail?.cluster ?? false)}
               title={showLabels ? "Nonaktifkan label untuk memakai cluster" : ""}
             >
               <Layers className="h-4 w-4" />Cluster
             </Button>
+
 
             <Button
               variant={heatmapEnabled ? "default" : "outline"}
@@ -838,6 +902,14 @@ export const LandMapTab: React.FC = () => {
             </Button>
 
           </div>
+
+          {autoDetail?.note && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Layers className="h-3.5 w-3.5" /> {autoDetail.note}
+              {autoDetail.preferHeatmap && !heatmapEnabled && " Aktifkan Heatmap untuk tampilan kepadatan."}
+            </p>
+          )}
+
 
           {/* Search + actions */}
           <div className="flex flex-wrap items-center gap-3">

@@ -32,10 +32,12 @@ export const ASSIGNABLE_ROLES: AppRole[] = [
 /** Landing page per role, ordered by priority. */
 export const roleHome = (roles: string[]): string => {
   if (roles.includes("developer") || roles.includes("admin")) return "/admin";
-  if (roles.includes("staf_lapang") || roles.includes("pengawas")) return "/admin";
+  if (roles.includes("staf_lapang")) return "/lapangan";
+  if (roles.includes("pengawas")) return "/pengawas";
   if (roles.includes("auditor")) return "/auditor/map";
   return "/login";
 };
+
 
 /** Developer bypasses every restriction. */
 export const hasAccess = (roles: string[], allowed: readonly string[]) =>

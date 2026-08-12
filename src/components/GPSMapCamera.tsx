@@ -40,6 +40,8 @@ import { renderPhotoOverlay, canvasToBlob, OverlayData } from "@/lib/photo-overl
 import { evaluateCoordinate } from "@/lib/coordinate-accuracy";
 import CoordinateAccuracyIndicator from "@/components/CoordinateAccuracyIndicator";
 import MiniMapPicker from "@/components/MiniMapPicker";
+import { cacheTile, enqueue, readTile, tileKey } from "@/lib/offline-queue";
+
 
 interface FarmerOption {
   id: string;
@@ -209,15 +211,23 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
   }, []);
 
   const fetchMapThumb = useCallback(async (la: number, ln: number) => {
+    const key = tileKey(la, ln, 15);
+    const cached = await readTile(key);
+    if (cached) setMapThumb(cached);
+    if (!navigator.onLine) return;
     const { data, error } = await supabase.functions.invoke("static-map", {
       body: { lat: la, lng: ln, zoom: 15, size: "300x300" },
     });
-    if (error) {
-      setMapThumb(null);
+    const dataUrl = (data as any)?.dataUrl as string | undefined;
+    if (error || !dataUrl) {
+      if (!cached) setMapThumb(null);
+      if (error) console.error("static-map failed", error);
       return;
     }
-    setMapThumb((data as any)?.dataUrl ?? null);
+    setMapThumb(dataUrl);
+    cacheTile(key, dataUrl);
   }, []);
+
 
   const applyCoordinates = useCallback(
     async (la: number, ln: number, geocode = true) => {
@@ -296,46 +306,86 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
     [heading, address, lat, lng, note, subject, takenAt, showTime],
   );
 
-  // Live canvas preview
+  // Live canvas preview (debounced so typing never blocks the UI thread)
   useEffect(() => {
     if (!photoSrc || !canvasRef.current) return;
     let cancelled = false;
-    (async () => {
-      try {
-        if (cancelled || !canvasRef.current) return;
-        await renderPhotoOverlay(canvasRef.current, {
-          photoSrc,
-          data: overlayData,
-          mapThumbSrc: mapThumb,
-          logoSrc: profile?.logo_url || null,
-        });
-      } catch (e: any) {
-        console.error("overlay render failed", e);
-      }
-    })();
+    const timer = setTimeout(() => {
+      (async () => {
+        try {
+          if (cancelled || !canvasRef.current) return;
+          await renderPhotoOverlay(canvasRef.current, {
+            photoSrc,
+            data: overlayData,
+            mapThumbSrc: mapThumb,
+            logoSrc: profile?.logo_url || null,
+          });
+        } catch (e: any) {
+          console.error("overlay render failed", e);
+        }
+      })();
+    }, 180);
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, [photoSrc, overlayData, mapThumb, profile?.logo_url]);
 
-  const handleFile = (file?: File | null) => {
+  /**
+   * Camera photos on Android are often 12MP+. Keeping the raw data URL in state
+   * crashes the WebView, so the image is downscaled to a safe size first.
+   */
+  const downscaleImage = (file: File, maxSide = 1600): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+          const w = Math.max(1, Math.round(img.naturalWidth * scale));
+          const h = Math.max(1, Math.round(img.naturalHeight * scale));
+          const c = document.createElement("canvas");
+          c.width = w;
+          c.height = h;
+          const ctx = c.getContext("2d");
+          if (!ctx) throw new Error("Canvas tidak didukung perangkat ini");
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(c.toDataURL("image/jpeg", 0.9));
+        } catch (e) {
+          reject(e);
+        } finally {
+          URL.revokeObjectURL(url);
+          img.src = "";
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("Gagal membaca foto"));
+      };
+      img.src = url;
+    });
+
+  const handleFile = async (file?: File | null) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       toast({ title: "File harus berupa gambar", variant: "destructive" });
       return;
     }
-    if (file.size > 15 * 1024 * 1024) {
-      toast({ title: "Ukuran foto maksimal 15MB", variant: "destructive" });
+    if (file.size > 30 * 1024 * 1024) {
+      toast({ title: "Ukuran foto maksimal 30MB", variant: "destructive" });
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setPhotoSrc(reader.result as string);
+    try {
+      const dataUrl = await downscaleImage(file);
+      setPhotoSrc(dataUrl);
       setTakenAt(new Date());
       if (!lat || !lng) locateMe();
-    };
-    reader.readAsDataURL(file);
+    } catch (e: any) {
+      console.error("photo load failed", e);
+      toast({ title: "Gagal memuat foto", description: e?.message, variant: "destructive" });
+    }
   };
+
 
   // ---- inline master data creation -------------------------------------
   const createFarmer = async () => {
@@ -449,11 +499,53 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
       return;
     }
     setSaving(true);
+    const code = tipe === "lahan" && selectedLand ? selectedLand.nama_lahan : selectedFarmer?.kode_petani || "foto";
+    const photoRow = {
+      petani_id: farmerId,
+      lahan_id: tipe === "lahan" ? landId || null : null,
+      tipe,
+      nama_petani: selectedFarmer?.nama || null,
+      kode: code,
+      judul: heading || null,
+      alamat: address || null,
+      koordinat_lat: laNum,
+      koordinat_lng: lnNum,
+      catatan: note || null,
+      taken_at: takenAt.toISOString(),
+      tampilkan_waktu: showTime,
+      akurasi_meter: gpsAccuracy,
+      akurasi_skor: accuracy.score,
+      akurasi_catatan: accuracy.summary,
+    };
     try {
       const blob = await canvasToBlob(canvasRef.current);
+
+      // Offline: queue the whole record and replay it once the signal returns.
+      if (!navigator.onLine) {
+        await enqueue({
+          kind: "photo",
+          payload: {
+            blob,
+            row: photoRow,
+            code,
+            syncMaster: syncMaster
+              ? tipe === "lahan" && landId
+                ? { type: "lahan", id: landId, lat: laNum, lng: lnNum, alamat: address }
+                : { type: "petani", id: farmerId, lat: laNum, lng: lnNum, alamat: address }
+              : null,
+          },
+        } as any);
+        toast({
+          title: "Tersimpan offline",
+          description: `Dokumentasi ${code} akan otomatis diunggah saat sinyal kembali.`,
+        });
+        onSaved?.();
+        onOpenChange(false);
+        return;
+      }
+
       const { data: userData } = await supabase.auth.getUser();
       const uid = userData.user?.id;
-      const code = tipe === "lahan" && selectedLand ? selectedLand.nama_lahan : selectedFarmer?.kode_petani || "foto";
       const safeCode = code.replace(/[^A-Za-z0-9_-]/g, "");
       const path = `${uid}/${safeCode}-${Date.now()}.jpg`;
 
@@ -462,28 +554,16 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
         .upload(path, blob, { contentType: "image/jpeg", upsert: false });
       if (upErr) throw upErr;
 
+
       const { data: signed } = await supabase.storage.from("foto-lahan").createSignedUrl(path, 60 * 60 * 24 * 365);
 
       const { error: insErr } = await supabase.from("foto_lahan").insert({
-        petani_id: farmerId,
-        lahan_id: tipe === "lahan" ? landId || null : null,
-        tipe,
-        nama_petani: selectedFarmer?.nama || null,
-        kode: code,
-        judul: heading || null,
-        alamat: address || null,
-        koordinat_lat: laNum,
-        koordinat_lng: lnNum,
-        catatan: note || null,
+        ...photoRow,
         file_path: path,
         file_url: signed?.signedUrl || path,
-        taken_at: takenAt.toISOString(),
-        tampilkan_waktu: showTime,
-        akurasi_meter: gpsAccuracy,
-        akurasi_skor: accuracy.score,
-        akurasi_catatan: accuracy.summary,
         created_by: uid ?? null,
       });
+
       if (insErr) throw insErr;
 
       if (syncMaster) await syncMasterCoordinates(laNum, lnNum);
@@ -576,14 +656,14 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
                 accept="image/*"
                 capture="environment"
                 className="hidden"
-                onChange={(e) => handleFile(e.target.files?.[0])}
+                onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; handleFile(f); }}
               />
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={(e) => handleFile(e.target.files?.[0])}
+                onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; handleFile(f); }}
               />
             </div>
 

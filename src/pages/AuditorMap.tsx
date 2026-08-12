@@ -10,6 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { loadGoogleMaps } from "@/lib/google-maps-loader";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
+import { getMapDetail, type MapDetail } from "@/lib/map-performance";
+
 import { toast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -94,6 +96,8 @@ const AuditorMap = () => {
   const [loading, setLoading] = useState(true);
   const [mapReady, setMapReady] = useState(false);
   const [heatmapEnabled, setHeatmapEnabled] = useState(false);
+  const [autoDetail, setAutoDetail] = useState<MapDetail | null>(null);
+
 
   const [search, setSearch] = useState("");
   const [villageFilter, setVillageFilter] = useState<string>("all");
@@ -226,20 +230,28 @@ const AuditorMap = () => {
     markerByIdRef.current = {};
 
     const bounds = new google.maps.LatLngBounds();
+    const detail = getMapDetail(filteredPoints.length, true);
+    setAutoDetail(detail);
     filteredPoints.forEach((p) => {
       const isOrganic = p.land?.is_organic ?? p.farmer.is_organic;
       const color = p.kind === "home" ? "#7c3aed" : isOrganic ? "#16a34a" : "#ea580c";
       const marker = new google.maps.Marker({
         position: { lat: p.lat, lng: p.lng },
         title: `${p.label} – ${p.farmer.nama}`,
+        optimized: detail.optimized,
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
-          scale: p.kind === "home" ? 11 : 9,
+          scale: detail.showLabels ? (p.kind === "home" ? 15 : 13) : detail.scale,
           fillColor: color,
           fillOpacity: 1,
           strokeColor: "#fff",
-          strokeWeight: 2,
+          strokeWeight: detail.strokeWeight,
         },
+        // Identity (kode petani / kode lahan) is stamped on the marker itself
+        // so auditors can read which point they are looking at.
+        label: detail.showLabels
+          ? { text: p.label, color: "#ffffff", fontWeight: "700", fontSize: "10px" }
+          : undefined,
       });
       marker.addListener("click", () => {
         setSelectedPoint(p);
@@ -265,11 +277,12 @@ const AuditorMap = () => {
 
     if (heatmapEnabled) {
       markersRef.current.forEach((m) => m.setMap(null));
-    } else if (filteredPoints.length > 20) {
+    } else if (detail.cluster) {
       clustererRef.current = new MarkerClusterer({ map: mapRef.current!, markers: markersRef.current });
     } else {
       markersRef.current.forEach((m) => m.setMap(mapRef.current!));
     }
+
 
     if (filteredPoints.length > 0) {
       mapRef.current.fitBounds(bounds, 60);
@@ -637,6 +650,13 @@ const AuditorMap = () => {
               </Button>
 
             </div>
+
+            {autoDetail?.note && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Layers className="h-3.5 w-3.5" /> {autoDetail.note}
+              </p>
+            )}
+
 
             <div className="relative">
               <div ref={mapContainer} className="w-full h-[600px] rounded-md bg-muted" />
