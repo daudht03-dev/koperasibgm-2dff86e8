@@ -295,6 +295,56 @@ export const LandMapTab: React.FC = () => {
       bounds.extend(marker.getPosition()!);
     });
 
+    // Farmer home locations (imported via koordinat_lat_rumah / koordinat_lng_rumah)
+    const seenHome = new Set<string>();
+    filteredLands.forEach((land) => {
+      const p = land.petani;
+      const hLat = p?.koordinat_lat;
+      const hLng = p?.koordinat_lng;
+      const code = p?.kode_petani || "";
+      if (!p || hLat == null || hLng == null || seenHome.has(code)) return;
+      seenHome.add(code);
+      const homeMarker = new google.maps.Marker({
+        position: { lat: Number(hLat), lng: Number(hLng) },
+        title: `Rumah ${p.nama} (${code})`,
+        optimized: detail.optimized,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: detail.scale,
+          fillColor: "#7c3aed",
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: detail.strokeWeight,
+        },
+        label: detail.showLabels
+          ? { text: code, color: "#ffffff", fontWeight: "700", fontSize: "10px" }
+          : undefined,
+      });
+      homeMarker.addListener("click", () => {
+        const div = document.createElement("div");
+        div.style.cssText = "min-width:180px;font-family:system-ui";
+        const h = document.createElement("h3");
+        h.style.cssText = "margin:0 0 4px;font-size:14px;font-weight:600;";
+        h.textContent = `Rumah ${p.nama}`;
+        div.appendChild(h);
+        const c = document.createElement("p");
+        c.style.cssText = "margin:2px 0;font-size:12px;color:#6b7280;";
+        c.textContent = code;
+        div.appendChild(c);
+        if (p.alamat_rumah) {
+          const a = document.createElement("p");
+          a.style.cssText = "margin:2px 0;font-size:12px;color:#374151;";
+          a.textContent = p.alamat_rumah;
+          div.appendChild(a);
+        }
+        infoRef.current!.setContent(div);
+        infoRef.current!.open({ map: mapRef.current!, anchor: homeMarker });
+      });
+      markersRef.current.push(homeMarker);
+      bounds.extend(homeMarker.getPosition()!);
+    });
+
+
     // Heatmap keeps rendering cheap when there are thousands of points.
     heatmapRef.current?.setMap(null);
     if (heatmapEnabled && google.maps.visualization?.HeatmapLayer) {
