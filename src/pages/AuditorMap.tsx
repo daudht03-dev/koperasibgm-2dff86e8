@@ -10,6 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { loadGoogleMaps } from "@/lib/google-maps-loader";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
+import { getMapDetail, type MapDetail } from "@/lib/map-performance";
+
 import { toast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -94,6 +96,8 @@ const AuditorMap = () => {
   const [loading, setLoading] = useState(true);
   const [mapReady, setMapReady] = useState(false);
   const [heatmapEnabled, setHeatmapEnabled] = useState(false);
+  const [autoDetail, setAutoDetail] = useState<MapDetail | null>(null);
+
 
   const [search, setSearch] = useState("");
   const [villageFilter, setVillageFilter] = useState<string>("all");
