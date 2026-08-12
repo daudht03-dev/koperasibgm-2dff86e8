@@ -15,6 +15,10 @@ import PWAUpdatePrompt from "@/components/PWAUpdatePrompt";
 // Lazy load all pages for code splitting
 const Auth = lazy(() => import("./pages/Auth"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const RoleLanding = lazy(() => import("./pages/RoleLanding"));
+const FieldStaffDashboard = lazy(() => import("./pages/FieldStaffDashboard"));
+const SupervisorDashboard = lazy(() => import("./pages/SupervisorDashboard"));
+
 const FarmerDetail = lazy(() => import("./pages/FarmerDetail"));
 const FarmerProfile = lazy(() => import("./pages/FarmerProfile"));
 const QRCodePage = lazy(() => import("./pages/QRCode"));
