@@ -651,6 +651,13 @@ const AuditorMap = () => {
 
             </div>
 
+            {autoDetail?.note && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Layers className="h-3.5 w-3.5" /> {autoDetail.note}
+              </p>
+            )}
+
+
             <div className="relative">
               <div ref={mapContainer} className="w-full h-[600px] rounded-md bg-muted" />
               {(loading || !mapReady) && (
