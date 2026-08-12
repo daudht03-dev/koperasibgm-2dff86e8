@@ -821,7 +821,11 @@ export const LandMapTab: React.FC = () => {
             </Select>
 
             <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <Checkbox checked={showLabels} onCheckedChange={(c) => setShowLabels(Boolean(c))} />
+              <Checkbox
+                checked={showLabels}
+                onCheckedChange={(c) => setShowLabels(Boolean(c))}
+                disabled={autoDetail ? !autoDetail.showLabels && autoDetail.level !== "full" : false}
+              />
               Tampilkan Kode Lahan
             </label>
 
@@ -830,11 +834,12 @@ export const LandMapTab: React.FC = () => {
               size="sm"
               onClick={() => setClusteringEnabled(!clusteringEnabled)}
               className="gap-2"
-              disabled={showLabels || heatmapEnabled}
+              disabled={(autoDetail?.showLabels ?? showLabels) || heatmapEnabled || (autoDetail?.cluster ?? false)}
               title={showLabels ? "Nonaktifkan label untuk memakai cluster" : ""}
             >
               <Layers className="h-4 w-4" />Cluster
             </Button>
+
 
             <Button
               variant={heatmapEnabled ? "default" : "outline"}
