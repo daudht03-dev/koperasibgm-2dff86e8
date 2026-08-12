@@ -853,6 +853,14 @@ export const LandMapTab: React.FC = () => {
 
           </div>
 
+          {autoDetail?.note && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Layers className="h-3.5 w-3.5" /> {autoDetail.note}
+              {autoDetail.preferHeatmap && !heatmapEnabled && " Aktifkan Heatmap untuk tampilan kepadatan."}
+            </p>
+          )}
+
+
           {/* Search + actions */}
           <div className="flex flex-wrap items-center gap-3">
             <MapAddressSearch onSelect={handleAddressSelect} className="w-full sm:w-[280px]" />
