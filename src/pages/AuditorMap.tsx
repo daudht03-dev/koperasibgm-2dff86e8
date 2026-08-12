@@ -226,20 +226,28 @@ const AuditorMap = () => {
     markerByIdRef.current = {};
 
     const bounds = new google.maps.LatLngBounds();
+    const detail = getMapDetail(filteredPoints.length, true);
+    setAutoDetail(detail);
     filteredPoints.forEach((p) => {
       const isOrganic = p.land?.is_organic ?? p.farmer.is_organic;
       const color = p.kind === "home" ? "#7c3aed" : isOrganic ? "#16a34a" : "#ea580c";
       const marker = new google.maps.Marker({
         position: { lat: p.lat, lng: p.lng },
         title: `${p.label} – ${p.farmer.nama}`,
+        optimized: detail.optimized,
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
-          scale: p.kind === "home" ? 11 : 9,
+          scale: detail.showLabels ? (p.kind === "home" ? 15 : 13) : detail.scale,
           fillColor: color,
           fillOpacity: 1,
           strokeColor: "#fff",
-          strokeWeight: 2,
+          strokeWeight: detail.strokeWeight,
         },
+        // Identity (kode petani / kode lahan) is stamped on the marker itself
+        // so auditors can read which point they are looking at.
+        label: detail.showLabels
+          ? { text: p.label, color: "#ffffff", fontWeight: "700", fontSize: "10px" }
+          : undefined,
       });
       marker.addListener("click", () => {
         setSelectedPoint(p);
@@ -265,11 +273,12 @@ const AuditorMap = () => {
 
     if (heatmapEnabled) {
       markersRef.current.forEach((m) => m.setMap(null));
-    } else if (filteredPoints.length > 20) {
+    } else if (detail.cluster) {
       clustererRef.current = new MarkerClusterer({ map: mapRef.current!, markers: markersRef.current });
     } else {
       markersRef.current.forEach((m) => m.setMap(mapRef.current!));
     }
+
 
     if (filteredPoints.length > 0) {
       mapRef.current.fitBounds(bounds, 60);
