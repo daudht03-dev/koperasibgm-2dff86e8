@@ -24,16 +24,30 @@ export const MiniMapPicker = ({ lat, lng, onChange, height = 200, zoom = 17, cla
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
+  const lastCenterRef = useRef<{ lat: number; lng: number }>({
+    lat: lat ?? -7.4,
+    lng: lng ?? 109.2,
+  });
+  lastCenterRef.current = { lat: lat ?? -7.4, lng: lng ?? 109.2 };
+
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    let resizeObserver: ResizeObserver | null = null;
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const containerHasSize = () => {
+      const el = containerRef.current;
+      return !!el && el.offsetWidth > 0 && el.offsetHeight > 0;
+    };
+
+    const initMap = async () => {
       try {
         const google = await loadGoogleMaps();
-        if (cancelled || !containerRef.current) return;
-        const center = { lat: lat ?? -7.4, lng: lng ?? 109.2 };
+        if (cancelled || !containerRef.current || mapRef.current) return;
+        const center = lastCenterRef.current;
         mapRef.current = new google.maps.Map(containerRef.current, {
           center,
-          zoom: lat != null && lng != null ? zoom : 9,
+          zoom: lastCenterRef.current.lat !== -7.4 ? zoom : 9,
           mapTypeId: "hybrid",
           disableDefaultUI: true,
           zoomControl: true,
@@ -56,9 +70,38 @@ export const MiniMapPicker = ({ lat, lng, onChange, height = 200, zoom = 17, cla
       } catch (e: any) {
         if (!cancelled) setError(e.message || "Gagal memuat peta");
       }
-    })();
+    };
+
+    /**
+     * Dialog parents animate open, so the container is 0x0 at mount and the
+     * map would initialize broken. Watch the container: initialize only once
+     * it has a real size, and re-trigger a resize + recenter whenever the
+     * size changes afterwards (e.g. right after the open animation ends).
+     */
+    resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      const hasSize = entry.contentRect.width > 0 && entry.contentRect.height > 0;
+      if (!hasSize || cancelled) return;
+      if (!mapRef.current) {
+        initMap();
+        return;
+      }
+      // Debounce so we settle on the final size after the dialog animation.
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (cancelled || !mapRef.current || !(window as any).google?.maps) return;
+        google.maps.event.trigger(mapRef.current, "resize");
+        mapRef.current.setCenter(lastCenterRef.current);
+      }, 150);
+    });
+    if (containerRef.current) resizeObserver.observe(containerRef.current);
+    // If the container already has a size (non-dialog usage), init right away.
+    if (containerHasSize()) initMap();
+
     return () => {
       cancelled = true;
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeObserver?.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -66,6 +109,7 @@ export const MiniMapPicker = ({ lat, lng, onChange, height = 200, zoom = 17, cla
   useEffect(() => {
     if (!ready || lat == null || lng == null || !mapRef.current) return;
     const pos = { lat, lng };
+    google.maps.event.trigger(mapRef.current, "resize");
     mapRef.current.setCenter(pos);
     if (mapRef.current.getZoom()! < 14) mapRef.current.setZoom(zoom);
     markerRef.current?.setPosition(pos);
