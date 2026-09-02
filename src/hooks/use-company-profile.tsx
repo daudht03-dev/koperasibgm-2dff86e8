@@ -34,6 +34,7 @@ const fetchCompanyProfile = async (): Promise<CompanyProfile | null> => {
   const { data, error } = await supabase
     .from('profil_perusahaan')
     .select('*')
+    .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
