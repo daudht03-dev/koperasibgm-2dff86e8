@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Leaf } from "lucide-react";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { Skeleton } from "@/components/ui/skeleton";
+import OrganicMuralBackground from "@/components/OrganicMuralBackground";
 
 interface SplashScreenProps {
   onFinish: () => void;
@@ -94,6 +95,8 @@ const SplashScreen = ({ onFinish, duration = 3500 }: SplashScreenProps) => {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-gradient-to-br from-organic-green via-organic-green to-organic-amber animate-fade-out overflow-hidden">
+      <OrganicMuralBackground variant="splash" />
+
       {/* Animated background particles */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-white/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "0s", animationDuration: "3s" }} />
