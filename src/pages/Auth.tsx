@@ -13,6 +13,7 @@ import { authSchema } from "@/lib/validation-schemas";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProfileSkeleton } from "@/components/ui/skeleton-templates";
 import { z } from "zod";
+import OrganicMuralBackground from "@/components/OrganicMuralBackground";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -172,8 +173,9 @@ const Auth = () => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-natural flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="relative min-h-screen bg-gradient-natural flex items-center justify-center p-4">
+      <OrganicMuralBackground variant="auth" />
+      <div className="relative z-10 w-full max-w-md">
         {/* Back Button */}
         <div className="mb-6">
           <Button variant="ghost" asChild className="text-muted-foreground hover:text-foreground">

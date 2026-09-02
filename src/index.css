@@ -245,6 +245,40 @@ All colors MUST be HSL.
     animation: shimmer 2s infinite;
   }
 
+  /* Organic mural gentle sway — respects reduced motion */
+  @keyframes organic-sway {
+    0%, 100% {
+      transform: rotate(0deg);
+    }
+    50% {
+      transform: rotate(2.5deg);
+    }
+  }
+
+  @keyframes organic-sway-reverse {
+    0%, 100% {
+      transform: rotate(0deg);
+    }
+    50% {
+      transform: rotate(-2.5deg);
+    }
+  }
+
+  .organic-sway {
+    animation: organic-sway 9s ease-in-out infinite;
+  }
+
+  .organic-sway-reverse {
+    animation: organic-sway-reverse 10s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .organic-sway,
+    .organic-sway-reverse {
+      animation: none;
+    }
+  }
+
   /* Glow effect */
   .glow-effect {
     box-shadow: 0 0 40px hsl(var(--organic-green) / 0.6),
