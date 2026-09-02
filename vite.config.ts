@@ -10,8 +10,8 @@ const pwaOptions: Partial<VitePWAOptions> = {
   registerType: 'prompt',
   includeAssets: ['favicon.ico', 'pwa-192x192.png', 'pwa-512x512.png'],
   manifest: {
-    name: 'Berkah Gendis Mandiri',
-    short_name: 'BGM',
+    name: 'Organic Management System',
+    short_name: 'OMS',
     description: 'Produsen gula kelapa organik berkualitas tinggi yang bekerja sama langsung dengan petani lokal',
     theme_color: '#22c55e',
     background_color: '#ffffff',
