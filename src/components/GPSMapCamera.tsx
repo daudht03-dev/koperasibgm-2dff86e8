@@ -332,27 +332,95 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
   }, [photoSrc, overlayData, mapThumb, profile?.logo_url]);
 
   /**
-   * Camera photos on Android are often 12MP+. Keeping the raw data URL in state
-   * crashes the WebView, so the image is downscaled to a safe size first.
+   * Camera photos on Android are often 12MP+. Decoding the raw file with an
+   * <img> element at full resolution allocates a huge bitmap and force-closes
+   * the WebView. Strategy:
+   *  1. Reject absurdly large files up front.
+   *  2. Prefer createImageBitmap with resize — the browser decodes and
+   *     downscales in one pass without materializing the full-size bitmap.
+   *  3. If that is unsupported/fails, progressively shrink via intermediate
+   *     canvases (halving each pass) so peak memory stays bounded.
    */
-  const downscaleImage = (file: File, maxSide = 1600): Promise<string> =>
-    new Promise((resolve, reject) => {
+  const drawToDataUrl = (
+    source: CanvasImageSource,
+    srcW: number,
+    srcH: number,
+    maxSide: number,
+  ): string => {
+    const scale = Math.min(1, maxSide / Math.max(srcW, srcH));
+    const w = Math.max(1, Math.round(srcW * scale));
+    const h = Math.max(1, Math.round(srcH * scale));
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext("2d");
+    if (!ctx) throw new Error("Canvas tidak didukung perangkat ini");
+    ctx.drawImage(source, 0, 0, w, h);
+    return c.toDataURL("image/jpeg", 0.9);
+  };
+
+  const downscaleImage = async (file: File, maxSide = 1600): Promise<string> => {
+    if (file.size > 30 * 1024 * 1024) {
+      throw new Error("Ukuran foto terlalu besar (maksimal 30MB)");
+    }
+
+    // Fast path: hardware-assisted decode + resize in a single step.
+    if (typeof createImageBitmap === "function") {
+      try {
+        const probe = await createImageBitmap(file);
+        const { width, height } = probe;
+        if (!width || !height) {
+          probe.close();
+          throw new Error("Dimensi foto tidak valid");
+        }
+        const scale = Math.min(1, maxSide / Math.max(width, height));
+        const w = Math.max(1, Math.round(width * scale));
+        const h = Math.max(1, Math.round(height * scale));
+        probe.close();
+        const bitmap = await createImageBitmap(file, {
+          resizeWidth: w,
+          resizeHeight: h,
+          resizeQuality: "high",
+        });
+        try {
+          return drawToDataUrl(bitmap, bitmap.width, bitmap.height, maxSide);
+        } finally {
+          bitmap.close();
+        }
+      } catch (e) {
+        // Fall through to the progressive <img> path below.
+        console.warn("createImageBitmap decode failed, falling back", e);
+      }
+    }
+
+    // Fallback: decode via <img>, then progressively halve until under maxSide.
+    return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file);
       const img = new Image();
       img.onload = () => {
         try {
-          const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
-          const w = Math.max(1, Math.round(img.naturalWidth * scale));
-          const h = Math.max(1, Math.round(img.naturalHeight * scale));
-          const c = document.createElement("canvas");
-          c.width = w;
-          c.height = h;
-          const ctx = c.getContext("2d");
-          if (!ctx) throw new Error("Canvas tidak didukung perangkat ini");
-          ctx.drawImage(img, 0, 0, w, h);
-          resolve(c.toDataURL("image/jpeg", 0.9));
+          let curW = img.naturalWidth;
+          let curH = img.naturalHeight;
+          if (!curW || !curH) throw new Error("Dimensi foto tidak valid");
+
+          // Progressive halving keeps peak canvas memory small on huge photos.
+          let source: CanvasImageSource = img;
+          while (Math.max(curW, curH) / 2 > maxSide) {
+            const w = Math.max(1, Math.round(curW / 2));
+            const h = Math.max(1, Math.round(curH / 2));
+            const step = document.createElement("canvas");
+            step.width = w;
+            step.height = h;
+            const sctx = step.getContext("2d");
+            if (!sctx) throw new Error("Canvas tidak didukung perangkat ini");
+            sctx.drawImage(source, 0, 0, w, h);
+            source = step;
+            curW = w;
+            curH = h;
+          }
+          resolve(drawToDataUrl(source, curW, curH, maxSide));
         } catch (e) {
-          reject(e);
+          reject(e instanceof Error ? e : new Error("Gagal memproses foto"));
         } finally {
           URL.revokeObjectURL(url);
           img.src = "";
@@ -360,10 +428,11 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
       };
       img.onerror = () => {
         URL.revokeObjectURL(url);
-        reject(new Error("Gagal membaca foto"));
+        reject(new Error("Gagal membaca foto — format tidak didukung atau file rusak"));
       };
       img.src = url;
     });
+  };
 
   const handleFile = async (file?: File | null) => {
     if (!file) return;
@@ -382,7 +451,13 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
       if (!lat || !lng) locateMe();
     } catch (e: any) {
       console.error("photo load failed", e);
-      toast({ title: "Gagal memuat foto", description: e?.message, variant: "destructive" });
+      toast({
+        title: "Gagal memuat foto",
+        description:
+          e?.message ||
+          "Foto tidak dapat diproses perangkat ini. Coba turunkan resolusi kamera lalu ambil ulang.",
+        variant: "destructive",
+      });
     }
   };
 
