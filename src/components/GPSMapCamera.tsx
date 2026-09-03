@@ -102,6 +102,8 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [inPageCameraOpen, setInPageCameraOpen] = useState(false);
+
 
   const [farmers, setFarmers] = useState<FarmerOption[]>([]);
   const [lands, setLands] = useState<LandOption[]>([]);
