@@ -40,6 +40,8 @@ import { renderPhotoOverlay, canvasToBlob, OverlayData } from "@/lib/photo-overl
 import { evaluateCoordinate } from "@/lib/coordinate-accuracy";
 import CoordinateAccuracyIndicator from "@/components/CoordinateAccuracyIndicator";
 import MiniMapPicker from "@/components/MiniMapPicker";
+import { InPageCameraCapture } from "@/components/InPageCameraCapture";
+
 import { cacheTile, enqueue, readTile, tileKey } from "@/lib/offline-queue";
 
 
