@@ -40,6 +40,8 @@ import { renderPhotoOverlay, canvasToBlob, OverlayData } from "@/lib/photo-overl
 import { evaluateCoordinate } from "@/lib/coordinate-accuracy";
 import CoordinateAccuracyIndicator from "@/components/CoordinateAccuracyIndicator";
 import MiniMapPicker from "@/components/MiniMapPicker";
+import { InPageCameraCapture } from "@/components/InPageCameraCapture";
+
 import { cacheTile, enqueue, readTile, tileKey } from "@/lib/offline-queue";
 
 
@@ -102,6 +104,8 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [inPageCameraOpen, setInPageCameraOpen] = useState(false);
+
 
   const [farmers, setFarmers] = useState<FarmerOption[]>([]);
   const [lands, setLands] = useState<LandOption[]>([]);
@@ -692,9 +696,10 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
                 )}
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" onClick={() => cameraInputRef.current?.click()}>
+                <Button size="sm" onClick={() => setInPageCameraOpen(true)}>
                   <Camera className="h-4 w-4 mr-2" /> Ambil Foto
                 </Button>
+
                 <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
                   <ImageIcon className="h-4 w-4 mr-2" /> Pilih dari Galeri
                 </Button>
@@ -907,6 +912,14 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <InPageCameraCapture
+        open={inPageCameraOpen}
+        onOpenChange={setInPageCameraOpen}
+        onCapture={(file) => handleFile(file)}
+      />
+
+
 
       {/* New farmer */}
       <Dialog open={newFarmerOpen} onOpenChange={setNewFarmerOpen}>
