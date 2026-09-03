@@ -913,6 +913,14 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
         </DialogContent>
       </Dialog>
 
+      <InPageCameraCapture
+        open={inPageCameraOpen}
+        onOpenChange={setInPageCameraOpen}
+        onCapture={(file) => handleFile(file)}
+      />
+
+
+
       {/* New farmer */}
       <Dialog open={newFarmerOpen} onOpenChange={setNewFarmerOpen}>
         <DialogContent className="max-w-md">
