@@ -692,9 +692,10 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
                 )}
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" onClick={() => cameraInputRef.current?.click()}>
+                <Button size="sm" onClick={() => setInPageCameraOpen(true)}>
                   <Camera className="h-4 w-4 mr-2" /> Ambil Foto
                 </Button>
+
                 <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
                   <ImageIcon className="h-4 w-4 mr-2" /> Pilih dari Galeri
                 </Button>
