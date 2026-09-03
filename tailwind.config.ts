@@ -67,6 +67,11 @@ export default {
           amber: "hsl(var(--organic-amber))",
           cream: "hsl(var(--organic-cream))",
           gold: "hsl(var(--organic-gold))",
+          ivory: "hsl(var(--organic-ivory))",
+          sage: "hsl(var(--organic-sage))",
+          "deep-green": "hsl(var(--organic-deep-green))",
+          "sage-accent": "hsl(var(--organic-sage-accent))",
+          beige: "hsl(var(--organic-beige))",
         },
       },
       backgroundImage: {

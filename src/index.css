@@ -46,8 +46,15 @@ All colors MUST be HSL.
     --organic-brown: 25 35% 18%;
     --organic-brown-light: 35 25% 88%;
     --organic-amber: 45 85% 55%;
-    --organic-cream: 45 30% 97%;
+    --organic-cream: 55 33% 94%;
     --organic-gold: 45 85% 55%;
+
+    /* New organic surface tokens */
+    --organic-ivory: 60 31% 94%;
+    --organic-sage: 96 24% 92%;
+    --organic-deep-green: 159 54% 20%;
+    --organic-sage-accent: 112 21% 71%;
+    --organic-beige: 49 27% 88%;
     
     /* Premium Gradients */
     --gradient-organic: linear-gradient(135deg, hsl(158 64% 35%) 0%, hsl(158 55% 45%) 100%);
