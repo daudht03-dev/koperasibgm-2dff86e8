@@ -29,6 +29,7 @@ serve(async (req) => {
     const { data, error } = await supabaseAdmin
       .from("profil_perusahaan")
       .select("id, nama_perusahaan, logo_url, deskripsi, alamat, kontak, updated_at, template_settings")
+      .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
