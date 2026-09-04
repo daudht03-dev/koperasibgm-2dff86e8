@@ -99,6 +99,17 @@ const toLocalInput = (d: Date) => {
 
 const prefixOf = (code: string) => (code.match(/^[A-Za-z]+/)?.[0] || "").toUpperCase();
 
+const relativeTime = (ts: number) => {
+  const diff = Date.now() - ts;
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "baru saja";
+  if (minutes < 60) return `${minutes} menit yang lalu`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} jam yang lalu`;
+  const days = Math.floor(hours / 24);
+  return `${days} hari yang lalu`;
+};
+
 export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defaultFarmerId }: Props) => {
   const { profile } = useCompanyProfile();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -110,6 +121,7 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
   const [farmers, setFarmers] = useState<FarmerOption[]>([]);
   const [lands, setLands] = useState<LandOption[]>([]);
   const [villages, setVillages] = useState<{ code: string; name: string }[]>([]);
+  const [cachedAt, setCachedAt] = useState<number | null>(null);
   const [photoSrc, setPhotoSrc] = useState<string | null>(null);
   const [mapThumb, setMapThumb] = useState<string | null>(null);
 
@@ -692,8 +704,14 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 flex-wrap">
               <Camera className="h-5 w-5" /> Kamera Peta — Dokumentasi Lahan
+              {!navigator.onLine && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-organic-amber/15 text-organic-amber px-2 py-0.5 text-[11px] font-normal">
+                  <WifiOff className="h-3 w-3" />
+                  Mode Offline{cachedAt ? ` — data terakhir tersinkron ${relativeTime(cachedAt)}` : ""}
+                </span>
+              )}
             </DialogTitle>
             <DialogDescription>
               Foto otomatis diberi watermark berisi nama petani, kode, alamat, koordinat, dan peta mini.
