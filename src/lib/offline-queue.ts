@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 const DB_NAME = "koperasi-offline";
 const STORE = "queue";
 const TILE_STORE = "map-tiles";
+const MASTER_STORE = "master-data-cache";
 
 export type QueueItem =
   | {
@@ -40,11 +41,12 @@ export type QueueItem =
 
 const openDb = (): Promise<IDBDatabase> =>
   new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 2);
+    const req = indexedDB.open(DB_NAME, 3);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: "id" });
       if (!db.objectStoreNames.contains(TILE_STORE)) db.createObjectStore(TILE_STORE);
+      if (!db.objectStoreNames.contains(MASTER_STORE)) db.createObjectStore(MASTER_STORE);
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
