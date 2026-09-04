@@ -104,6 +104,32 @@ export const readTile = async (key: string): Promise<string | null> => {
 export const tileKey = (lat: number, lng: number, zoom: number) =>
   `${lat.toFixed(4)},${lng.toFixed(4)}@${zoom}`;
 
+export interface MasterDataCache {
+  petani: unknown[];
+  lahan: unknown[];
+  villages: unknown[];
+  cachedAt: number;
+}
+
+/** Cache master reference data (farmers / lands / villages) for offline use. */
+export const cacheMasterData = async (data: { petani: unknown[]; lahan: unknown[]; villages: unknown[] }) => {
+  try {
+    const entry: MasterDataCache = { ...data, cachedAt: Date.now() };
+    await tx(MASTER_STORE, "readwrite", (s) => s.put(entry, "master") as unknown as IDBRequest<undefined>);
+  } catch {
+    /* ignore */
+  }
+};
+
+export const readMasterData = async (): Promise<MasterDataCache | null> => {
+  try {
+    const v = await tx<MasterDataCache | undefined>(MASTER_STORE, "readonly", (s) => s.get("master") as IDBRequest<MasterDataCache | undefined>);
+    return v ?? null;
+  } catch {
+    return null;
+  }
+};
+
 const syncMasterRecord = async (sync: NonNullable<Extract<QueueItem, { kind: "photo" }>["payload"]["syncMaster"]>) => {
   if (sync.type === "lahan") {
     await supabase
