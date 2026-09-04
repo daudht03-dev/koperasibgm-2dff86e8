@@ -37,6 +37,37 @@ export type QueueItem =
           | { type: "petani"; id: string; lat: number; lng: number; alamat?: string | null }
           | null;
       };
+    }
+  | {
+      id: string;
+      kind: "farmer-create";
+      createdAt: number;
+      payload: {
+        id: string;
+        kode_petani: string;
+        nama: string;
+        no_telepon: string | null;
+        alamat_rumah: string | null;
+        alamat: string | null;
+        koordinat_lat: number | null;
+        koordinat_lng: number | null;
+        status: string;
+        tanggal_bergabung: string;
+      };
+    }
+  | {
+      id: string;
+      kind: "land-create";
+      createdAt: number;
+      payload: {
+        id: string;
+        petani_id: string;
+        nama_lahan: string;
+        luas: number | null;
+        lokasi: string | null;
+        koordinat: string | null;
+        status: string;
+      };
     };
 
 const openDb = (): Promise<IDBDatabase> =>
@@ -145,6 +176,18 @@ const syncMasterRecord = async (sync: NonNullable<Extract<QueueItem, { kind: "ph
 };
 
 const processItem = async (item: QueueItem) => {
+  if (item.kind === "farmer-create") {
+    const { error } = await supabase.from("petani").insert(item.payload as any);
+    if (error) throw error;
+    return;
+  }
+
+  if (item.kind === "land-create") {
+    const { error } = await supabase.from("lahan").insert(item.payload as any);
+    if (error) throw error;
+    return;
+  }
+
   if (item.kind === "land-coordinate") {
     const { error } = await supabase
       .from("lahan")

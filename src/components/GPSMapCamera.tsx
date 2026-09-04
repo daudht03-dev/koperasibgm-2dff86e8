@@ -506,19 +506,51 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
     setCreating(true);
     const la = parseFloat(lat);
     const ln = parseFloat(lng);
+    const base = {
+      kode_petani: nfKode.trim().toUpperCase(),
+      nama: nfNama.trim(),
+      no_telepon: nfTelepon.trim() || null,
+      alamat_rumah: (nfAlamat || address).trim() || null,
+      alamat: (nfAlamat || address).trim() || null,
+      koordinat_lat: Number.isFinite(la) ? la : null,
+      koordinat_lng: Number.isFinite(ln) ? ln : null,
+      status: "aktif",
+      tanggal_bergabung: new Date().toISOString().slice(0, 10),
+    };
+
+    // Offline: keep locally and queue the insert for the next sync.
+    if (!navigator.onLine) {
+      const id = crypto.randomUUID();
+      const local = {
+        id,
+        kode_petani: base.kode_petani,
+        nama: base.nama,
+        alamat_rumah: base.alamat_rumah,
+        koordinat_lat: base.koordinat_lat,
+        koordinat_lng: base.koordinat_lng,
+      } as FarmerOption;
+      const nextFarmers = [...farmers, local].sort((a, b) => naturalSort(a.kode_petani, b.kode_petani));
+      setFarmers(nextFarmers);
+      cacheMasterData({ petani: nextFarmers, lahan: lands, villages });
+      await enqueue({ kind: "farmer-create", payload: { id, ...base } });
+      setCreating(false);
+      setFarmerId(id);
+      setLandId("");
+      setNewFarmerOpen(false);
+      setNfKode("");
+      setNfNama("");
+      setNfTelepon("");
+      setNfAlamat("");
+      toast({
+        title: "Petani baru disimpan offline",
+        description: `${local.kode_petani} — ${local.nama}. Akan tersinkron otomatis saat online.`,
+      });
+      return;
+    }
+
     const { data, error } = await supabase
       .from("petani")
-      .insert({
-        kode_petani: nfKode.trim().toUpperCase(),
-        nama: nfNama.trim(),
-        no_telepon: nfTelepon.trim() || null,
-        alamat_rumah: (nfAlamat || address).trim() || null,
-        alamat: (nfAlamat || address).trim() || null,
-        koordinat_lat: Number.isFinite(la) ? la : null,
-        koordinat_lng: Number.isFinite(ln) ? ln : null,
-        status: "aktif",
-        tanggal_bergabung: new Date().toISOString().slice(0, 10),
-      })
+      .insert(base)
       .select("id,kode_petani,nama,alamat_rumah,koordinat_lat,koordinat_lng")
       .single();
     setCreating(false);
@@ -549,16 +581,45 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
     setCreating(true);
     const la = parseFloat(lat);
     const ln = parseFloat(lng);
+    const base = {
+      petani_id: farmerId,
+      nama_lahan: nlNama.trim().toUpperCase(),
+      luas: nlLuas ? parseFloat(nlLuas) : null,
+      lokasi: (nlLokasi || address).trim() || null,
+      koordinat: Number.isFinite(la) && Number.isFinite(ln) ? `${la.toFixed(6)}, ${ln.toFixed(6)}` : null,
+      status: "aktif",
+    };
+
+    // Offline: keep locally and queue the insert for the next sync.
+    if (!navigator.onLine) {
+      const id = crypto.randomUUID();
+      const local = {
+        id,
+        petani_id: base.petani_id,
+        nama_lahan: base.nama_lahan,
+        lokasi: base.lokasi,
+        koordinat: base.koordinat,
+      } as LandOption;
+      const nextLands = [...lands, local];
+      setLands(nextLands);
+      cacheMasterData({ petani: farmers, lahan: nextLands, villages });
+      await enqueue({ kind: "land-create", payload: { id, ...base } });
+      setCreating(false);
+      setLandId(id);
+      setNewLandOpen(false);
+      setNlNama("");
+      setNlLuas("");
+      setNlLokasi("");
+      toast({
+        title: "Lahan baru disimpan offline",
+        description: `${local.nama_lahan}. Akan tersinkron otomatis saat online.`,
+      });
+      return;
+    }
+
     const { data, error } = await supabase
       .from("lahan")
-      .insert({
-        petani_id: farmerId,
-        nama_lahan: nlNama.trim().toUpperCase(),
-        luas: nlLuas ? parseFloat(nlLuas) : null,
-        lokasi: (nlLokasi || address).trim() || null,
-        koordinat: Number.isFinite(la) && Number.isFinite(ln) ? `${la.toFixed(6)}, ${ln.toFixed(6)}` : null,
-        status: "aktif",
-      })
+      .insert(base)
       .select("id,petani_id,nama_lahan,lokasi,koordinat")
       .single();
     setCreating(false);
