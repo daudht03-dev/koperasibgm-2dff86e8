@@ -32,6 +32,7 @@ import {
   Crosshair,
   UserPlus,
   Plus,
+  WifiOff,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -42,7 +43,7 @@ import CoordinateAccuracyIndicator from "@/components/CoordinateAccuracyIndicato
 import MiniMapPicker from "@/components/MiniMapPicker";
 import { InPageCameraCapture } from "@/components/InPageCameraCapture";
 
-import { cacheTile, enqueue, readTile, tileKey } from "@/lib/offline-queue";
+import { cacheMasterData, cacheTile, enqueue, readMasterData, readTile, tileKey } from "@/lib/offline-queue";
 
 
 interface FarmerOption {
@@ -99,6 +100,17 @@ const toLocalInput = (d: Date) => {
 
 const prefixOf = (code: string) => (code.match(/^[A-Za-z]+/)?.[0] || "").toUpperCase();
 
+const relativeTime = (ts: number) => {
+  const diff = Date.now() - ts;
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "baru saja";
+  if (minutes < 60) return `${minutes} menit yang lalu`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} jam yang lalu`;
+  const days = Math.floor(hours / 24);
+  return `${days} hari yang lalu`;
+};
+
 export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defaultFarmerId }: Props) => {
   const { profile } = useCompanyProfile();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -110,6 +122,7 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
   const [farmers, setFarmers] = useState<FarmerOption[]>([]);
   const [lands, setLands] = useState<LandOption[]>([]);
   const [villages, setVillages] = useState<{ code: string; name: string }[]>([]);
+  const [cachedAt, setCachedAt] = useState<number | null>(null);
   const [photoSrc, setPhotoSrc] = useState<string | null>(null);
   const [mapThumb, setMapThumb] = useState<string | null>(null);
 
@@ -167,14 +180,32 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
   }, [activeCode, villages]);
 
   const loadReference = useCallback(async () => {
+    // 1) Load cached master data first so the dialog works offline
+    const cached = await readMasterData();
+    if (cached) {
+      setCachedAt(cached.cachedAt);
+      setFarmers(
+        ((cached.petani || []) as FarmerOption[]).sort((a, b) => naturalSort(a.kode_petani, b.kode_petani)),
+      );
+      setLands((cached.lahan || []) as LandOption[]);
+      setVillages((cached.villages || []) as { code: string; name: string }[]);
+    }
+
+    // 2) Refresh from server when online, then update cache + state
+    if (!navigator.onLine) return;
     const [{ data: p }, { data: l }, { data: v }] = await Promise.all([
       supabase.from("petani").select("id,kode_petani,nama,alamat_rumah,koordinat_lat,koordinat_lng").limit(5000),
       supabase.from("lahan").select("id,petani_id,nama_lahan,lokasi,koordinat").limit(10000),
       supabase.from("village_prefixes").select("code,name").limit(500),
     ]);
-    setFarmers(((p || []) as FarmerOption[]).sort((a, b) => naturalSort(a.kode_petani, b.kode_petani)));
-    setLands((l || []) as LandOption[]);
-    setVillages((v || []) as { code: string; name: string }[]);
+    const petani = (p || []) as FarmerOption[];
+    const lahan = (l || []) as LandOption[];
+    const villageList = (v || []) as { code: string; name: string }[];
+    setFarmers([...petani].sort((a, b) => naturalSort(a.kode_petani, b.kode_petani)));
+    setLands(lahan);
+    setVillages(villageList);
+    await cacheMasterData({ petani, lahan, villages: villageList });
+    setCachedAt(Date.now());
   }, []);
 
   useEffect(() => {
@@ -674,8 +705,14 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 flex-wrap">
               <Camera className="h-5 w-5" /> Kamera Peta — Dokumentasi Lahan
+              {!navigator.onLine && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-organic-amber/15 text-organic-amber px-2 py-0.5 text-[11px] font-normal">
+                  <WifiOff className="h-3 w-3" />
+                  Mode Offline{cachedAt ? ` — data terakhir tersinkron ${relativeTime(cachedAt)}` : ""}
+                </span>
+              )}
             </DialogTitle>
             <DialogDescription>
               Foto otomatis diberi watermark berisi nama petani, kode, alamat, koordinat, dan peta mini.

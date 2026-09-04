@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 const DB_NAME = "koperasi-offline";
 const STORE = "queue";
 const TILE_STORE = "map-tiles";
+const MASTER_STORE = "master-data-cache";
 
 export type QueueItem =
   | {
@@ -40,11 +41,12 @@ export type QueueItem =
 
 const openDb = (): Promise<IDBDatabase> =>
   new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 2);
+    const req = indexedDB.open(DB_NAME, 3);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: "id" });
       if (!db.objectStoreNames.contains(TILE_STORE)) db.createObjectStore(TILE_STORE);
+      if (!db.objectStoreNames.contains(MASTER_STORE)) db.createObjectStore(MASTER_STORE);
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -101,6 +103,32 @@ export const readTile = async (key: string): Promise<string | null> => {
 
 export const tileKey = (lat: number, lng: number, zoom: number) =>
   `${lat.toFixed(4)},${lng.toFixed(4)}@${zoom}`;
+
+export interface MasterDataCache {
+  petani: unknown[];
+  lahan: unknown[];
+  villages: unknown[];
+  cachedAt: number;
+}
+
+/** Cache master reference data (farmers / lands / villages) for offline use. */
+export const cacheMasterData = async (data: { petani: unknown[]; lahan: unknown[]; villages: unknown[] }) => {
+  try {
+    const entry: MasterDataCache = { ...data, cachedAt: Date.now() };
+    await tx(MASTER_STORE, "readwrite", (s) => s.put(entry, "master") as unknown as IDBRequest<undefined>);
+  } catch {
+    /* ignore */
+  }
+};
+
+export const readMasterData = async (): Promise<MasterDataCache | null> => {
+  try {
+    const v = await tx<MasterDataCache | undefined>(MASTER_STORE, "readonly", (s) => s.get("master") as IDBRequest<MasterDataCache | undefined>);
+    return v ?? null;
+  } catch {
+    return null;
+  }
+};
 
 const syncMasterRecord = async (sync: NonNullable<Extract<QueueItem, { kind: "photo" }>["payload"]["syncMaster"]>) => {
   if (sync.type === "lahan") {
