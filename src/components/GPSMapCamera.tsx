@@ -42,7 +42,7 @@ import CoordinateAccuracyIndicator from "@/components/CoordinateAccuracyIndicato
 import MiniMapPicker from "@/components/MiniMapPicker";
 import { InPageCameraCapture } from "@/components/InPageCameraCapture";
 
-import { cacheTile, enqueue, readTile, tileKey } from "@/lib/offline-queue";
+import { cacheMasterData, cacheTile, enqueue, readMasterData, readTile, tileKey } from "@/lib/offline-queue";
 
 
 interface FarmerOption {
@@ -167,14 +167,32 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
   }, [activeCode, villages]);
 
   const loadReference = useCallback(async () => {
+    // 1) Load cached master data first so the dialog works offline
+    const cached = await readMasterData();
+    if (cached) {
+      setCachedAt(cached.cachedAt);
+      setFarmers(
+        ((cached.petani || []) as FarmerOption[]).sort((a, b) => naturalSort(a.kode_petani, b.kode_petani)),
+      );
+      setLands((cached.lahan || []) as LandOption[]);
+      setVillages((cached.villages || []) as { code: string; name: string }[]);
+    }
+
+    // 2) Refresh from server when online, then update cache + state
+    if (!navigator.onLine) return;
     const [{ data: p }, { data: l }, { data: v }] = await Promise.all([
       supabase.from("petani").select("id,kode_petani,nama,alamat_rumah,koordinat_lat,koordinat_lng").limit(5000),
       supabase.from("lahan").select("id,petani_id,nama_lahan,lokasi,koordinat").limit(10000),
       supabase.from("village_prefixes").select("code,name").limit(500),
     ]);
-    setFarmers(((p || []) as FarmerOption[]).sort((a, b) => naturalSort(a.kode_petani, b.kode_petani)));
-    setLands((l || []) as LandOption[]);
-    setVillages((v || []) as { code: string; name: string }[]);
+    const petani = (p || []) as FarmerOption[];
+    const lahan = (l || []) as LandOption[];
+    const villageList = (v || []) as { code: string; name: string }[];
+    setFarmers([...petani].sort((a, b) => naturalSort(a.kode_petani, b.kode_petani)));
+    setLands(lahan);
+    setVillages(villageList);
+    await cacheMasterData({ petani, lahan, villages: villageList });
+    setCachedAt(Date.now());
   }, []);
 
   useEffect(() => {
