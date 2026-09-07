@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { renderPhotoOverlay, canvasToBlob, OverlayData } from "@/lib/photo-overlay";
+import { enqueue } from "@/lib/offline-queue";
 import { evaluateCoordinate } from "@/lib/coordinate-accuracy";
 import CoordinateAccuracyIndicator from "@/components/CoordinateAccuracyIndicator";
 import MiniMapPicker from "@/components/MiniMapPicker";
@@ -243,6 +244,19 @@ export const LandPhotoEditor = ({ open, onOpenChange, photo, imageUrl, onSaved }
 
   const handleUpdateMetadata = async () => {
     if (!photo) return;
+    if (!navigator.onLine) {
+      await enqueue({
+        kind: "photo-metadata-update",
+        payload: { photoId: photo.id, metadata: metadataPayload() },
+      });
+      toast({
+        title: "Perubahan disimpan offline",
+        description: "Akan tersinkron otomatis saat online.",
+      });
+      onSaved?.();
+      onOpenChange(false);
+      return;
+    }
     setBusy(true);
     const { error } = await supabase.from("foto_lahan").update(metadataPayload()).eq("id", photo.id);
     setBusy(false);
@@ -258,6 +272,37 @@ export const LandPhotoEditor = ({ open, onOpenChange, photo, imageUrl, onSaved }
 
   const handleSaveNewVersion = async () => {
     if (!photo || !canvasRef.current) return;
+    if (!navigator.onLine) {
+      try {
+        setBusy(true);
+        const blob = await canvasToBlob(canvasRef.current);
+        await enqueue({
+          kind: "photo",
+          payload: {
+            blob,
+            row: {
+              ...metadataPayload(),
+              petani_id: photo.petani_id ?? null,
+              lahan_id: photo.lahan_id ?? null,
+              tipe: photo.tipe,
+              taken_at: takenAt.toISOString(),
+            },
+            code: kode || "foto",
+          },
+        });
+        toast({
+          title: "Perubahan disimpan offline",
+          description: "Akan tersinkron otomatis saat online.",
+        });
+        onSaved?.();
+        onOpenChange(false);
+      } catch (e: any) {
+        toast({ title: "Gagal menyimpan offline", description: e.message, variant: "destructive" });
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     setBusy(true);
     try {
       const blob = await canvasToBlob(canvasRef.current);
