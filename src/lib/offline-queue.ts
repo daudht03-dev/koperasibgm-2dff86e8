@@ -68,6 +68,12 @@ export type QueueItem =
         koordinat: string | null;
         status: string;
       };
+    }
+  | {
+      id: string;
+      kind: "photo-metadata-update";
+      createdAt: number;
+      payload: { photoId: string; metadata: Record<string, unknown> };
     };
 
 const openDb = (): Promise<IDBDatabase> =>
@@ -176,6 +182,15 @@ const syncMasterRecord = async (sync: NonNullable<Extract<QueueItem, { kind: "ph
 };
 
 const processItem = async (item: QueueItem) => {
+  if (item.kind === "photo-metadata-update") {
+    const { error } = await supabase
+      .from("foto_lahan")
+      .update(item.payload.metadata as any)
+      .eq("id", item.payload.photoId);
+    if (error) throw error;
+    return;
+  }
+
   if (item.kind === "farmer-create") {
     const { error } = await supabase.from("petani").insert(item.payload as any);
     if (error) throw error;
