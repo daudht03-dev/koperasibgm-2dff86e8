@@ -969,6 +969,15 @@ const AdminDashboard = () => {
 
                   <TableHeader>
                     <TableRow>
+                      {isAdmin && (
+                        <TableHead className="w-10">
+                          <Checkbox
+                            checked={allVisibleSelected}
+                            onCheckedChange={(v) => toggleSelectAllVisible(v === true)}
+                            aria-label="Pilih semua petani"
+                          />
+                        </TableHead>
+                      )}
                       <TableHead>
                         <Button
                           variant="ghost"
@@ -994,22 +1003,18 @@ const AdminDashboard = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {[...farmers]
-                      .filter((farmer) => {
-                        if (!farmerSearch) return true;
-                        const searchLower = farmerSearch.toLowerCase();
-                        return (
-                          farmer.kode_petani.toLowerCase().includes(searchLower) ||
-                          farmer.nama.toLowerCase().includes(searchLower)
-                        );
-                      })
-                      .sort((a, b) => {
-                        if (farmerSortOrder === null) return 0;
-                        if (farmerSortOrder === "asc") return naturalSort(a.kode_petani, b.kode_petani);
-                        return naturalSort(b.kode_petani, a.kode_petani);
-                      })
+                    {visibleFarmers
                       .map((farmer) => (
                     <TableRow key={farmer.id}>
+                      {isAdmin && (
+                        <TableCell className="w-10">
+                          <Checkbox
+                            checked={selectedFarmerIds.includes(farmer.id)}
+                            onCheckedChange={(v) => toggleFarmerSelected(farmer.id, v === true)}
+                            aria-label={`Pilih ${farmer.nama}`}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell className="font-medium">{farmer.kode_petani}</TableCell>
                       <TableCell>{farmer.nama}</TableCell>
                       <TableCell className="max-w-xs truncate">{farmer.alamat}</TableCell>
