@@ -72,6 +72,38 @@ const AdminDashboard = () => {
   const { profile, updateProfile, uploadLogo } = useCompanyProfile();
   const { harvests, addHarvest, deleteHarvest } = useHarvests();
 
+  // Farmers currently visible in the table (search + sort applied)
+  const visibleFarmers = [...(farmers || [])]
+    .filter((farmer) => {
+      if (!farmerSearch) return true;
+      const s = farmerSearch.toLowerCase();
+      return (
+        farmer.kode_petani.toLowerCase().includes(s) || farmer.nama.toLowerCase().includes(s)
+      );
+    })
+    .sort((a, b) => {
+      if (farmerSortOrder === null) return 0;
+      if (farmerSortOrder === "asc") return naturalSort(a.kode_petani, b.kode_petani);
+      return naturalSort(b.kode_petani, a.kode_petani);
+    });
+
+  const selectedFarmers = (farmers || []).filter((f) => selectedFarmerIds.includes(f.id));
+  const allVisibleSelected =
+    visibleFarmers.length > 0 && visibleFarmers.every((f) => selectedFarmerIds.includes(f.id));
+
+  const toggleFarmerSelected = (id: string, checked: boolean) =>
+    setSelectedFarmerIds((prev) =>
+      checked ? Array.from(new Set([...prev, id])) : prev.filter((x) => x !== id)
+    );
+
+  const toggleSelectAllVisible = (checked: boolean) =>
+    setSelectedFarmerIds((prev) => {
+      const visibleIds = visibleFarmers.map((f) => f.id);
+      return checked
+        ? Array.from(new Set([...prev, ...visibleIds]))
+        : prev.filter((id) => !visibleIds.includes(id));
+    });
+
   // Photos attached to farmers / lands (realtime) + AFL export state
   const { photos, byFarmer: photosByFarmer, byLand: photosByLand } = useEntityPhotos();
   const [aflBusy, setAflBusy] = useState(false);
