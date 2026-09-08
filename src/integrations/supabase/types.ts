@@ -572,6 +572,39 @@ export type Database = {
           },
         ]
       }
+      log_penghapusan_batch: {
+        Row: {
+          alasan: string | null
+          created_at: string
+          daftar_terhapus: Json
+          dihapus_oleh: string | null
+          id: string
+          jumlah_dihapus: number
+          ringkasan_cascade: Json
+          tipe: string
+        }
+        Insert: {
+          alasan?: string | null
+          created_at?: string
+          daftar_terhapus?: Json
+          dihapus_oleh?: string | null
+          id?: string
+          jumlah_dihapus?: number
+          ringkasan_cascade?: Json
+          tipe: string
+        }
+        Update: {
+          alasan?: string | null
+          created_at?: string
+          daftar_terhapus?: Json
+          dihapus_oleh?: string | null
+          id?: string
+          jumlah_dihapus?: number
+          ringkasan_cascade?: Json
+          tipe?: string
+        }
+        Relationships: []
+      }
       panen: {
         Row: {
           catatan: string | null
