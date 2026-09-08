@@ -57,6 +57,8 @@ const AdminDashboard = () => {
   const [landSortOrder, setLandSortOrder] = useState<"asc" | "desc" | null>(null);
   const [farmerSearch, setFarmerSearch] = useState("");
   const [landSearch, setLandSearch] = useState("");
+  const [selectedFarmerIds, setSelectedFarmerIds] = useState<string[]>([]);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   // Natural alphanumeric sort function (BN6 before BN12)
   const naturalSort = (a: string, b: string): number => {
