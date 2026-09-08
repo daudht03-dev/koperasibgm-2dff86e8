@@ -41,6 +41,8 @@ import PublicProfileSettings from "@/components/PublicProfileSettings";
 import { useEntityPhotos } from "@/hooks/use-entity-photos";
 import { PhotoCell } from "@/components/PhotoCell";
 import { exportAFL } from "@/lib/afl-export";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BulkDeleteFarmersDialog } from "@/components/BulkDeleteFarmersDialog";
 
 
 const AdminDashboard = () => {
