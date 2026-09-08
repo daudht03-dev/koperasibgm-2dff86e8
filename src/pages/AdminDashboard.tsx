@@ -41,6 +41,8 @@ import PublicProfileSettings from "@/components/PublicProfileSettings";
 import { useEntityPhotos } from "@/hooks/use-entity-photos";
 import { PhotoCell } from "@/components/PhotoCell";
 import { exportAFL } from "@/lib/afl-export";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BulkDeleteFarmersDialog } from "@/components/BulkDeleteFarmersDialog";
 
 
 const AdminDashboard = () => {
@@ -55,6 +57,8 @@ const AdminDashboard = () => {
   const [landSortOrder, setLandSortOrder] = useState<"asc" | "desc" | null>(null);
   const [farmerSearch, setFarmerSearch] = useState("");
   const [landSearch, setLandSearch] = useState("");
+  const [selectedFarmerIds, setSelectedFarmerIds] = useState<string[]>([]);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   // Natural alphanumeric sort function (BN6 before BN12)
   const naturalSort = (a: string, b: string): number => {
@@ -67,6 +71,38 @@ const AdminDashboard = () => {
   const { products, createProduct, updateProduct, deleteProduct, uploadImage } = useProducts();
   const { profile, updateProfile, uploadLogo } = useCompanyProfile();
   const { harvests, addHarvest, deleteHarvest } = useHarvests();
+
+  // Farmers currently visible in the table (search + sort applied)
+  const visibleFarmers = [...(farmers || [])]
+    .filter((farmer) => {
+      if (!farmerSearch) return true;
+      const s = farmerSearch.toLowerCase();
+      return (
+        farmer.kode_petani.toLowerCase().includes(s) || farmer.nama.toLowerCase().includes(s)
+      );
+    })
+    .sort((a, b) => {
+      if (farmerSortOrder === null) return 0;
+      if (farmerSortOrder === "asc") return naturalSort(a.kode_petani, b.kode_petani);
+      return naturalSort(b.kode_petani, a.kode_petani);
+    });
+
+  const selectedFarmers = (farmers || []).filter((f) => selectedFarmerIds.includes(f.id));
+  const allVisibleSelected =
+    visibleFarmers.length > 0 && visibleFarmers.every((f) => selectedFarmerIds.includes(f.id));
+
+  const toggleFarmerSelected = (id: string, checked: boolean) =>
+    setSelectedFarmerIds((prev) =>
+      checked ? Array.from(new Set([...prev, id])) : prev.filter((x) => x !== id)
+    );
+
+  const toggleSelectAllVisible = (checked: boolean) =>
+    setSelectedFarmerIds((prev) => {
+      const visibleIds = visibleFarmers.map((f) => f.id);
+      return checked
+        ? Array.from(new Set([...prev, ...visibleIds]))
+        : prev.filter((id) => !visibleIds.includes(id));
+    });
 
   // Photos attached to farmers / lands (realtime) + AFL export state
   const { photos, byFarmer: photosByFarmer, byLand: photosByLand } = useEntityPhotos();
@@ -933,6 +969,15 @@ const AdminDashboard = () => {
 
                   <TableHeader>
                     <TableRow>
+                      {isAdmin && (
+                        <TableHead className="w-10">
+                          <Checkbox
+                            checked={allVisibleSelected}
+                            onCheckedChange={(v) => toggleSelectAllVisible(v === true)}
+                            aria-label="Pilih semua petani"
+                          />
+                        </TableHead>
+                      )}
                       <TableHead>
                         <Button
                           variant="ghost"
@@ -958,22 +1003,18 @@ const AdminDashboard = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {[...farmers]
-                      .filter((farmer) => {
-                        if (!farmerSearch) return true;
-                        const searchLower = farmerSearch.toLowerCase();
-                        return (
-                          farmer.kode_petani.toLowerCase().includes(searchLower) ||
-                          farmer.nama.toLowerCase().includes(searchLower)
-                        );
-                      })
-                      .sort((a, b) => {
-                        if (farmerSortOrder === null) return 0;
-                        if (farmerSortOrder === "asc") return naturalSort(a.kode_petani, b.kode_petani);
-                        return naturalSort(b.kode_petani, a.kode_petani);
-                      })
+                    {visibleFarmers
                       .map((farmer) => (
                     <TableRow key={farmer.id}>
+                      {isAdmin && (
+                        <TableCell className="w-10">
+                          <Checkbox
+                            checked={selectedFarmerIds.includes(farmer.id)}
+                            onCheckedChange={(v) => toggleFarmerSelected(farmer.id, v === true)}
+                            aria-label={`Pilih ${farmer.nama}`}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell className="font-medium">{farmer.kode_petani}</TableCell>
                       <TableCell>{farmer.nama}</TableCell>
                       <TableCell className="max-w-xs truncate">{farmer.alamat}</TableCell>
@@ -1048,6 +1089,44 @@ const AdminDashboard = () => {
                   </TableBody>
                 </Table>
                 </div>
+              )}
+
+              {isAdmin && selectedFarmers.length > 0 && (
+                <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2">
+                  <div className="flex items-center gap-4 rounded-full border border-destructive/30 bg-background px-5 py-3 shadow-lg">
+                    <span className="text-sm font-medium text-foreground">
+                      {selectedFarmers.length} petani dipilih
+                    </span>
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedFarmerIds([])}>
+                      Batalkan
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={() => setBulkDeleteOpen(true)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Hapus Terpilih
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {isAdmin && (
+                <BulkDeleteFarmersDialog
+                  open={bulkDeleteOpen}
+                  onOpenChange={setBulkDeleteOpen}
+                  farmers={selectedFarmers.map((f) => ({
+                    id: f.id,
+                    kode_petani: f.kode_petani,
+                    nama: f.nama,
+                  }))}
+                  onDeleted={() => {
+                    setSelectedFarmerIds([]);
+                    refetchFarmers();
+                    refetchLands();
+                  }}
+                />
               )}
 
             </CardContent>
