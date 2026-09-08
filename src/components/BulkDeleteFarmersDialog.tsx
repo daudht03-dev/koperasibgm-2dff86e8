@@ -167,7 +167,7 @@ export const BulkDeleteFarmersDialog = ({ open, onOpenChange, farmers, onDeleted
           panen,
           penjualan_petani: penjualan,
           label_settings: label,
-          foto_lahan: Math.max(fotoByFarmer, fotoByLand),
+          foto_lahan: fotoIds.size,
         });
       } catch (e: any) {
         if (!cancelled) setCountError(e?.message ?? "Gagal menghitung data terkait");
