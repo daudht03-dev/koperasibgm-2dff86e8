@@ -147,8 +147,17 @@ export const BulkDeleteFarmersDialog = ({ open, onOpenChange, farmers, onDeleted
           countBy("label_settings", "petani_id", ids),
         ]);
 
-        const fotoByFarmer = await countBy("foto_lahan", "petani_id", ids);
-        const fotoByLand = lahanRows.length ? await countBy("foto_lahan", "lahan_id", lahanRows) : 0;
+        const fotoIds = new Set<string>();
+        for (const part of chunked(ids)) {
+          const { data, error } = await supabase.from("foto_lahan").select("id").in("petani_id", part);
+          if (error) throw error;
+          (data ?? []).forEach((r) => fotoIds.add(r.id));
+        }
+        for (const part of chunked(lahanRows)) {
+          const { data, error } = await supabase.from("foto_lahan").select("id").in("lahan_id", part);
+          if (error) throw error;
+          (data ?? []).forEach((r) => fotoIds.add(r.id));
+        }
 
         if (cancelled) return;
         setCounts({
