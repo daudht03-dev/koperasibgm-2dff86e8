@@ -66,7 +66,7 @@ const countBy = async (
 ): Promise<number> => {
   let total = 0;
   for (const part of chunked(ids)) {
-    const { count, error } = await supabase
+    const { count, error } = await (supabase as any)
       .from(table)
       .select("id", { count: "exact", head: true })
       .in(column, part);
@@ -83,7 +83,7 @@ const fetchRows = async (
 ): Promise<any[]> => {
   const rows: any[] = [];
   for (const part of chunked(ids)) {
-    const { data, error } = await supabase.from(table).select("*").in(column, part);
+    const { data, error } = await (supabase as any).from(table).select("*").in(column, part);
     if (error) throw error;
     rows.push(...(data ?? []));
   }
