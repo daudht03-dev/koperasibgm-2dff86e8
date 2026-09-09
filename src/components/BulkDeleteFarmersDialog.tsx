@@ -50,61 +50,8 @@ const emptyCounts: Counts = {
   foto_lahan: 0,
 };
 
-const CHUNK = 100;
 
-/** Runs an `in` filter in chunks to avoid overly long URLs. */
-const chunked = <T,>(arr: T[]): T[][] => {
-  const out: T[][] = [];
-  for (let i = 0; i < arr.length; i += CHUNK) out.push(arr.slice(i, i + CHUNK));
-  return out;
-};
 
-const countBy = async (
-  table: "lahan" | "batch_panen" | "panen" | "penjualan_petani" | "label_settings" | "foto_lahan",
-  column: string,
-  ids: string[]
-): Promise<number> => {
-  let total = 0;
-  for (const part of chunked(ids)) {
-    const { count, error } = await (supabase as any)
-      .from(table)
-      .select("id", { count: "exact", head: true })
-      .in(column, part);
-    if (error) throw error;
-    total += count ?? 0;
-  }
-  return total;
-};
-
-const fetchRows = async (
-  table: "petani" | "lahan" | "batch_panen" | "panen" | "penjualan_petani",
-  column: string,
-  ids: string[]
-): Promise<any[]> => {
-  const rows: any[] = [];
-  for (const part of chunked(ids)) {
-    const { data, error } = await (supabase as any).from(table).select("*").in(column, part);
-    if (error) throw error;
-    rows.push(...(data ?? []));
-  }
-  return rows;
-};
-
-const toCsv = (rows: any[]): string => {
-  if (rows.length === 0) return "";
-  const headers = Array.from(
-    rows.reduce<Set<string>>((set, row) => {
-      Object.keys(row).forEach((k) => set.add(k));
-      return set;
-    }, new Set<string>())
-  );
-  const escape = (value: any) => {
-    if (value === null || value === undefined) return "";
-    const text = typeof value === "object" ? JSON.stringify(value) : String(value);
-    return /[",\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-  };
-  return [headers.join(","), ...rows.map((r) => headers.map((h) => escape(r[h])).join(","))].join("\n");
-};
 
 export const BulkDeleteFarmersDialog = ({ open, onOpenChange, farmers, onDeleted }: Props) => {
   const { user } = useAuth();
