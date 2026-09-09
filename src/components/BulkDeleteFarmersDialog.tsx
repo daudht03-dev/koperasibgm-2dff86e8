@@ -155,13 +155,8 @@ export const BulkDeleteFarmersDialog = ({ open, onOpenChange, farmers, onDeleted
       zip.file("penjualan_petani.csv", toCsv(penjualanRows));
 
       const blob = await zip.generateAsync({ type: "blob" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-      a.href = url;
-      a.download = `backup-petani-${stamp}.zip`;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadBlob(blob, `backup-petani-${timestampSuffix()}.zip`);
+
 
       setBackupDone(true);
       toast({ title: "Backup diunduh", description: "File ZIP berisi 5 CSV telah disimpan." });
