@@ -25,44 +25,29 @@ import {
   toCsv,
 } from "@/lib/bulk-delete-utils";
 
-
-export interface FarmerRef {
+export interface LandRef {
   id: string;
-  kode_petani: string;
-  nama: string;
+  nama_lahan: string;
+  kode?: string | null;
 }
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  farmers: FarmerRef[];
+  lands: LandRef[];
   onDeleted: () => void;
 }
 
 interface Counts {
-  petani: number;
   lahan: number;
-  batch_panen: number;
   panen: number;
-  penjualan_petani: number;
-  label_settings: number;
+  batch_panen: number;
   foto_lahan: number;
 }
 
-const emptyCounts: Counts = {
-  petani: 0,
-  lahan: 0,
-  batch_panen: 0,
-  panen: 0,
-  penjualan_petani: 0,
-  label_settings: 0,
-  foto_lahan: 0,
-};
+const emptyCounts: Counts = { lahan: 0, panen: 0, batch_panen: 0, foto_lahan: 0 };
 
-
-
-
-export const BulkDeleteFarmersDialog = ({ open, onOpenChange, farmers, onDeleted }: Props) => {
+export const BulkDeleteLandsDialog = ({ open, onOpenChange, lands, onDeleted }: Props) => {
   const { user } = useAuth();
   const [counts, setCounts] = useState<Counts>(emptyCounts);
   const [countLoading, setCountLoading] = useState(false);
@@ -73,7 +58,7 @@ export const BulkDeleteFarmersDialog = ({ open, onOpenChange, farmers, onDeleted
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
 
-  const ids = farmers.map((f) => f.id);
+  const ids = lands.map((l) => l.id);
 
   useEffect(() => {
     if (!open) return;
@@ -86,45 +71,13 @@ export const BulkDeleteFarmersDialog = ({ open, onOpenChange, farmers, onDeleted
     const run = async () => {
       setCountLoading(true);
       try {
-        const [lahanRows, lahan, batch, panen, penjualan, label] = await Promise.all([
-          (async () => {
-            const rows: string[] = [];
-            for (const part of chunked(ids)) {
-              const { data, error } = await supabase.from("lahan").select("id").in("petani_id", part);
-              if (error) throw error;
-              rows.push(...(data ?? []).map((r) => r.id));
-            }
-            return rows;
-          })(),
-          countBy("lahan", "petani_id", ids),
-          countBy("batch_panen", "petani_id", ids),
-          countBy("panen", "petani_id", ids),
-          countBy("penjualan_petani", "petani_id", ids),
-          countBy("label_settings", "petani_id", ids),
+        const [panen, batch, foto] = await Promise.all([
+          countBy("panen", "lahan_id", ids),
+          countBy("batch_panen", "lahan_id", ids),
+          countBy("foto_lahan", "lahan_id", ids),
         ]);
-
-        const fotoIds = new Set<string>();
-        for (const part of chunked(ids)) {
-          const { data, error } = await supabase.from("foto_lahan").select("id").in("petani_id", part);
-          if (error) throw error;
-          (data ?? []).forEach((r) => fotoIds.add(r.id));
-        }
-        for (const part of chunked(lahanRows)) {
-          const { data, error } = await supabase.from("foto_lahan").select("id").in("lahan_id", part);
-          if (error) throw error;
-          (data ?? []).forEach((r) => fotoIds.add(r.id));
-        }
-
         if (cancelled) return;
-        setCounts({
-          petani: farmers.length,
-          lahan,
-          batch_panen: batch,
-          panen,
-          penjualan_petani: penjualan,
-          label_settings: label,
-          foto_lahan: fotoIds.size,
-        });
+        setCounts({ lahan: lands.length, panen, batch_panen: batch, foto_lahan: foto });
       } catch (e: any) {
         if (!cancelled) setCountError(e?.message ?? "Gagal menghitung data terkait");
       } finally {
@@ -136,30 +89,25 @@ export const BulkDeleteFarmersDialog = ({ open, onOpenChange, farmers, onDeleted
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, farmers]);
+  }, [open, lands]);
 
   const handleBackup = async () => {
     setBackupBusy(true);
     try {
-      const petaniRows = await fetchRows("petani", "id", ids);
-      const lahanRows = await fetchRows("lahan", "petani_id", ids);
-      const panenRows = await fetchRows("panen", "petani_id", ids);
-      const batchRows = await fetchRows("batch_panen", "petani_id", ids);
-      const penjualanRows = await fetchRows("penjualan_petani", "petani_id", ids);
+      const lahanRows = await fetchRows("lahan", "id", ids);
+      const panenRows = await fetchRows("panen", "lahan_id", ids);
+      const batchRows = await fetchRows("batch_panen", "lahan_id", ids);
 
       const zip = new JSZip();
-      zip.file("petani.csv", toCsv(petaniRows));
       zip.file("lahan.csv", toCsv(lahanRows));
       zip.file("panen.csv", toCsv(panenRows));
       zip.file("batch_panen.csv", toCsv(batchRows));
-      zip.file("penjualan_petani.csv", toCsv(penjualanRows));
 
       const blob = await zip.generateAsync({ type: "blob" });
-      downloadBlob(blob, `backup-petani-${timestampSuffix()}.zip`);
-
+      downloadBlob(blob, `backup-lahan-${timestampSuffix()}.zip`);
 
       setBackupDone(true);
-      toast({ title: "Backup diunduh", description: "File ZIP berisi 5 CSV telah disimpan." });
+      toast({ title: "Backup diunduh", description: "File ZIP berisi 3 CSV telah disimpan." });
     } catch (e: any) {
       toast({ title: "Gagal membuat backup", description: e?.message, variant: "destructive" });
     } finally {
@@ -170,17 +118,21 @@ export const BulkDeleteFarmersDialog = ({ open, onOpenChange, farmers, onDeleted
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      const snapshot = farmers.map((f) => ({ id: f.id, kode_petani: f.kode_petani, nama: f.nama }));
+      const snapshot = lands.map((l) => ({
+        id: l.id,
+        kode: l.kode ?? null,
+        nama_lahan: l.nama_lahan,
+      }));
       const ringkasan = { ...counts };
 
       for (const part of chunked(ids)) {
-        const { error } = await supabase.from("petani").delete().in("id", part);
+        const { error } = await supabase.from("lahan").delete().in("id", part);
         if (error) throw error;
       }
 
       const { error: logError } = await supabase.from("log_penghapusan_batch").insert({
-        tipe: "petani",
-        jumlah_dihapus: farmers.length,
+        tipe: "lahan",
+        jumlah_dihapus: lands.length,
         ringkasan_cascade: ringkasan as any,
         daftar_terhapus: snapshot as any,
         dihapus_oleh: user?.id ?? null,
@@ -190,7 +142,7 @@ export const BulkDeleteFarmersDialog = ({ open, onOpenChange, farmers, onDeleted
 
       toast({
         title: "Penghapusan selesai",
-        description: `${farmers.length} petani berhasil dihapus permanen`,
+        description: `${lands.length} lahan berhasil dihapus permanen`,
       });
       onOpenChange(false);
       onDeleted();
@@ -209,10 +161,10 @@ export const BulkDeleteFarmersDialog = ({ open, onOpenChange, farmers, onDeleted
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
             <AlertTriangle className="h-5 w-5" />
-            Hapus {farmers.length} petani secara permanen
+            Hapus {lands.length} lahan secara permanen
           </DialogTitle>
           <DialogDescription>
-            Tindakan ini tidak dapat dibatalkan. Periksa daftar data yang ikut terhapus di bawah ini.
+            Tindakan ini tidak dapat dibatalkan. Periksa dampaknya di bawah ini.
           </DialogDescription>
         </DialogHeader>
 
@@ -226,17 +178,12 @@ export const BulkDeleteFarmersDialog = ({ open, onOpenChange, farmers, onDeleted
               <p className="text-destructive">{countError}</p>
             ) : (
               <>
-                <p className="font-medium text-foreground">Akan terhapus permanen:</p>
-                <ul className="mt-1 list-disc pl-5 text-foreground">
-                  <li>{counts.petani} petani</li>
-                  <li>{counts.lahan} lahan</li>
-                  <li>{counts.batch_panen} batch panen</li>
-                  <li>{counts.panen} data panen</li>
-                  <li>{counts.penjualan_petani} penjualan petani</li>
-                  <li>{counts.label_settings} pengaturan label</li>
-                </ul>
+                <p className="font-medium text-foreground">
+                  {counts.lahan} lahan akan terhapus permanen.
+                </p>
                 <p className="mt-2 text-muted-foreground">
-                  {counts.foto_lahan} foto akan tetap ada, tetapi tautannya ke petani/lahan dilepas.
+                  {counts.panen} data panen, {counts.batch_panen} batch panen, dan {counts.foto_lahan} foto
+                  akan tetap ada, tapi tautannya ke lahan ini dilepas.
                 </p>
               </>
             )}
@@ -264,9 +211,9 @@ export const BulkDeleteFarmersDialog = ({ open, onOpenChange, farmers, onDeleted
           </div>
 
           <div>
-            <Label htmlFor="alasan-hapus">Alasan penghapusan (opsional)</Label>
+            <Label htmlFor="alasan-hapus-lahan">Alasan penghapusan (opsional)</Label>
             <Textarea
-              id="alasan-hapus"
+              id="alasan-hapus-lahan"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Contoh: data duplikat hasil impor"
@@ -274,11 +221,11 @@ export const BulkDeleteFarmersDialog = ({ open, onOpenChange, farmers, onDeleted
           </div>
 
           <div>
-            <Label htmlFor="konfirmasi-hapus">
+            <Label htmlFor="konfirmasi-hapus-lahan">
               Ketik <span className="font-semibold">HAPUS</span> untuk mengaktifkan tombol
             </Label>
             <Input
-              id="konfirmasi-hapus"
+              id="konfirmasi-hapus-lahan"
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
               placeholder="HAPUS"
@@ -308,4 +255,4 @@ export const BulkDeleteFarmersDialog = ({ open, onOpenChange, farmers, onDeleted
   );
 };
 
-export default BulkDeleteFarmersDialog;
+export default BulkDeleteLandsDialog;
