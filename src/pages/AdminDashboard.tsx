@@ -1297,6 +1297,15 @@ const AdminDashboard = () => {
 
                   <TableHeader>
                     <TableRow>
+                      {isAdmin && (
+                        <TableHead className="w-10">
+                          <Checkbox
+                            checked={allVisibleLandsSelected}
+                            onCheckedChange={(v) => toggleSelectAllVisibleLands(v === true)}
+                            aria-label="Pilih semua lahan"
+                          />
+                        </TableHead>
+                      )}
                       <TableHead>
                         <Button
                           variant="ghost"
@@ -1324,26 +1333,20 @@ const AdminDashboard = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {[...lands]
-                      .filter((land) => {
-                        if (!landSearch) return true;
-                        const searchLower = landSearch.toLowerCase();
-                        const farmerName = land.petani_id 
-                          ? farmers.find(f => f.id === land.petani_id)?.nama?.toLowerCase() || ""
-                          : "";
-                        return (
-                          land.nama_lahan.toLowerCase().includes(searchLower) ||
-                          farmerName.includes(searchLower)
-                        );
-                      })
-                      .sort((a, b) => {
-                        if (landSortOrder === null) return 0;
-                        if (landSortOrder === "asc") return naturalSort(a.nama_lahan, b.nama_lahan);
-                        return naturalSort(b.nama_lahan, a.nama_lahan);
-                      })
+                    {visibleLands
                       .map((land) => (
                     <TableRow key={land.id}>
+                      {isAdmin && (
+                        <TableCell className="w-10">
+                          <Checkbox
+                            checked={selectedLandIds.includes(land.id)}
+                            onCheckedChange={(v) => toggleLandSelected(land.id, v === true)}
+                            aria-label={`Pilih ${land.nama_lahan}`}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell className="font-medium">{land.nama_lahan}</TableCell>
+
                       <TableCell>
                         {land.petani_id 
                           ? farmers.find(f => f.id === land.petani_id)?.nama || "-"
