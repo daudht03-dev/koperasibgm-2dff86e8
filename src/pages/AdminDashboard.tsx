@@ -43,6 +43,8 @@ import { PhotoCell } from "@/components/PhotoCell";
 import { exportAFL } from "@/lib/afl-export";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BulkDeleteFarmersDialog } from "@/components/BulkDeleteFarmersDialog";
+import { BulkDeleteLandsDialog } from "@/components/BulkDeleteLandsDialog";
+
 
 
 const AdminDashboard = () => {
