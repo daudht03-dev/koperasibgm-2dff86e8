@@ -107,6 +107,40 @@ const AdminDashboard = () => {
         : prev.filter((id) => !visibleIds.includes(id));
     });
 
+  // Lands currently visible in the table (search + sort applied)
+  const visibleLands = [...(lands || [])]
+    .filter((land) => {
+      if (!landSearch) return true;
+      const s = landSearch.toLowerCase();
+      const farmerName = land.petani_id
+        ? farmers.find((f) => f.id === land.petani_id)?.nama?.toLowerCase() || ""
+        : "";
+      return land.nama_lahan.toLowerCase().includes(s) || farmerName.includes(s);
+    })
+    .sort((a, b) => {
+      if (landSortOrder === null) return 0;
+      if (landSortOrder === "asc") return naturalSort(a.nama_lahan, b.nama_lahan);
+      return naturalSort(b.nama_lahan, a.nama_lahan);
+    });
+
+  const selectedLands = (lands || []).filter((l) => selectedLandIds.includes(l.id));
+  const allVisibleLandsSelected =
+    visibleLands.length > 0 && visibleLands.every((l) => selectedLandIds.includes(l.id));
+
+  const toggleLandSelected = (id: string, checked: boolean) =>
+    setSelectedLandIds((prev) =>
+      checked ? Array.from(new Set([...prev, id])) : prev.filter((x) => x !== id)
+    );
+
+  const toggleSelectAllVisibleLands = (checked: boolean) =>
+    setSelectedLandIds((prev) => {
+      const visibleIds = visibleLands.map((l) => l.id);
+      return checked
+        ? Array.from(new Set([...prev, ...visibleIds]))
+        : prev.filter((id) => !visibleIds.includes(id));
+    });
+
+
   // Photos attached to farmers / lands (realtime) + AFL export state
   const { photos, byFarmer: photosByFarmer, byLand: photosByLand } = useEntityPhotos();
   const [aflBusy, setAflBusy] = useState(false);
