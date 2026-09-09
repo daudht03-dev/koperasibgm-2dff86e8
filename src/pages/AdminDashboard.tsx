@@ -1414,6 +1414,44 @@ const AdminDashboard = () => {
                 </div>
               )}
 
+              {isAdmin && selectedLands.length > 0 && (
+                <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2">
+                  <div className="flex items-center gap-4 rounded-full border border-destructive/30 bg-background px-5 py-3 shadow-lg">
+                    <span className="text-sm font-medium text-foreground">
+                      {selectedLands.length} lahan dipilih
+                    </span>
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedLandIds([])}>
+                      Batalkan
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={() => setBulkDeleteLandsOpen(true)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Hapus Terpilih
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {isAdmin && (
+                <BulkDeleteLandsDialog
+                  open={bulkDeleteLandsOpen}
+                  onOpenChange={setBulkDeleteLandsOpen}
+                  lands={selectedLands.map((l) => ({
+                    id: l.id,
+                    nama_lahan: l.nama_lahan,
+                  }))}
+                  onDeleted={() => {
+                    setSelectedLandIds([]);
+                    refetchLands();
+                  }}
+                />
+              )}
+
+
+
             </CardContent>
           </Card>
         )}
