@@ -10,6 +10,7 @@ const DB_NAME = "koperasi-offline";
 const STORE = "queue";
 const TILE_STORE = "map-tiles";
 const MASTER_STORE = "master-data-cache";
+export const DRAFT_STORE = "form-drafts";
 
 export type QueueItem =
   | {
@@ -76,20 +77,21 @@ export type QueueItem =
       payload: { photoId: string; metadata: Record<string, unknown> };
     };
 
-const openDb = (): Promise<IDBDatabase> =>
+export const openDb = (): Promise<IDBDatabase> =>
   new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 3);
+    const req = indexedDB.open(DB_NAME, 4);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: "id" });
       if (!db.objectStoreNames.contains(TILE_STORE)) db.createObjectStore(TILE_STORE);
       if (!db.objectStoreNames.contains(MASTER_STORE)) db.createObjectStore(MASTER_STORE);
+      if (!db.objectStoreNames.contains(DRAFT_STORE)) db.createObjectStore(DRAFT_STORE);
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
 
-const tx = async <T>(store: string, mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> => {
+export const tx = async <T>(store: string, mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> => {
   const db = await openDb();
   return new Promise<T>((resolve, reject) => {
     const t = db.transaction(store, mode);
