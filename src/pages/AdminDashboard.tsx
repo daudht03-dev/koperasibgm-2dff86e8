@@ -672,89 +672,10 @@ const AdminDashboard = () => {
     setLoading(false);
   };
 
-  // Handler functions for farmers
-  const handleAddFarmer = async () => {
-    try {
-      setFarmerErrors({});
-      const validated = farmerSchema.parse(farmerForm);
-      
-      const newFarmer = await addFarmer({
-        nama: validated.nama,
-        kode_petani: validated.kode_petani,
-        alamat: validated.alamat,
-      });
-      
-      if (newFarmer) {
-        setFarmerForm({ nama: "", kode_petani: "", alamat: "" });
-        setFarmerDialogOpen(false);
-        
-        // Auto-show QR preview for new farmer
-        setQrPreviewFarmer({
-          id: newFarmer.id,
-          nama: newFarmer.nama,
-          kode_petani: newFarmer.kode_petani,
-        });
-        setQrPreviewOpen(true);
-      }
-    } catch (error: any) {
-      if (error.errors) {
-        const errors: Record<string, string> = {};
-        error.errors.forEach((err: any) => {
-          errors[err.path[0]] = err.message;
-        });
-        setFarmerErrors(errors);
-        toast({
-          title: "Validasi Gagal",
-          description: "Mohon periksa kembali data yang Anda masukkan",
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
+  // Handler functions for farmers (submit logic lives in FarmerFormDialog)
   const handleEditFarmer = (farmer: any) => {
-    setFarmerForm({
-      nama: farmer.nama,
-      kode_petani: farmer.kode_petani,
-      alamat: farmer.alamat,
-    });
-    setFarmerErrors({});
-    setEditingFarmer(farmer.id);
+    setEditingFarmer(farmer);
     setFarmerDialogOpen(true);
-  };
-
-  const handleUpdateFarmer = async () => {
-    if (!editingFarmer) return;
-    
-    try {
-      setFarmerErrors({});
-      const validated = farmerSchema.parse(farmerForm);
-      
-      const success = await updateFarmer(editingFarmer, {
-        nama: validated.nama,
-        kode_petani: validated.kode_petani,
-        alamat: validated.alamat,
-      });
-      
-      if (success) {
-        setFarmerForm({ nama: "", kode_petani: "", alamat: "" });
-        setEditingFarmer(null);
-        setFarmerDialogOpen(false);
-      }
-    } catch (error: any) {
-      if (error.errors) {
-        const errors: Record<string, string> = {};
-        error.errors.forEach((err: any) => {
-          errors[err.path[0]] = err.message;
-        });
-        setFarmerErrors(errors);
-        toast({
-          title: "Validasi Gagal",
-          description: "Mohon periksa kembali data yang Anda masukkan",
-          variant: "destructive",
-        });
-      }
-    }
   };
 
   // Handler functions for lands
