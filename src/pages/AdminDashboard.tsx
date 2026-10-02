@@ -45,6 +45,445 @@ import { exportAFL } from "@/lib/afl-export";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BulkDeleteFarmersDialog } from "@/components/BulkDeleteFarmersDialog";
 import { BulkDeleteLandsDialog } from "@/components/BulkDeleteLandsDialog";
+import { useDraftForm } from "@/hooks/use-draft-form";
+
+const relativeTime = (ts: number): string => {
+  const diff = Date.now() - ts;
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "baru saja";
+  if (minutes < 60) return `${minutes} menit lalu`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} jam lalu`;
+  return `${Math.floor(hours / 24)} hari lalu`;
+};
+
+const DraftBanner = ({
+  savedAt,
+  onRestore,
+  onStartNew,
+}: {
+  savedAt: number;
+  onRestore: () => void;
+  onStartNew: () => void;
+}) => (
+  <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+    <span>Ada draft tersimpan dari {relativeTime(savedAt)}</span>
+    <div className="flex gap-2">
+      <Button type="button" size="sm" variant="outline" onClick={onRestore}>
+        Lanjutkan Draft
+      </Button>
+      <Button type="button" size="sm" variant="ghost" onClick={onStartNew}>
+        Mulai Baru
+      </Button>
+    </div>
+  </div>
+);
+
+interface FarmerFormValues {
+  nama: string;
+  kode_petani: string;
+  alamat: string;
+  no_telepon: string;
+  alamat_rumah: string;
+}
+
+const EMPTY_FARMER_FORM: FarmerFormValues = {
+  nama: "",
+  kode_petani: "",
+  alamat: "",
+  no_telepon: "",
+  alamat_rumah: "",
+};
+
+const FarmerFormDialog = ({
+  editingFarmer,
+  addFarmer,
+  updateFarmer,
+  onClose,
+  onCreated,
+}: {
+  editingFarmer: any | null;
+  addFarmer: (farmer: any) => Promise<any>;
+  updateFarmer: (id: string, farmer: any) => Promise<boolean>;
+  onClose: () => void;
+  onCreated: (farmer: { id: string; nama: string; kode_petani: string }) => void;
+}) => {
+  const initialValues: FarmerFormValues = editingFarmer
+    ? {
+        nama: editingFarmer.nama ?? "",
+        kode_petani: editingFarmer.kode_petani ?? "",
+        alamat: editingFarmer.alamat ?? "",
+        no_telepon: editingFarmer.no_telepon ?? "",
+        alamat_rumah: editingFarmer.alamat_rumah ?? "",
+      }
+    : EMPTY_FARMER_FORM;
+  const draftKey = editingFarmer ? `edit-petani:${editingFarmer.id}` : "tambah-petani:baru";
+  const { values, setValues, clearDraft, hasDraftAvailable, restoreDraft, savedAt } =
+    useDraftForm<FarmerFormValues>(draftKey, initialValues);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    try {
+      setErrors({});
+      const validated = farmerSchema.parse(values);
+      setSaving(true);
+      const payload = {
+        nama: validated.nama,
+        kode_petani: validated.kode_petani,
+        alamat: validated.alamat,
+        no_telepon: validated.no_telepon || null,
+        alamat_rumah: validated.alamat_rumah || null,
+      };
+      if (editingFarmer) {
+        const success = await updateFarmer(editingFarmer.id, payload);
+        if (success) {
+          await clearDraft();
+          onClose();
+        }
+      } else {
+        const newFarmer = await addFarmer(payload);
+        if (newFarmer) {
+          await clearDraft();
+          onClose();
+          onCreated({
+            id: newFarmer.id,
+            nama: newFarmer.nama,
+            kode_petani: newFarmer.kode_petani,
+          });
+        }
+      }
+    } catch (error: any) {
+      if (error.errors) {
+        const fieldErrors: Record<string, string> = {};
+        error.errors.forEach((err: any) => {
+          fieldErrors[err.path[0]] = err.message;
+        });
+        setErrors(fieldErrors);
+        toast({
+          title: "Validasi Gagal",
+          description: "Mohon periksa kembali data yang Anda masukkan",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {hasDraftAvailable && savedAt && (
+        <DraftBanner
+          savedAt={savedAt}
+          onRestore={restoreDraft}
+          onStartNew={() => {
+            setValues(initialValues);
+            void clearDraft();
+          }}
+        />
+      )}
+      <div>
+        <Label htmlFor="nama">Nama</Label>
+        <Input
+          id="nama"
+          value={values.nama}
+          onChange={(e) => setValues((prev) => ({ ...prev, nama: e.target.value }))}
+          className={errors.nama ? "border-destructive" : ""}
+        />
+        {errors.nama && <p className="text-sm text-destructive mt-1">{errors.nama}</p>}
+      </div>
+      <div>
+        <Label htmlFor="kode">Kode Petani</Label>
+        <Input
+          id="kode"
+          value={values.kode_petani}
+          onChange={(e) => setValues((prev) => ({ ...prev, kode_petani: e.target.value }))}
+          className={errors.kode_petani ? "border-destructive" : ""}
+        />
+        {errors.kode_petani && (
+          <p className="text-sm text-destructive mt-1">{errors.kode_petani}</p>
+        )}
+      </div>
+      <div>
+        <Label htmlFor="no-telepon">No. Telepon (Opsional)</Label>
+        <Input
+          id="no-telepon"
+          value={values.no_telepon}
+          onChange={(e) => setValues((prev) => ({ ...prev, no_telepon: e.target.value }))}
+          placeholder="Contoh: 081234567890"
+          className={errors.no_telepon ? "border-destructive" : ""}
+        />
+        {errors.no_telepon && (
+          <p className="text-sm text-destructive mt-1">{errors.no_telepon}</p>
+        )}
+      </div>
+      <div>
+        <Label htmlFor="alamat">Alamat</Label>
+        <Textarea
+          id="alamat"
+          value={values.alamat}
+          onChange={(e) => setValues((prev) => ({ ...prev, alamat: e.target.value }))}
+          className={errors.alamat ? "border-destructive" : ""}
+        />
+        {errors.alamat && <p className="text-sm text-destructive mt-1">{errors.alamat}</p>}
+      </div>
+      <div>
+        <Label htmlFor="alamat-rumah">Alamat Rumah (Opsional)</Label>
+        <Textarea
+          id="alamat-rumah"
+          value={values.alamat_rumah}
+          onChange={(e) => setValues((prev) => ({ ...prev, alamat_rumah: e.target.value }))}
+          placeholder="Alamat rumah petani jika berbeda dari alamat utama"
+          className={errors.alamat_rumah ? "border-destructive" : ""}
+        />
+        {errors.alamat_rumah && (
+          <p className="text-sm text-destructive mt-1">{errors.alamat_rumah}</p>
+        )}
+      </div>
+      <div className="flex justify-end space-x-2">
+        <Button variant="outline" onClick={onClose}>
+          Batal
+        </Button>
+        <Button onClick={handleSubmit} disabled={saving} className="bg-gradient-organic">
+          {editingFarmer ? "Update" : "Tambah"}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+interface LandFormValues {
+  nama_lahan: string;
+  lokasi: string;
+  petani_id: string;
+  is_organic: boolean;
+  luas: string;
+  jenis_tanah: string;
+  status: string;
+  koordinat: string;
+}
+
+const EMPTY_LAND_FORM: LandFormValues = {
+  nama_lahan: "",
+  lokasi: "",
+  petani_id: "",
+  is_organic: true,
+  luas: "",
+  jenis_tanah: "",
+  status: "aktif",
+  koordinat: "",
+};
+
+const LandFormDialog = ({
+  editingLand,
+  farmers,
+  addLand,
+  updateLand,
+  onClose,
+}: {
+  editingLand: any | null;
+  farmers: any[];
+  addLand: (land: any) => Promise<boolean>;
+  updateLand: (id: string, land: any) => Promise<boolean>;
+  onClose: () => void;
+}) => {
+  const initialValues: LandFormValues = editingLand
+    ? {
+        nama_lahan: editingLand.nama_lahan ?? "",
+        lokasi: editingLand.lokasi ?? "",
+        petani_id: editingLand.petani_id || "none",
+        is_organic: editingLand.is_organic ?? true,
+        luas: editingLand.luas != null ? String(editingLand.luas) : "",
+        jenis_tanah: editingLand.jenis_tanah ?? "",
+        status: editingLand.status ?? "aktif",
+        koordinat: editingLand.koordinat ?? "",
+      }
+    : EMPTY_LAND_FORM;
+  const draftKey = editingLand ? `edit-lahan:${editingLand.id}` : "tambah-lahan:baru";
+  const { values, setValues, clearDraft, hasDraftAvailable, restoreDraft, savedAt } =
+    useDraftForm<LandFormValues>(draftKey, initialValues);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    try {
+      setErrors({});
+      const validated = landSchema.parse(values);
+      setSaving(true);
+      const payload = {
+        nama_lahan: validated.nama_lahan,
+        lokasi: validated.lokasi || null,
+        petani_id:
+          validated.petani_id && validated.petani_id !== "none" ? validated.petani_id : null,
+        is_organic: validated.is_organic ?? true,
+        luas: validated.luas ? parseFloat(validated.luas) : null,
+        jenis_tanah: validated.jenis_tanah || null,
+        status: validated.status || "aktif",
+        koordinat: validated.koordinat || null,
+      };
+      const success = editingLand
+        ? await updateLand(editingLand.id, payload)
+        : await addLand(payload);
+      if (success) {
+        await clearDraft();
+        onClose();
+      }
+    } catch (error: any) {
+      if (error.errors) {
+        const fieldErrors: Record<string, string> = {};
+        error.errors.forEach((err: any) => {
+          fieldErrors[err.path[0]] = err.message;
+        });
+        setErrors(fieldErrors);
+        toast({
+          title: "Validasi Gagal",
+          description: "Mohon periksa kembali data yang Anda masukkan",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {hasDraftAvailable && savedAt && (
+        <DraftBanner
+          savedAt={savedAt}
+          onRestore={restoreDraft}
+          onStartNew={() => {
+            setValues(initialValues);
+            void clearDraft();
+          }}
+        />
+      )}
+      <div>
+        <Label htmlFor="nama-lahan">Nama Lahan</Label>
+        <Input
+          id="nama-lahan"
+          value={values.nama_lahan}
+          onChange={(e) => setValues((prev) => ({ ...prev, nama_lahan: e.target.value }))}
+          placeholder="Contoh: Lahan Utara"
+          className={errors.nama_lahan ? "border-destructive" : ""}
+        />
+        {errors.nama_lahan && (
+          <p className="text-sm text-destructive mt-1">{errors.nama_lahan}</p>
+        )}
+      </div>
+      <div>
+        <Label htmlFor="petani">Petani</Label>
+        <Select
+          value={values.petani_id}
+          onValueChange={(value) => setValues((prev) => ({ ...prev, petani_id: value }))}
+        >
+          <SelectTrigger id="petani" className="bg-background">
+            <SelectValue placeholder="Pilih petani (opsional)" />
+          </SelectTrigger>
+          <SelectContent className="bg-background">
+            <SelectItem value="none">Tidak ada petani</SelectItem>
+            {farmers.map((farmer) => (
+              <SelectItem key={farmer.id} value={farmer.id}>
+                {farmer.nama} ({farmer.kode_petani})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label htmlFor="lokasi">Lokasi Lahan (Opsional)</Label>
+        <Textarea
+          id="lokasi"
+          value={values.lokasi}
+          onChange={(e) => setValues((prev) => ({ ...prev, lokasi: e.target.value }))}
+          placeholder="Deskripsi lokasi atau catatan tentang lahan ini"
+          rows={3}
+          className={errors.lokasi ? "border-destructive" : ""}
+        />
+        {errors.lokasi && <p className="text-sm text-destructive mt-1">{errors.lokasi}</p>}
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <Label htmlFor="luas">Luas (hektar, opsional)</Label>
+          <Input
+            id="luas"
+            type="number"
+            step="0.01"
+            min="0"
+            value={values.luas}
+            onChange={(e) => setValues((prev) => ({ ...prev, luas: e.target.value }))}
+            placeholder="Contoh: 1.5"
+            className={errors.luas ? "border-destructive" : ""}
+          />
+          {errors.luas && <p className="text-sm text-destructive mt-1">{errors.luas}</p>}
+        </div>
+        <div>
+          <Label htmlFor="jenis-tanah">Jenis Tanah (Opsional)</Label>
+          <Input
+            id="jenis-tanah"
+            value={values.jenis_tanah}
+            onChange={(e) => setValues((prev) => ({ ...prev, jenis_tanah: e.target.value }))}
+            placeholder="Contoh: Latosol"
+            className={errors.jenis_tanah ? "border-destructive" : ""}
+          />
+          {errors.jenis_tanah && (
+            <p className="text-sm text-destructive mt-1">{errors.jenis_tanah}</p>
+          )}
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <Label htmlFor="status-lahan">Status Lahan</Label>
+          <Select
+            value={values.status}
+            onValueChange={(value) => setValues((prev) => ({ ...prev, status: value }))}
+          >
+            <SelectTrigger id="status-lahan" className="bg-background">
+              <SelectValue placeholder="Pilih status" />
+            </SelectTrigger>
+            <SelectContent className="bg-background">
+              <SelectItem value="aktif">Aktif</SelectItem>
+              <SelectItem value="nonaktif">Tidak Aktif</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="koordinat">Koordinat (lat, lng — opsional)</Label>
+          <Input
+            id="koordinat"
+            value={values.koordinat}
+            onChange={(e) => setValues((prev) => ({ ...prev, koordinat: e.target.value }))}
+            placeholder="Contoh: -6.200000, 106.816666"
+            className={errors.koordinat ? "border-destructive" : ""}
+          />
+          {errors.koordinat && (
+            <p className="text-sm text-destructive mt-1">{errors.koordinat}</p>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <div className="space-y-0.5">
+          <Label htmlFor="is-organic">Status Organik</Label>
+          <p className="text-sm text-muted-foreground">Lahan ini menggunakan metode organik</p>
+        </div>
+        <Switch
+          id="is-organic"
+          checked={values.is_organic}
+          onCheckedChange={(checked) => setValues((prev) => ({ ...prev, is_organic: checked }))}
+        />
+      </div>
+      <div className="flex justify-end space-x-2">
+        <Button variant="outline" onClick={onClose}>
+          Batal
+        </Button>
+        <Button onClick={handleSubmit} disabled={saving}>
+          {editingLand ? "Update" : "Simpan"}
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 
 
