@@ -14,6 +14,16 @@ export const farmerSchema = z.object({
     .trim()
     .min(1, "Alamat harus diisi")
     .max(500, "Alamat maksimal 500 karakter"),
+  no_telepon: z.string()
+    .trim()
+    .max(20, "No. telepon maksimal 20 karakter")
+    .optional()
+    .or(z.literal("")),
+  alamat_rumah: z.string()
+    .trim()
+    .max(500, "Alamat rumah maksimal 500 karakter")
+    .optional()
+    .or(z.literal("")),
 });
 
 // Land validation schema
@@ -29,6 +39,28 @@ export const landSchema = z.object({
     .or(z.literal("")),
   petani_id: z.string().optional().or(z.literal("")).or(z.literal("none")),
   is_organic: z.boolean().optional(),
+  luas: z.string()
+    .trim()
+    .optional()
+    .or(z.literal(""))
+    .refine((val) => !val || !isNaN(parseFloat(val)), "Luas harus berupa angka")
+    .refine((val) => !val || parseFloat(val) > 0, "Luas harus lebih dari 0")
+    .refine((val) => !val || parseFloat(val) <= 100000, "Luas maksimal 100,000 hektar"),
+  jenis_tanah: z.string()
+    .trim()
+    .max(100, "Jenis tanah maksimal 100 karakter")
+    .optional()
+    .or(z.literal("")),
+  status: z.string()
+    .trim()
+    .max(50, "Status maksimal 50 karakter")
+    .optional()
+    .or(z.literal("")),
+  koordinat: z.string()
+    .trim()
+    .max(100, "Koordinat maksimal 100 karakter")
+    .optional()
+    .or(z.literal("")),
 });
 
 // Harvest validation schema
