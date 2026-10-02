@@ -1178,10 +1178,9 @@ const AdminDashboard = () => {
                 </Button>
                 <Dialog open={farmerDialogOpen} onOpenChange={setFarmerDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button 
+                    <Button
                       onClick={() => {
                         setEditingFarmer(null);
-                        setFarmerForm({ nama: "", kode_petani: "", alamat: "" });
                       }}
                       className="bg-gradient-organic shadow-organic hover:shadow-warm"
                     >
@@ -1196,58 +1195,23 @@ const AdminDashboard = () => {
                       {editingFarmer ? "Edit data petani" : "Tambahkan data petani baru"}
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="nama">Nama</Label>
-                      <Input
-                        id="nama"
-                        value={farmerForm.nama}
-                        onChange={(e) => setFarmerForm(prev => ({ ...prev, nama: e.target.value }))}
-                        className={farmerErrors.nama ? "border-destructive" : ""}
-                      />
-                      {farmerErrors.nama && (
-                        <p className="text-sm text-destructive mt-1">{farmerErrors.nama}</p>
-                      )}
-                    </div>
-                    <div>
-                      <Label htmlFor="kode">Kode Petani</Label>
-                      <Input
-                        id="kode"
-                        value={farmerForm.kode_petani}
-                        onChange={(e) => setFarmerForm(prev => ({ ...prev, kode_petani: e.target.value }))}
-                        className={farmerErrors.kode_petani ? "border-destructive" : ""}
-                      />
-                      {farmerErrors.kode_petani && (
-                        <p className="text-sm text-destructive mt-1">{farmerErrors.kode_petani}</p>
-                      )}
-                    </div>
-                    <div>
-                      <Label htmlFor="alamat">Alamat</Label>
-                      <Textarea
-                        id="alamat"
-                        value={farmerForm.alamat}
-                        onChange={(e) => setFarmerForm(prev => ({ ...prev, alamat: e.target.value }))}
-                        className={farmerErrors.alamat ? "border-destructive" : ""}
-                      />
-                      {farmerErrors.alamat && (
-                        <p className="text-sm text-destructive mt-1">{farmerErrors.alamat}</p>
-                      )}
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => setFarmerDialogOpen(false)}
-                      >
-                        Batal
-                      </Button>
-                      <Button
-                        onClick={editingFarmer ? handleUpdateFarmer : handleAddFarmer}
-                        className="bg-gradient-organic"
-                      >
-                        {editingFarmer ? "Update" : "Tambah"}
-                      </Button>
-                    </div>
-                  </div>
+                  <FarmerFormDialog
+                    editingFarmer={editingFarmer}
+                    addFarmer={addFarmer}
+                    updateFarmer={updateFarmer}
+                    onClose={() => {
+                      setFarmerDialogOpen(false);
+                      setEditingFarmer(null);
+                    }}
+                    onCreated={(newFarmer) => {
+                      setQrPreviewFarmer({
+                        id: newFarmer.id,
+                        nama: newFarmer.nama,
+                        kode_petani: newFarmer.kode_petani,
+                      });
+                      setQrPreviewOpen(true);
+                    }}
+                  />
                 </DialogContent>
               </Dialog>
               
