@@ -1422,10 +1422,9 @@ const AdminDashboard = () => {
               </div>
               <Dialog open={landDialogOpen} onOpenChange={setLandDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button 
+                    <Button
                       onClick={() => {
                         setEditingLand(null);
-                        setLandForm({ nama_lahan: "", lokasi: "", petani_id: "", is_organic: true });
                       }}
                       className="bg-gradient-organic shadow-organic hover:shadow-warm"
                     >
@@ -1440,81 +1439,16 @@ const AdminDashboard = () => {
                       {editingLand ? "Edit data lahan" : "Tambahkan data lahan baru"}
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="nama-lahan">Nama Lahan</Label>
-                      <Input
-                        id="nama-lahan"
-                        value={landForm.nama_lahan}
-                        onChange={(e) => setLandForm(prev => ({ ...prev, nama_lahan: e.target.value }))}
-                        placeholder="Contoh: Lahan Utara"
-                        className={landErrors.nama_lahan ? "border-destructive" : ""}
-                      />
-                      {landErrors.nama_lahan && (
-                        <p className="text-sm text-destructive mt-1">{landErrors.nama_lahan}</p>
-                      )}
-                    </div>
-                    <div>
-                      <Label htmlFor="petani">Petani</Label>
-                      <Select
-                        value={landForm.petani_id}
-                        onValueChange={(value) => setLandForm(prev => ({ ...prev, petani_id: value }))}
-                      >
-                        <SelectTrigger id="petani" className="bg-background">
-                          <SelectValue placeholder="Pilih petani (opsional)" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background">
-                          <SelectItem value="none">Tidak ada petani</SelectItem>
-                          {farmers.map((farmer) => (
-                            <SelectItem key={farmer.id} value={farmer.id}>
-                              {farmer.nama} ({farmer.kode_petani})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="lokasi">Lokasi Lahan (Opsional)</Label>
-                      <Textarea
-                        id="lokasi"
-                        value={landForm.lokasi}
-                        onChange={(e) => setLandForm(prev => ({ ...prev, lokasi: e.target.value }))}
-                        placeholder="Deskripsi lokasi atau catatan tentang lahan ini"
-                        rows={4}
-                        className={landErrors.lokasi ? "border-destructive" : ""}
-                      />
-                      {landErrors.lokasi && (
-                        <p className="text-sm text-destructive mt-1">{landErrors.lokasi}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="is-organic">Status Organik</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Lahan ini menggunakan metode organik
-                        </p>
-                      </div>
-                      <Switch
-                        id="is-organic"
-                        checked={landForm.is_organic}
-                        onCheckedChange={(checked) => setLandForm(prev => ({ ...prev, is_organic: checked }))}
-                      />
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setLandDialogOpen(false);
-                          setEditingLand(null);
-                        }}
-                      >
-                        Batal
-                      </Button>
-                      <Button onClick={editingLand ? handleUpdateLand : handleAddLand}>
-                        {editingLand ? "Update" : "Simpan"}
-                      </Button>
-                    </div>
-                  </div>
+                  <LandFormDialog
+                    editingLand={editingLand}
+                    farmers={farmers}
+                    addLand={addLand}
+                    updateLand={updateLand}
+                    onClose={() => {
+                      setLandDialogOpen(false);
+                      setEditingLand(null);
+                    }}
+                  />
                 </DialogContent>
               </Dialog>
             </CardHeader>
