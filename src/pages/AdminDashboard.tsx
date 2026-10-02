@@ -613,14 +613,8 @@ const AdminDashboard = () => {
 
 
 
-  // Form states for farmers
-  const [farmerForm, setFarmerForm] = useState({
-    nama: "",
-    kode_petani: "",
-    alamat: "",
-  });
-  const [farmerErrors, setFarmerErrors] = useState<Record<string, string>>({});
-  const [editingFarmer, setEditingFarmer] = useState<string | null>(null);
+  // Form states for farmers (form values live in FarmerFormDialog via useDraftForm)
+  const [editingFarmer, setEditingFarmer] = useState<any | null>(null);
   const [farmerDialogOpen, setFarmerDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   
@@ -632,15 +626,8 @@ const AdminDashboard = () => {
     kode_petani: string;
   } | null>(null);
 
-  // Form states for lands
-  const [landForm, setLandForm] = useState({
-    nama_lahan: "",
-    lokasi: "",
-    petani_id: "",
-    is_organic: true,
-  });
-  const [landErrors, setLandErrors] = useState<Record<string, string>>({});
-  const [editingLand, setEditingLand] = useState<string | null>(null);
+  // Form states for lands (form values live in LandFormDialog via useDraftForm)
+  const [editingLand, setEditingLand] = useState<any | null>(null);
   const [landDialogOpen, setLandDialogOpen] = useState(false);
   
 
