@@ -678,84 +678,10 @@ const AdminDashboard = () => {
     setFarmerDialogOpen(true);
   };
 
-  // Handler functions for lands
-  const handleAddLand = async () => {
-    try {
-      setLandErrors({});
-      const validated = landSchema.parse(landForm);
-      
-      const success = await addLand({
-        nama_lahan: validated.nama_lahan,
-        lokasi: validated.lokasi || null,
-        petani_id: validated.petani_id && validated.petani_id !== "none" ? validated.petani_id : null,
-        is_organic: validated.is_organic ?? true,
-      });
-      
-      if (success) {
-        setLandForm({ nama_lahan: "", lokasi: "", petani_id: "", is_organic: true });
-        setLandDialogOpen(false);
-      }
-    } catch (error: any) {
-      if (error.errors) {
-        const errors: Record<string, string> = {};
-        error.errors.forEach((err: any) => {
-          errors[err.path[0]] = err.message;
-        });
-        setLandErrors(errors);
-        toast({
-          title: "Validasi Gagal",
-          description: "Mohon periksa kembali data yang Anda masukkan",
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
+  // Handler functions for lands (submit logic lives in LandFormDialog)
   const handleEditLand = (land: any) => {
-    setLandForm({
-      nama_lahan: land.nama_lahan,
-      lokasi: land.lokasi || "",
-      petani_id: land.petani_id || "none",
-      is_organic: land.is_organic ?? true,
-    });
-    setLandErrors({});
-    setEditingLand(land.id);
+    setEditingLand(land);
     setLandDialogOpen(true);
-  };
-
-  const handleUpdateLand = async () => {
-    if (!editingLand) return;
-    
-    try {
-      setLandErrors({});
-      const validated = landSchema.parse(landForm);
-      
-      const success = await updateLand(editingLand, {
-        nama_lahan: validated.nama_lahan,
-        lokasi: validated.lokasi || null,
-        petani_id: validated.petani_id && validated.petani_id !== "none" ? validated.petani_id : null,
-        is_organic: validated.is_organic ?? true,
-      });
-      
-      if (success) {
-        setLandForm({ nama_lahan: "", lokasi: "", petani_id: "", is_organic: true });
-        setEditingLand(null);
-        setLandDialogOpen(false);
-      }
-    } catch (error: any) {
-      if (error.errors) {
-        const errors: Record<string, string> = {};
-        error.errors.forEach((err: any) => {
-          errors[err.path[0]] = err.message;
-        });
-        setLandErrors(errors);
-        toast({
-          title: "Validasi Gagal",
-          description: "Mohon periksa kembali data yang Anda masukkan",
-          variant: "destructive",
-        });
-      }
-    }
   };
 
   // Handler functions for harvest
