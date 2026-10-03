@@ -280,6 +280,17 @@ const processItem = async (item: QueueItem) => {
   if (item.payload.syncMaster) await syncMasterRecord(item.payload.syncMaster);
 };
 
+/** True when a queued item carries koordinat_perlu_konfirmasi (lahan-update / land-create). */
+export const needsLocationConfirmation = (item: QueueItem): boolean =>
+  (item.kind === "lahan-update" || item.kind === "land-create") &&
+  (item.payload as { koordinat_perlu_konfirmasi?: boolean }).koordinat_perlu_konfirmasi === true;
+
+/** Overwrite an existing queue item (same id). */
+export const updateQueueItem = async (item: QueueItem) => {
+  await tx(STORE, "readwrite", (s) => s.put(item));
+  window.dispatchEvent(new CustomEvent("offline-queue-changed"));
+};
+
 /** Replay every queued item. Returns how many succeeded / failed. */
 export const flushQueue = async (): Promise<{ synced: number; failed: number }> => {
   if (!navigator.onLine) return { synced: 0, failed: 0 };
@@ -287,6 +298,8 @@ export const flushQueue = async (): Promise<{ synced: number; failed: number }> 
   let synced = 0;
   let failed = 0;
   for (const item of items) {
+    // Held until the user confirms the location in LocationConfirmationPanel.
+    if (needsLocationConfirmation(item)) continue;
     try {
       await processItem(item);
       await removeItem(item.id);
