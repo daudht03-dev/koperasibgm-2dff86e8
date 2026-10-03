@@ -146,7 +146,7 @@ const FarmerFormDialog = ({
           await enqueue({ kind: "petani-update", payload: { id: editingFarmer.id, fields } });
           toast({
             title: "Perubahan disimpan offline",
-            description: "İnternet geldiğinde otomatik olarak kaydedilecektir.",
+            description: "İnternet bağlantısı geldiğinde otomatik olarak kaydedilecektir.",
           });
           await clearDraft();
           onClose();
@@ -353,7 +353,7 @@ const LandFormDialog = ({
         });
         toast({
           title: "Perubahan disimpan offline",
-          description: "İnternet geldiğinde otomatik olarak kaydedilecektir.",
+          description: "İnternet bağlantısı geldiğinde otomatik olarak kaydedilecektir.",
         });
         await clearDraft();
         onClose();
