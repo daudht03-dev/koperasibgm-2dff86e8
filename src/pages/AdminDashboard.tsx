@@ -46,6 +46,7 @@ import { exportAFL } from "@/lib/afl-export";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BulkDeleteFarmersDialog } from "@/components/BulkDeleteFarmersDialog";
 import { BulkDeleteLandsDialog } from "@/components/BulkDeleteLandsDialog";
+import { LocationConfirmationBadge } from "@/components/LocationConfirmationPanel";
 import { useDraftForm } from "@/hooks/use-draft-form";
 
 const relativeTime = (ts: number): string => {
@@ -968,6 +969,7 @@ const AdminDashboard = () => {
             <p className="text-muted-foreground">
               Selamat datang, {user?.email}
             </p>
+            <div className="mt-2"><LocationConfirmationBadge /></div>
           </div>
           
           <Button 
