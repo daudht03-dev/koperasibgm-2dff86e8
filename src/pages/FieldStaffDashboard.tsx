@@ -20,6 +20,7 @@ import {
   Wifi,
   Images,
 } from "lucide-react";
+import { LocationConfirmationBadge } from "@/components/LocationConfirmationPanel";
 import { LandPhotoGallery } from "@/components/LandPhotoGallery";
 
 /** Dashboard for field staff (staf lapang): capture-first, offline aware. */
@@ -77,6 +78,7 @@ const FieldStaffDashboard = () => {
               {user?.email} · {roleLabel}
             </p>
           </div>
+          <LocationConfirmationBadge />
           <Badge variant={isOnline ? "default" : "destructive"} className="gap-1">
             {isOnline ? <Wifi className="h-3 w-3" /> : <CloudOff className="h-3 w-3" />}
             {isOnline ? "Online" : "Offline"}
