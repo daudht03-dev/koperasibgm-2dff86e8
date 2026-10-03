@@ -28,6 +28,7 @@ import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building,
 import { LandMapTab } from "@/components/LandMapTab";
 import { FarmerBatchImport } from "@/components/FarmerBatchImport";
 import { toast } from "@/hooks/use-toast";
+import { enqueue } from "@/lib/offline-queue";
 import { 
   farmerSchema, 
   landSchema, 
@@ -136,6 +137,21 @@ const FarmerFormDialog = ({
         alamat_rumah: validated.alamat_rumah || null,
       };
       if (editingFarmer) {
+        if (!navigator.onLine) {
+          const fields: Record<string, unknown> = {};
+          const farmerKeys = ["nama", "kode_petani", "alamat", "no_telepon", "alamat_rumah"] as const;
+          for (const key of farmerKeys) {
+            if (payload[key] !== initialValues[key]) fields[key] = payload[key];
+          }
+          await enqueue({ kind: "petani-update", payload: { id: editingFarmer.id, fields } });
+          toast({
+            title: "Perubahan disimpan offline",
+            description: "Akan tersinkron otomatis saat online.",
+          });
+          await clearDraft();
+          onClose();
+          return;
+        }
         const success = await updateFarmer(editingFarmer.id, payload);
         if (success) {
           await clearDraft();
@@ -322,6 +338,27 @@ const LandFormDialog = ({
         status: validated.status || "aktif",
         koordinat: validated.koordinat || null,
       };
+      if (editingLand && !navigator.onLine) {
+        const fields: Record<string, unknown> = {};
+        const landKeys = ["nama_lahan", "lokasi", "petani_id", "is_organic", "luas", "jenis_tanah", "status", "koordinat"] as const;
+        for (const key of landKeys) {
+          if (payload[key] !== initialValues[key]) fields[key] = payload[key];
+        }
+        const koordinatDegisti = Boolean(
+          validated.koordinat && validated.koordinat !== initialValues.koordinat,
+        );
+        await enqueue({
+          kind: "lahan-update",
+          payload: { id: editingLand.id, fields, ...(koordinatDegisti ? { koordinat_perlu_konfirmasi: true } : {}) },
+        });
+        toast({
+          title: "Perubahan disimpan offline",
+          description: "Akan tersinkron otomatis saat online.",
+        });
+        await clearDraft();
+        onClose();
+        return;
+      }
       const success = editingLand
         ? await updateLand(editingLand.id, payload)
         : await addLand(payload);
