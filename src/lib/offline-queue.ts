@@ -72,6 +72,18 @@ export type QueueItem =
     }
   | {
       id: string;
+      kind: "petani-update";
+      createdAt: number;
+      payload: { id: string; fields: Record<string, unknown>; koordinat_perlu_konfirmasi?: boolean };
+    }
+  | {
+      id: string;
+      kind: "lahan-update";
+      createdAt: number;
+      payload: { id: string; fields: Record<string, unknown>; koordinat_perlu_konfirmasi?: boolean };
+    }
+  | {
+      id: string;
       kind: "photo-metadata-update";
       createdAt: number;
       payload: { photoId: string; metadata: Record<string, unknown> };
@@ -184,6 +196,24 @@ const syncMasterRecord = async (sync: NonNullable<Extract<QueueItem, { kind: "ph
 };
 
 const processItem = async (item: QueueItem) => {
+  if (item.kind === "petani-update") {
+    const { error } = await supabase
+      .from("petani")
+      .update(item.payload.fields as any)
+      .eq("id", item.payload.id);
+    if (error) throw error;
+    return;
+  }
+
+  if (item.kind === "lahan-update") {
+    const { error } = await supabase
+      .from("lahan")
+      .update(item.payload.fields as any)
+      .eq("id", item.payload.id);
+    if (error) throw error;
+    return;
+  }
+
   if (item.kind === "photo-metadata-update") {
     const { error } = await supabase
       .from("foto_lahan")
