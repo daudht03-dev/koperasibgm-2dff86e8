@@ -24,8 +24,9 @@ import { useProducts } from "@/hooks/use-products";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { useHarvests } from "@/hooks/use-harvests";
 import { useNavigate, Link } from "react-router-dom";
-import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode, Printer, Upload, Map as MapIcon, ArrowUpDown, ArrowUp, ArrowDown, Search, History, Download } from "lucide-react";
+import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode, Printer, Upload, Map as MapIcon, ArrowUpDown, ArrowUp, ArrowDown, Search, History, Download, Camera } from "lucide-react";
 import { LandMapTab } from "@/components/LandMapTab";
+import { GPSMapCamera } from "@/components/GPSMapCamera";
 import { FarmerBatchImport } from "@/components/FarmerBatchImport";
 import { toast } from "@/hooks/use-toast";
 import { enqueue } from "@/lib/offline-queue";
@@ -622,7 +623,7 @@ const AdminDashboard = () => {
 
 
   // Photos attached to farmers / lands (realtime) + AFL export state
-  const { photos, byFarmer: photosByFarmer, byLand: photosByLand } = useEntityPhotos();
+  const { photos, byFarmer: photosByFarmer, byLand: photosByLand, refetch: refetchPhotos } = useEntityPhotos();
   const [aflBusy, setAflBusy] = useState(false);
   const [aflProgress, setAflProgress] = useState<{ done: number; total: number } | null>(null);
 
@@ -666,6 +667,8 @@ const AdminDashboard = () => {
 
   // Form states for lands (form values live in LandFormDialog via useDraftForm)
   const [editingLand, setEditingLand] = useState<any | null>(null);
+  /** Row-camera shortcut: which entity's photo to update via GPSMapCamera. */
+  const [cameraTarget, setCameraTarget] = useState<{ kind: "petani" | "lahan"; id: string } | null>(null);
   const [landDialogOpen, setLandDialogOpen] = useState(false);
   
 
@@ -1370,6 +1373,14 @@ const AdminDashboard = () => {
                           <Button
                             variant="outline"
                             size="sm"
+                            title="Update Foto Rumah"
+                            onClick={() => setCameraTarget({ kind: "petani", id: farmer.id })}
+                          >
+                            <Camera className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => handleEditFarmer(farmer)}
                           >
                             <Edit className="h-4 w-4" />
@@ -1589,6 +1600,14 @@ const AdminDashboard = () => {
 
                       <TableCell>
                         <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            title="Update Foto Lahan"
+                            onClick={() => setCameraTarget({ kind: "lahan", id: land.id })}
+                          >
+                            <Camera className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
@@ -2248,7 +2267,30 @@ const AdminDashboard = () => {
       </main>
 
       <Footer />
-      
+
+      {/* Row-camera shortcut: preselected farmer / land photo capture */}
+      {cameraTarget && (
+        <GPSMapCamera
+          key={`${cameraTarget.kind}-${cameraTarget.id}`}
+          open
+          onOpenChange={(v) => {
+            if (!v) setCameraTarget(null);
+          }}
+          onSaved={() => {
+            refetchFarmers();
+            refetchLands();
+            refetchPhotos();
+          }}
+          defaultTipe={cameraTarget.kind === "petani" ? "rumah" : "lahan"}
+          defaultFarmerId={
+            cameraTarget.kind === "petani"
+              ? cameraTarget.id
+              : lands.find((l) => l.id === cameraTarget.id)?.petani_id || undefined
+          }
+          defaultLandId={cameraTarget.kind === "lahan" ? cameraTarget.id : undefined}
+        />
+      )}
+
       {/* QR Preview Dialog */}
       {qrPreviewFarmer && (
         <QRPreviewDialog
