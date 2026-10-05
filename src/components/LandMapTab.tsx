@@ -141,6 +141,8 @@ export const LandMapTab: React.FC = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
+  /** Per-row shortcut: capture/update the photo of this specific land. */
+  const [cameraTargetLand, setCameraTargetLand] = useState<LandWithFarmer | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
 
 
@@ -1230,6 +1232,7 @@ export const LandMapTab: React.FC = () => {
                     <th className="text-left py-2 px-3">Status</th>
                     <th className="text-left py-2 px-3">Luas</th>
                     <th className="text-left py-2 px-3">Koordinat</th>
+                    <th className="text-left py-2 px-3">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1254,6 +1257,16 @@ export const LandMapTab: React.FC = () => {
                         <td className="py-2 px-3">{land.luas ? `${land.luas} ha` : "-"}</td>
                         <td className="py-2 px-3 text-muted-foreground text-xs">
                           {land.parsedCoord ? `${land.parsedCoord.lat.toFixed(4)}, ${land.parsedCoord.lng.toFixed(4)}` : "-"}
+                        </td>
+                        <td className="py-2 px-3" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            title="Update Foto Lahan"
+                            onClick={() => setCameraTargetLand(land)}
+                          >
+                            <Camera className="h-4 w-4" />
+                          </Button>
                         </td>
                       </tr>
                     );
@@ -1316,6 +1329,21 @@ export const LandMapTab: React.FC = () => {
       </Dialog>
 
       <GPSMapCamera open={cameraOpen} onOpenChange={setCameraOpen} onSaved={() => setGalleryOpen(true)} />
+
+      {/* Per-land shortcut with the land (and its farmer) preselected */}
+      {cameraTargetLand && (
+        <GPSMapCamera
+          key={`lahan-${cameraTargetLand.id}`}
+          open
+          onOpenChange={(v) => {
+            if (!v) setCameraTargetLand(null);
+          }}
+          onSaved={fetchLands}
+          defaultTipe="lahan"
+          defaultLandId={cameraTargetLand.id}
+          defaultFarmerId={cameraTargetLand.petani_id || undefined}
+        />
+      )}
       <LandPhotoGallery open={galleryOpen} onOpenChange={setGalleryOpen} />
     </div>
 
