@@ -69,6 +69,8 @@ interface Props {
   /** Optional preselection */
   defaultLandId?: string;
   defaultFarmerId?: string;
+  /** Optional initial photo type (does not change any existing logic) */
+  defaultTipe?: "lahan" | "rumah";
 }
 
 const parseCoordinate = (koordinat: string | null): { lat: number; lng: number } | null => {
@@ -111,7 +113,7 @@ const relativeTime = (ts: number) => {
   return `${days} hari yang lalu`;
 };
 
-export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defaultFarmerId }: Props) => {
+export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defaultFarmerId, defaultTipe }: Props) => {
   const { profile } = useCompanyProfile();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -126,7 +128,7 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
   const [photoSrc, setPhotoSrc] = useState<string | null>(null);
   const [mapThumb, setMapThumb] = useState<string | null>(null);
 
-  const [tipe, setTipe] = useState<"lahan" | "rumah">("lahan");
+  const [tipe, setTipe] = useState<"lahan" | "rumah">(defaultTipe ?? "lahan");
   const [farmerId, setFarmerId] = useState<string>(defaultFarmerId || "");
   const [landId, setLandId] = useState<string>(defaultLandId || "");
   const [heading, setHeading] = useState("");
