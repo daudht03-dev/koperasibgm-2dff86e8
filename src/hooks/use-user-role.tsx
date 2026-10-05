@@ -59,13 +59,34 @@ export const useUserRoles = () => {
         return;
       }
       setLoading(true);
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id);
-      if (!cancelled) {
-        setRoles(((data || []) as any[]).map((r) => r.role as AppRole));
-        setLoading(false);
+      try {
+        const { data, error } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id);
+        if (error) throw error;
+        const fetched = ((data || []) as any[]).map((r) => r.role as AppRole);
+        if (!cancelled) {
+          try {
+            localStorage.setItem(`cached-user-roles:${user.id}`, JSON.stringify(fetched));
+          } catch {
+            // Storage unavailable; ignore — fetching still succeeded.
+          }
+          setRoles(fetched);
+        }
+      } catch {
+        // Offline / network failure: fall back to the cached roles so the user
+        // isn't locked out of their own data; empty only as a last resort.
+        let cached: AppRole[] = [];
+        try {
+          const raw = localStorage.getItem(`cached-user-roles:${user.id}`);
+          if (raw) cached = JSON.parse(raw);
+        } catch {
+          // Corrupt cache entry: treat as empty.
+        }
+        if (!cancelled) setRoles(cached);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     };
     if (!authLoading) run();
