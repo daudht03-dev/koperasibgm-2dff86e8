@@ -1,0 +1,1 @@
+- Field staff renders its own farmer/land card lists and imports the named form dialog exports from AdminDashboard, so draft and update behavior remain shared without rendering admin bulk actions.

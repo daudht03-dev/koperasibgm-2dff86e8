@@ -1,0 +1,4 @@
+- [x] Export the existing farmer and land form dialogs without other admin changes.
+- [x] Add field-staff farmer/land card tabs, shared edit dialogs, and preselected photo actions.
+- [x] Replace navigation to admin with opening the local directory tab.
+- [x] Verify field-staff tabs, both edits, draft restoration, camera preselection, absence of bulk controls, and mobile layout using mocked browser data; real-account access and live maps were not tested.
