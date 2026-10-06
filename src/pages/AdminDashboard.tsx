@@ -98,7 +98,7 @@ const EMPTY_FARMER_FORM: FarmerFormValues = {
   alamat_rumah: "",
 };
 
-const FarmerFormDialog = ({
+export const FarmerFormDialog = ({
   editingFarmer,
   addFarmer,
   updateFarmer,
@@ -293,7 +293,7 @@ const EMPTY_LAND_FORM: LandFormValues = {
   koordinat: "",
 };
 
-const LandFormDialog = ({
+export const LandFormDialog = ({
   editingLand,
   farmers,
   addLand,
