@@ -1,3 +1,6 @@
+- [ ] Prepare photo types/nullability and restrictive KTP row/storage access.
+- [ ] Share photo path creation, keep KTP file_url path-only, and filter documentation gallery.
+- [ ] Verify photo path rules and database security; no new UI.
 - [x] Export the existing farmer and land form dialogs without other admin changes.
 - [x] Add field-staff farmer/land card tabs, shared edit dialogs, and preselected photo actions.
 - [x] Replace navigation to admin with opening the local directory tab.
