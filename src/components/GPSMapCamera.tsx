@@ -44,6 +44,7 @@ import MiniMapPicker from "@/components/MiniMapPicker";
 import { InPageCameraCapture } from "@/components/InPageCameraCapture";
 
 import { cacheMasterData, cacheTile, enqueue, readMasterData, readTile, tileKey } from "@/lib/offline-queue";
+import { buildPhotoPath, resolvePhotoFileUrl } from "@/lib/photo-path";
 
 
 interface FarmerOption {
@@ -719,8 +720,8 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
 
       const { data: userData } = await supabase.auth.getUser();
       const uid = userData.user?.id;
-      const safeCode = code.replace(/[^A-Za-z0-9_-]/g, "");
-      const path = `${uid}/${safeCode}-${Date.now()}.jpg`;
+      if (!uid) throw new Error("Silakan login sebelum menyimpan foto.");
+      const path = buildPhotoPath(photoRow.tipe, uid, code);
 
       const { error: upErr } = await supabase.storage
         .from("foto-lahan")
@@ -728,12 +729,15 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
       if (upErr) throw upErr;
 
 
-      const { data: signed } = await supabase.storage.from("foto-lahan").createSignedUrl(path, 60 * 60 * 24 * 365);
+      const fileUrl = await resolvePhotoFileUrl(photoRow.tipe, path, async () => {
+        const { data: signed } = await supabase.storage.from("foto-lahan").createSignedUrl(path, 60 * 60 * 24 * 365);
+        return signed?.signedUrl;
+      });
 
       const { error: insErr } = await supabase.from("foto_lahan").insert({
         ...photoRow,
         file_path: path,
-        file_url: signed?.signedUrl || path,
+        file_url: fileUrl,
         created_by: uid ?? null,
       });
 

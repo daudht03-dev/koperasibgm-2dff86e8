@@ -1,1 +1,2 @@
 - Field staff renders its own farmer/land card lists and imports the named form dialog exports from AdminDashboard, so draft and update behavior remain shared without rendering admin bulk actions.
+- Photo writers share photo-path helpers for storage paths and persisted references so online uploads, new versions, and offline replay enforce identical sensitive-photo handling; offline replay passes its creation timestamp to preserve retry paths.
