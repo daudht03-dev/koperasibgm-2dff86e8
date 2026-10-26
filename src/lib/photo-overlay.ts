@@ -85,13 +85,80 @@ export interface RenderOptions {
   maxWidth?: number;
   /** Paint an opaque panel first — used when re-stamping an already watermarked photo. */
   solidPanel?: boolean;
+  /** Defaults to the existing GPS panel; documents can append a separate strip. */
+  layout?: "panel" | "strip";
+  /** Strip only: remove the source image's previous strip before rendering. */
+  restamp?: boolean;
 }
+
+export const stripHeightFor = (width: number): number => Math.round(Math.max(width * 0.085, 64));
 
 /** Draws the photo + watermark onto the given canvas. */
 export async function renderPhotoOverlay(
   canvas: HTMLCanvasElement,
-  { photoSrc, data, mapThumbSrc, logoSrc, maxWidth = 1600, solidPanel = false }: RenderOptions,
+  { photoSrc, data, mapThumbSrc, logoSrc, maxWidth = 1600, solidPanel = false, layout = "panel", restamp = false }: RenderOptions,
 ): Promise<void> {
+  if (layout === "strip") {
+    const [photo, logo] = await Promise.all([
+      loadImage(photoSrc),
+      logoSrc ? loadImage(logoSrc) : Promise.resolve(null),
+    ]);
+    if (!photo) throw new Error("Gagal memuat foto");
+
+    const sourceHeight = photo.naturalHeight - (restamp ? stripHeightFor(photo.naturalWidth) : 0);
+    if (sourceHeight <= 0) throw new Error("Tinggi foto tidak cukup untuk mengganti strip");
+    const scale = Math.min(1, maxWidth / photo.naturalWidth);
+    const W = Math.round(photo.naturalWidth * scale);
+    const photoH = Math.round(sourceHeight * scale);
+    const stripH = stripHeightFor(W);
+    canvas.width = W;
+    canvas.height = photoH + stripH;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas tidak didukung");
+
+    ctx.drawImage(photo, 0, 0, photo.naturalWidth, sourceHeight, 0, 0, W, photoH);
+    ctx.fillStyle = "#0a0a0a";
+    ctx.fillRect(0, photoH, W, stripH);
+
+    const pad = Math.min(Math.round(W * 0.022), Math.round(stripH * 0.2));
+    const logoBox = logo ? Math.round(stripH * 0.62) : 0;
+    const textW = Math.max(1, W - pad * 2 - (logo ? logoBox + pad : 0));
+    const base = Math.min(Math.max(13, Math.round(W * 0.021)), Math.round(stripH * 0.28));
+    const lineH = Math.round(base * 1.3);
+    const textH = data.timestamp ? lineH * 2 : lineH;
+    const textY = photoH + Math.round((stripH - textH) / 2);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(pad, photoH, textW, stripH);
+    ctx.clip();
+    ctx.textBaseline = "top";
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#facc15";
+    ctx.font = `700 ${base}px sans-serif`;
+    const fitLine = (text: string): string => {
+      const line = wrapText(ctx, text, textW, 1)[0] || "";
+      if (ctx.measureText(line).width <= textW) return line;
+      let shortened = line;
+      while (shortened && ctx.measureText(`${shortened}…`).width > textW) shortened = shortened.slice(0, -1);
+      return shortened ? `${shortened}…` : "";
+    };
+    ctx.fillText(fitLine(`${data.note} • ${data.subject}`), pad, textY);
+    if (data.timestamp) {
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.font = `400 ${Math.round(base * 0.95)}px sans-serif`;
+      ctx.fillText(fitLine(data.timestamp), pad, textY + lineH);
+    }
+    ctx.restore();
+
+    if (logo && logoBox) {
+      const ratio = logo.naturalWidth / logo.naturalHeight || 1;
+      const lw = ratio >= 1 ? logoBox : logoBox * ratio;
+      const lh = ratio >= 1 ? logoBox / ratio : logoBox;
+      ctx.drawImage(logo, W - pad - lw, photoH + (stripH - lh) / 2, lw, lh);
+    }
+    return;
+  }
+
   const [photo, mapThumb, logo] = await Promise.all([
     loadImage(photoSrc),
     mapThumbSrc ? loadImage(mapThumbSrc) : Promise.resolve(null),
