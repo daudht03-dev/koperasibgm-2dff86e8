@@ -5,6 +5,7 @@
  * stored in IndexedDB and replayed automatically once the device is online.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { buildPhotoPath, resolvePhotoFileUrl } from "@/lib/photo-path";
 
 const DB_NAME = "koperasi-offline";
 const STORE = "queue";
@@ -263,17 +264,22 @@ const processItem = async (item: QueueItem) => {
   // photo
   const { data: userData } = await supabase.auth.getUser();
   const uid = userData.user?.id;
-  const safeCode = (item.payload.code || "foto").replace(/[^A-Za-z0-9_-]/g, "");
-  const path = `${uid}/${safeCode}-${item.createdAt}.jpg`;
+  if (!uid) throw new Error("Silakan login sebelum menyinkronkan foto.");
+  const tipe = typeof item.payload.row.tipe === "string" ? item.payload.row.tipe : "";
+  // Preserve stable upload paths when retrying existing offline records.
+  const path = buildPhotoPath(tipe, uid, item.payload.code, item.createdAt);
   const { error: upErr } = await supabase.storage
     .from("foto-lahan")
     .upload(path, item.payload.blob, { contentType: "image/jpeg", upsert: true });
   if (upErr) throw upErr;
-  const { data: signed } = await supabase.storage.from("foto-lahan").createSignedUrl(path, 60 * 60 * 24 * 365);
+  const fileUrl = await resolvePhotoFileUrl(tipe, path, async () => {
+    const { data: signed } = await supabase.storage.from("foto-lahan").createSignedUrl(path, 60 * 60 * 24 * 365);
+    return signed?.signedUrl;
+  });
   const { error: insErr } = await supabase.from("foto_lahan").insert({
     ...(item.payload.row as any),
     file_path: path,
-    file_url: signed?.signedUrl || path,
+    file_url: fileUrl,
     created_by: uid ?? null,
   });
   if (insErr) throw insErr;

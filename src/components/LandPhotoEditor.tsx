@@ -23,6 +23,7 @@ import { toast } from "@/hooks/use-toast";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { renderPhotoOverlay, canvasToBlob, OverlayData } from "@/lib/photo-overlay";
 import { enqueue } from "@/lib/offline-queue";
+import { buildPhotoPath, resolvePhotoFileUrl } from "@/lib/photo-path";
 import { evaluateCoordinate } from "@/lib/coordinate-accuracy";
 import CoordinateAccuracyIndicator from "@/components/CoordinateAccuracyIndicator";
 import MiniMapPicker from "@/components/MiniMapPicker";
@@ -308,17 +309,20 @@ export const LandPhotoEditor = ({ open, onOpenChange, photo, imageUrl, onSaved }
       const blob = await canvasToBlob(canvasRef.current);
       const { data: userData } = await supabase.auth.getUser();
       const uid = userData.user?.id;
-      const safeCode = (kode || "foto").replace(/[^A-Za-z0-9_-]/g, "");
-      const path = `${uid}/${safeCode}-${Date.now()}.jpg`;
+      if (!uid) throw new Error("Silakan login sebelum menyimpan foto.");
+      const path = buildPhotoPath(photo.tipe, uid, kode);
 
       const { error: upErr } = await supabase.storage
         .from("foto-lahan")
         .upload(path, blob, { contentType: "image/jpeg", upsert: false });
       if (upErr) throw upErr;
 
-      const { data: signed } = await supabase.storage
-        .from("foto-lahan")
-        .createSignedUrl(path, 60 * 60 * 24 * 365);
+      const fileUrl = await resolvePhotoFileUrl(photo.tipe, path, async () => {
+        const { data: signed } = await supabase.storage
+          .from("foto-lahan")
+          .createSignedUrl(path, 60 * 60 * 24 * 365);
+        return signed?.signedUrl;
+      });
 
       const { error: insErr } = await supabase.from("foto_lahan").insert({
         ...metadataPayload(),
@@ -326,7 +330,7 @@ export const LandPhotoEditor = ({ open, onOpenChange, photo, imageUrl, onSaved }
         lahan_id: photo.lahan_id ?? null,
         tipe: photo.tipe,
         file_path: path,
-        file_url: signed?.signedUrl || path,
+        file_url: fileUrl,
         taken_at: takenAt.toISOString(),
         created_by: uid ?? null,
       });

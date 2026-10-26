@@ -65,6 +65,7 @@ export const LandPhotoGallery = ({ open, onOpenChange }: Props) => {
       .select(
         "id,tipe,kode,nama_petani,judul,alamat,catatan,petani_id,lahan_id,koordinat_lat,koordinat_lng,file_path,taken_at",
       )
+      .in("tipe", ["lahan", "rumah"])
       .order("taken_at", { ascending: false })
       .limit(1000);
     if (error) {
