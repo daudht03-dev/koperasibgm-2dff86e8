@@ -35,9 +35,11 @@ const pwaOptions: Partial<VitePWAOptions> = {
     ]
   },
   workbox: {
-    // Don't precache HTML - always fetch from network
-    globPatterns: ['**/*.{js,css,ico,png,jpg,jpeg,svg,woff,woff2}'],
+    globPatterns: ['**/*.{js,css,html,ico,png,jpg,jpeg,svg,woff,woff2}'],
     maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+    // Serve cached index.html for offline navigations (cold start without internet)
+    navigateFallback: '/index.html',
+    navigateFallbackDenylist: [/^\/~oauth/, /^\/api\//, /^\/functions\//],
     // Let the prompt handle skipWaiting via updateServiceWorker(true)
     clientsClaim: true,
     // Enable navigation preload for faster page loads
@@ -45,19 +47,6 @@ const pwaOptions: Partial<VitePWAOptions> = {
     // Cleaner cache management
     cleanupOutdatedCaches: true,
     runtimeCaching: [
-      {
-        // HTML pages - Network First (always try to get fresh)
-        urlPattern: /\.html$/,
-        handler: 'NetworkFirst',
-        options: {
-          cacheName: 'html-cache',
-          expiration: {
-            maxEntries: 10,
-            maxAgeSeconds: 60 * 60 // 1 hour only
-          },
-          networkTimeoutSeconds: 3
-        }
-      },
       {
         // API calls - Network First with short cache
         urlPattern: /^https:\/\/kreupbnakmqgfsbiijhl\.supabase\.co\/.*/i,
