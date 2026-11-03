@@ -71,8 +71,10 @@ interface Props {
   defaultLandId?: string;
   defaultFarmerId?: string;
   /** Optional initial photo type (does not change any existing logic) */
-  defaultTipe?: "lahan" | "rumah";
+  defaultTipe?: PhotoTipe;
 }
+
+type PhotoTipe = "lahan" | "rumah" | "ktp" | "pelatihan";
 
 const parseCoordinate = (koordinat: string | null): { lat: number; lng: number } | null => {
   if (!koordinat) return null;
@@ -129,7 +131,9 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
   const [photoSrc, setPhotoSrc] = useState<string | null>(null);
   const [mapThumb, setMapThumb] = useState<string | null>(null);
 
-  const [tipe, setTipe] = useState<"lahan" | "rumah">(defaultTipe ?? "lahan");
+  const [tipe, setTipe] = useState<PhotoTipe>(defaultTipe ?? "lahan");
+  // Document mode: KTP / pelatihan photos skip maps, coordinates and geocoding.
+  const isDoc = tipe === "ktp" || tipe === "pelatihan";
   const [farmerId, setFarmerId] = useState<string>(defaultFarmerId || "");
   const [landId, setLandId] = useState<string>(defaultLandId || "");
   const [heading, setHeading] = useState("");
@@ -229,7 +233,15 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
   }, [open]);
 
   useEffect(() => {
-    setNote(tipe === "lahan" ? "Lahan Petani" : "Alamat Petani");
+    setNote(
+      tipe === "lahan"
+        ? "Lahan Petani"
+        : tipe === "rumah"
+          ? "Alamat Petani"
+          : tipe === "ktp"
+            ? "Foto KTP"
+            : "Pelatihan Petani",
+    );
   }, [tipe]);
 
   const reverseGeocode = useCallback(async (la: number, ln: number) => {
@@ -300,6 +312,7 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
   // Prefill coordinates from selected land/farmer
   useEffect(() => {
     if (!open) return;
+    if (isDoc) return;
     if (tipe === "lahan" && selectedLand) {
       const c = parseCoordinate(selectedLand.koordinat);
       if (c) applyCoordinates(c.lat, c.lng, !address);
@@ -355,8 +368,9 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
           await renderPhotoOverlay(canvasRef.current, {
             photoSrc,
             data: overlayData,
-            mapThumbSrc: mapThumb,
+            mapThumbSrc: isDoc ? null : mapThumb,
             logoSrc: profile?.logo_url || null,
+            layout: isDoc ? "strip" : "panel",
           });
         } catch (e: any) {
           console.error("overlay render failed", e);
@@ -367,7 +381,7 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [photoSrc, overlayData, mapThumb, profile?.logo_url]);
+  }, [photoSrc, overlayData, mapThumb, profile?.logo_url, isDoc]);
 
   /**
    * Camera photos on Android are often 12MP+. Decoding the raw file with an
@@ -486,7 +500,7 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
       const dataUrl = await downscaleImage(file);
       setPhotoSrc(dataUrl);
       setTakenAt(new Date());
-      if (!lat || !lng) locateMe();
+      if (!isDoc && (!lat || !lng)) locateMe();
     } catch (e: any) {
       console.error("photo load failed", e);
       toast({
