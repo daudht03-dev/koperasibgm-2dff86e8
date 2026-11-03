@@ -71,8 +71,10 @@ interface Props {
   defaultLandId?: string;
   defaultFarmerId?: string;
   /** Optional initial photo type (does not change any existing logic) */
-  defaultTipe?: "lahan" | "rumah";
+  defaultTipe?: PhotoTipe;
 }
+
+type PhotoTipe = "lahan" | "rumah" | "ktp" | "pelatihan";
 
 const parseCoordinate = (koordinat: string | null): { lat: number; lng: number } | null => {
   if (!koordinat) return null;
@@ -129,7 +131,9 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
   const [photoSrc, setPhotoSrc] = useState<string | null>(null);
   const [mapThumb, setMapThumb] = useState<string | null>(null);
 
-  const [tipe, setTipe] = useState<"lahan" | "rumah">(defaultTipe ?? "lahan");
+  const [tipe, setTipe] = useState<PhotoTipe>(defaultTipe ?? "lahan");
+  // Document mode: KTP / pelatihan photos skip maps, coordinates and geocoding.
+  const isDoc = tipe === "ktp" || tipe === "pelatihan";
   const [farmerId, setFarmerId] = useState<string>(defaultFarmerId || "");
   const [landId, setLandId] = useState<string>(defaultLandId || "");
   const [heading, setHeading] = useState("");
@@ -229,7 +233,15 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
   }, [open]);
 
   useEffect(() => {
-    setNote(tipe === "lahan" ? "Lahan Petani" : "Alamat Petani");
+    setNote(
+      tipe === "lahan"
+        ? "Lahan Petani"
+        : tipe === "rumah"
+          ? "Alamat Petani"
+          : tipe === "ktp"
+            ? "Foto KTP"
+            : "Pelatihan Petani",
+    );
   }, [tipe]);
 
   const reverseGeocode = useCallback(async (la: number, ln: number) => {
@@ -300,6 +312,7 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
   // Prefill coordinates from selected land/farmer
   useEffect(() => {
     if (!open) return;
+    if (isDoc) return;
     if (tipe === "lahan" && selectedLand) {
       const c = parseCoordinate(selectedLand.koordinat);
       if (c) applyCoordinates(c.lat, c.lng, !address);
@@ -355,8 +368,9 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
           await renderPhotoOverlay(canvasRef.current, {
             photoSrc,
             data: overlayData,
-            mapThumbSrc: mapThumb,
+            mapThumbSrc: isDoc ? null : mapThumb,
             logoSrc: profile?.logo_url || null,
+            layout: isDoc ? "strip" : "panel",
           });
         } catch (e: any) {
           console.error("overlay render failed", e);
@@ -367,7 +381,7 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [photoSrc, overlayData, mapThumb, profile?.logo_url]);
+  }, [photoSrc, overlayData, mapThumb, profile?.logo_url, isDoc]);
 
   /**
    * Camera photos on Android are often 12MP+. Decoding the raw file with an
@@ -486,7 +500,7 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
       const dataUrl = await downscaleImage(file);
       setPhotoSrc(dataUrl);
       setTakenAt(new Date());
-      if (!lat || !lng) locateMe();
+      if (!isDoc && (!lat || !lng)) locateMe();
     } catch (e: any) {
       console.error("photo load failed", e);
       toast({
@@ -807,14 +821,16 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
                 <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
                   <ImageIcon className="h-4 w-4 mr-2" /> Pilih dari Galeri
                 </Button>
-                <Button size="sm" variant="outline" onClick={locateMe} disabled={locating}>
-                  {locating ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Crosshair className="h-4 w-4 mr-2" />
-                  )}
-                  Lokasi Saya
-                </Button>
+                {!isDoc && (
+                  <Button size="sm" variant="outline" onClick={locateMe} disabled={locating}>
+                    {locating ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Crosshair className="h-4 w-4 mr-2" />
+                    )}
+                    Lokasi Saya
+                  </Button>
+                )}
                 {photoSrc && (
                   <Button size="sm" variant="ghost" onClick={handleDownloadPreview}>
                     Unduh Pratinjau
@@ -822,17 +838,21 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
                 )}
               </div>
 
-              <MiniMapPicker
-                lat={Number.isFinite(parseFloat(lat)) ? parseFloat(lat) : null}
-                lng={Number.isFinite(parseFloat(lng)) ? parseFloat(lng) : null}
-                onChange={(la, ln) => {
-                  setGpsAccuracy(null);
-                  applyCoordinates(la, ln);
-                }}
-                height={190}
-              />
+              {!isDoc && (
+                <>
+                  <MiniMapPicker
+                    lat={Number.isFinite(parseFloat(lat)) ? parseFloat(lat) : null}
+                    lng={Number.isFinite(parseFloat(lng)) ? parseFloat(lng) : null}
+                    onChange={(la, ln) => {
+                      setGpsAccuracy(null);
+                      applyCoordinates(la, ln);
+                    }}
+                    height={190}
+                  />
 
-              <CoordinateAccuracyIndicator result={accuracy} />
+                  <CoordinateAccuracyIndicator result={accuracy} />
+                </>
+              )}
 
               <input
                 ref={cameraInputRef}
@@ -855,14 +875,16 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Tipe Lokasi</Label>
-                  <Select value={tipe} onValueChange={(v) => setTipe(v as "lahan" | "rumah")}>
+                  <Label>Tipe Foto</Label>
+                  <Select value={tipe} onValueChange={(v) => setTipe(v as PhotoTipe)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="lahan">Lahan Petani</SelectItem>
                       <SelectItem value="rumah">Alamat Petani</SelectItem>
+                      <SelectItem value="ktp">Foto KTP Petani</SelectItem>
+                      <SelectItem value="pelatihan">Foto Pelatihan Petani</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -927,44 +949,48 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <Label>Judul / Wilayah</Label>
-                <Input value={heading} onChange={(e) => setHeading(e.target.value)} placeholder="Kecamatan, Provinsi" />
-              </div>
+              {!isDoc && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label>Judul / Wilayah</Label>
+                    <Input value={heading} onChange={(e) => setHeading(e.target.value)} placeholder="Kecamatan, Provinsi" />
+                  </div>
 
-              <div className="space-y-1.5">
-                <Label className="flex items-center justify-between">
-                  Alamat Lengkap
-                  {geocoding && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                </Label>
-                <Textarea rows={2} value={address} onChange={(e) => setAddress(e.target.value)} />
-              </div>
+                  <div className="space-y-1.5">
+                    <Label className="flex items-center justify-between">
+                      Alamat Lengkap
+                      {geocoding && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    </Label>
+                    <Textarea rows={2} value={address} onChange={(e) => setAddress(e.target.value)} />
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Latitude</Label>
-                  <Input value={lat} onChange={(e) => setLat(e.target.value)} placeholder="-7.123456" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Longitude</Label>
-                  <Input value={lng} onChange={(e) => setLng(e.target.value)} placeholder="109.123456" />
-                </div>
-              </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Latitude</Label>
+                      <Input value={lat} onChange={(e) => setLat(e.target.value)} placeholder="-7.123456" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Longitude</Label>
+                      <Input value={lng} onChange={(e) => setLng(e.target.value)} placeholder="109.123456" />
+                    </div>
+                  </div>
 
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    const la = parseFloat(lat);
-                    const ln = parseFloat(lng);
-                    if (Number.isFinite(la) && Number.isFinite(ln)) applyCoordinates(la, ln);
-                  }}
-                  disabled={geocoding}
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" /> Perbarui Alamat & Peta Mini
-                </Button>
-              </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const la = parseFloat(lat);
+                        const ln = parseFloat(lng);
+                        if (Number.isFinite(la) && Number.isFinite(ln)) applyCoordinates(la, ln);
+                      }}
+                      disabled={geocoding}
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" /> Perbarui Alamat & Peta Mini
+                    </Button>
+                  </div>
+                </>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -991,12 +1017,14 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
                 <Input value={note} onChange={(e) => setNote(e.target.value)} />
               </div>
 
-              <div className="flex items-center justify-between rounded-md border px-3 h-10">
-                <Label className="text-sm font-normal">
-                  Perbarui koordinat {tipe === "lahan" ? "lahan" : "rumah petani"} dari titik ini
-                </Label>
-                <Switch checked={syncMaster} onCheckedChange={setSyncMaster} />
-              </div>
+              {!isDoc && (
+                <div className="flex items-center justify-between rounded-md border px-3 h-10">
+                  <Label className="text-sm font-normal">
+                    Perbarui koordinat {tipe === "lahan" ? "lahan" : "rumah petani"} dari titik ini
+                  </Label>
+                  <Switch checked={syncMaster} onCheckedChange={setSyncMaster} />
+                </div>
+              )}
 
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <MapPin className="h-3 w-3" /> Teks watermark:{" "}
