@@ -821,14 +821,16 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
                 <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
                   <ImageIcon className="h-4 w-4 mr-2" /> Pilih dari Galeri
                 </Button>
-                <Button size="sm" variant="outline" onClick={locateMe} disabled={locating}>
-                  {locating ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Crosshair className="h-4 w-4 mr-2" />
-                  )}
-                  Lokasi Saya
-                </Button>
+                {!isDoc && (
+                  <Button size="sm" variant="outline" onClick={locateMe} disabled={locating}>
+                    {locating ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Crosshair className="h-4 w-4 mr-2" />
+                    )}
+                    Lokasi Saya
+                  </Button>
+                )}
                 {photoSrc && (
                   <Button size="sm" variant="ghost" onClick={handleDownloadPreview}>
                     Unduh Pratinjau
@@ -836,17 +838,21 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
                 )}
               </div>
 
-              <MiniMapPicker
-                lat={Number.isFinite(parseFloat(lat)) ? parseFloat(lat) : null}
-                lng={Number.isFinite(parseFloat(lng)) ? parseFloat(lng) : null}
-                onChange={(la, ln) => {
-                  setGpsAccuracy(null);
-                  applyCoordinates(la, ln);
-                }}
-                height={190}
-              />
+              {!isDoc && (
+                <>
+                  <MiniMapPicker
+                    lat={Number.isFinite(parseFloat(lat)) ? parseFloat(lat) : null}
+                    lng={Number.isFinite(parseFloat(lng)) ? parseFloat(lng) : null}
+                    onChange={(la, ln) => {
+                      setGpsAccuracy(null);
+                      applyCoordinates(la, ln);
+                    }}
+                    height={190}
+                  />
 
-              <CoordinateAccuracyIndicator result={accuracy} />
+                  <CoordinateAccuracyIndicator result={accuracy} />
+                </>
+              )}
 
               <input
                 ref={cameraInputRef}
@@ -869,14 +875,16 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Tipe Lokasi</Label>
-                  <Select value={tipe} onValueChange={(v) => setTipe(v as "lahan" | "rumah")}>
+                  <Label>Tipe Foto</Label>
+                  <Select value={tipe} onValueChange={(v) => setTipe(v as PhotoTipe)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="lahan">Lahan Petani</SelectItem>
                       <SelectItem value="rumah">Alamat Petani</SelectItem>
+                      <SelectItem value="ktp">Foto KTP Petani</SelectItem>
+                      <SelectItem value="pelatihan">Foto Pelatihan Petani</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
