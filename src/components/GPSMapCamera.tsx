@@ -682,7 +682,7 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
     }
     const laNum = parseFloat(lat);
     const lnNum = parseFloat(lng);
-    if (!Number.isFinite(laNum) || !Number.isFinite(lnNum)) {
+    if (!isDoc && (!Number.isFinite(laNum) || !Number.isFinite(lnNum))) {
       toast({ title: "Koordinat belum valid", variant: "destructive" });
       return;
     }
@@ -693,17 +693,17 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
       lahan_id: tipe === "lahan" ? landId || null : null,
       tipe,
       nama_petani: selectedFarmer?.nama || null,
-      kode: code,
-      judul: heading || null,
-      alamat: address || null,
-      koordinat_lat: laNum,
-      koordinat_lng: lnNum,
+      kode: isDoc ? selectedFarmer?.kode_petani || "foto" : code,
+      judul: isDoc ? null : heading || null,
+      alamat: isDoc ? null : address || null,
+      koordinat_lat: isDoc ? null : laNum,
+      koordinat_lng: isDoc ? null : lnNum,
       catatan: note || null,
       taken_at: takenAt.toISOString(),
       tampilkan_waktu: showTime,
-      akurasi_meter: gpsAccuracy,
-      akurasi_skor: accuracy.score,
-      akurasi_catatan: accuracy.summary,
+      akurasi_meter: isDoc ? null : gpsAccuracy,
+      akurasi_skor: isDoc ? null : accuracy.score,
+      akurasi_catatan: isDoc ? null : accuracy.summary,
     };
     try {
       const blob = await canvasToBlob(canvasRef.current);
@@ -716,11 +716,12 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
             blob,
             row: photoRow,
             code,
-            syncMaster: syncMaster
-              ? tipe === "lahan" && landId
-                ? { type: "lahan", id: landId, lat: laNum, lng: lnNum, alamat: address }
-                : { type: "petani", id: farmerId, lat: laNum, lng: lnNum, alamat: address }
-              : null,
+            syncMaster:
+              !isDoc && syncMaster
+                ? tipe === "lahan" && landId
+                  ? { type: "lahan", id: landId, lat: laNum, lng: lnNum, alamat: address }
+                  : { type: "petani", id: farmerId, lat: laNum, lng: lnNum, alamat: address }
+                : null,
           },
         } as any);
         toast({
@@ -757,7 +758,7 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
 
       if (insErr) throw insErr;
 
-      if (syncMaster) await syncMasterCoordinates(laNum, lnNum);
+      if (!isDoc && syncMaster) await syncMasterCoordinates(laNum, lnNum);
 
       toast({ title: "Foto tersimpan", description: `Dokumentasi ${code} berhasil disimpan.` });
       onSaved?.();
@@ -787,7 +788,7 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
         <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 flex-wrap">
-              <Camera className="h-5 w-5" /> Kamera Peta — Dokumentasi Lahan
+              <Camera className="h-5 w-5" /> {isDoc ? "Kamera Dokumen Petani" : "Kamera Peta — Dokumentasi Lahan"}
               {!navigator.onLine && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-organic-amber/15 text-organic-amber px-2 py-0.5 text-[11px] font-normal">
                   <WifiOff className="h-3 w-3" />
