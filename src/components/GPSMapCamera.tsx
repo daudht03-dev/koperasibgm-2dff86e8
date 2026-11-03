@@ -949,44 +949,48 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <Label>Judul / Wilayah</Label>
-                <Input value={heading} onChange={(e) => setHeading(e.target.value)} placeholder="Kecamatan, Provinsi" />
-              </div>
+              {!isDoc && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label>Judul / Wilayah</Label>
+                    <Input value={heading} onChange={(e) => setHeading(e.target.value)} placeholder="Kecamatan, Provinsi" />
+                  </div>
 
-              <div className="space-y-1.5">
-                <Label className="flex items-center justify-between">
-                  Alamat Lengkap
-                  {geocoding && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                </Label>
-                <Textarea rows={2} value={address} onChange={(e) => setAddress(e.target.value)} />
-              </div>
+                  <div className="space-y-1.5">
+                    <Label className="flex items-center justify-between">
+                      Alamat Lengkap
+                      {geocoding && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    </Label>
+                    <Textarea rows={2} value={address} onChange={(e) => setAddress(e.target.value)} />
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Latitude</Label>
-                  <Input value={lat} onChange={(e) => setLat(e.target.value)} placeholder="-7.123456" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Longitude</Label>
-                  <Input value={lng} onChange={(e) => setLng(e.target.value)} placeholder="109.123456" />
-                </div>
-              </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Latitude</Label>
+                      <Input value={lat} onChange={(e) => setLat(e.target.value)} placeholder="-7.123456" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Longitude</Label>
+                      <Input value={lng} onChange={(e) => setLng(e.target.value)} placeholder="109.123456" />
+                    </div>
+                  </div>
 
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    const la = parseFloat(lat);
-                    const ln = parseFloat(lng);
-                    if (Number.isFinite(la) && Number.isFinite(ln)) applyCoordinates(la, ln);
-                  }}
-                  disabled={geocoding}
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" /> Perbarui Alamat & Peta Mini
-                </Button>
-              </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const la = parseFloat(lat);
+                        const ln = parseFloat(lng);
+                        if (Number.isFinite(la) && Number.isFinite(ln)) applyCoordinates(la, ln);
+                      }}
+                      disabled={geocoding}
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" /> Perbarui Alamat & Peta Mini
+                    </Button>
+                  </div>
+                </>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -1013,12 +1017,14 @@ export const GPSMapCamera = ({ open, onOpenChange, onSaved, defaultLandId, defau
                 <Input value={note} onChange={(e) => setNote(e.target.value)} />
               </div>
 
-              <div className="flex items-center justify-between rounded-md border px-3 h-10">
-                <Label className="text-sm font-normal">
-                  Perbarui koordinat {tipe === "lahan" ? "lahan" : "rumah petani"} dari titik ini
-                </Label>
-                <Switch checked={syncMaster} onCheckedChange={setSyncMaster} />
-              </div>
+              {!isDoc && (
+                <div className="flex items-center justify-between rounded-md border px-3 h-10">
+                  <Label className="text-sm font-normal">
+                    Perbarui koordinat {tipe === "lahan" ? "lahan" : "rumah petani"} dari titik ini
+                  </Label>
+                  <Switch checked={syncMaster} onCheckedChange={setSyncMaster} />
+                </div>
+              )}
 
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <MapPin className="h-3 w-3" /> Teks watermark:{" "}
