@@ -206,6 +206,44 @@ export type Database = {
         }
         Relationships: []
       }
+      dokumen_review: {
+        Row: {
+          created_at: string
+          foto_id: string
+          hasil: Json
+          id: string
+          model: string | null
+          reviewed_by: string | null
+          verdict: string | null
+        }
+        Insert: {
+          created_at?: string
+          foto_id: string
+          hasil: Json
+          id?: string
+          model?: string | null
+          reviewed_by?: string | null
+          verdict?: string | null
+        }
+        Update: {
+          created_at?: string
+          foto_id?: string
+          hasil?: Json
+          id?: string
+          model?: string | null
+          reviewed_by?: string | null
+          verdict?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dokumen_review_foto_id_fkey"
+            columns: ["foto_id"]
+            isOneToOne: false
+            referencedRelation: "foto_lahan"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estimasi_panen: {
         Row: {
           catatan: string | null
