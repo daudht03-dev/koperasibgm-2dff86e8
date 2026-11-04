@@ -3,7 +3,13 @@
 // completeness/legibility review, and stores it in public.dokumen_review.
 // Caller must hold one of the roles allowed to read KTP photos.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
-import { generateResponse, GatewayError } from "npm:@lovable.dev/ai-gateway";
+import {
+  generateResponse,
+  GatewayError,
+  PaymentRequiredError,
+  PermissionDeniedError,
+  RateLimitError,
+} from "npm:@lovable.dev/ai-gateway";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
