@@ -8,6 +8,13 @@
       "when": 1792997697147,
       "tag": "0000_restrict_sensitive_farmer_photo_reads",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793757437865,
+      "tag": "0001_create_dokumen_review",
+      "breakpoints": true
     }
   ]
 }
