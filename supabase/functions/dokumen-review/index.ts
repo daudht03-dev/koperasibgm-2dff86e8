@@ -212,13 +212,13 @@ Deno.serve(async (req) => {
   } catch (err) {
     if (err instanceof GatewayError) {
       console.error("gateway error:", err.code, err.httpStatus, err.recovery);
-      if (err instanceof (await import("npm:@lovable.dev/ai-gateway")).PaymentRequiredError) {
+      if (err instanceof PaymentRequiredError) {
         return json({ error: "Kredit AI habis — isi ulang kredit lalu coba lagi" }, 402);
       }
-      if (err instanceof (await import("npm:@lovable.dev/ai-gateway")).PermissionDeniedError) {
+      if (err instanceof PermissionDeniedError) {
         return json({ error: "Akses model ditolak oleh pengaturan workspace" }, 403);
       }
-      if (err instanceof (await import("npm:@lovable.dev/ai-gateway")).RateLimitError) {
+      if (err instanceof RateLimitError) {
         return json({ error: "Terlalu banyak permintaan, coba beberapa saat lagi" }, 429);
       }
       return json({ error: "Layanan AI sedang bermasalah, coba lagi nanti" }, 502);
