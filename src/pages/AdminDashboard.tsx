@@ -24,7 +24,7 @@ import { useProducts } from "@/hooks/use-products";
 import { useCompanyProfile } from "@/hooks/use-company-profile";
 import { useHarvests } from "@/hooks/use-harvests";
 import { useNavigate, Link } from "react-router-dom";
-import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode, Printer, Upload, Map as MapIcon, ArrowUpDown, ArrowUp, ArrowDown, Search, History, Download, Camera } from "lucide-react";
+import { Users, MapPin, Settings, Plus, LogOut, Edit, Trash2, Package, Building, BarChart3, Calendar, Eye, QrCode, Printer, Upload, Map as MapIcon, ArrowUpDown, ArrowUp, ArrowDown, Search, History, Download, Camera, FileCheck2 } from "lucide-react";
 import { LandMapTab } from "@/components/LandMapTab";
 import { GPSMapCamera } from "@/components/GPSMapCamera";
 import { FarmerBatchImport } from "@/components/FarmerBatchImport";
@@ -49,6 +49,7 @@ import { BulkDeleteFarmersDialog } from "@/components/BulkDeleteFarmersDialog";
 import { BulkDeleteLandsDialog } from "@/components/BulkDeleteLandsDialog";
 import { LocationConfirmationBadge } from "@/components/LocationConfirmationPanel";
 import { useDraftForm } from "@/hooks/use-draft-form";
+import { DokumenReviewPanel } from "@/components/DokumenReviewPanel";
 
 const relativeTime = (ts: number): string => {
   const diff = Date.now() - ts;
@@ -533,7 +534,7 @@ const AdminDashboard = () => {
   const fieldOnly = !isAdmin && (isPengawas || isStafLapang);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"farmers" | "lands" | "map" | "products" | "statistics" | "profile" | "labels" | "public-profile">("farmers");
+  const [activeTab, setActiveTab] = useState<"farmers" | "lands" | "map" | "products" | "statistics" | "profile" | "labels" | "public-profile" | "dokumen">("farmers");
   const [farmerSortOrder, setFarmerSortOrder] = useState<"asc" | "desc" | null>(null);
   const [landSortOrder, setLandSortOrder] = useState<"asc" | "desc" | null>(null);
   const [farmerSearch, setFarmerSearch] = useState("");
@@ -1156,6 +1157,7 @@ const AdminDashboard = () => {
               { key: "profile", label: "Profil", icon: Building },
               { key: "labels", label: "Label Kemasan", icon: Printer },
               { key: "public-profile", label: "Profil Publik", icon: Eye },
+              { key: "dokumen", label: "Tinjauan Dokumen", icon: FileCheck2 },
             ]
               .filter(({ key }) => !fieldOnly || ["farmers", "lands", "map"].includes(key))
               .map(({ key, label, icon: Icon }) => (
@@ -1175,6 +1177,8 @@ const AdminDashboard = () => {
             ))}
           </div>
         </div>
+
+        {activeTab === "dokumen" && !fieldOnly && <DokumenReviewPanel />}
 
         {/* Farmers Tab */}
         {activeTab === "farmers" && (
