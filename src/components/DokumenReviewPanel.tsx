@@ -186,7 +186,7 @@ export const DokumenReviewPanel = () => {
       console.error("failed to load reviews", reviewErr.message);
     } else {
       const latest: Record<string, ReviewRow> = {};
-      for (const r of (reviewRows || []) as ReviewRow[]) {
+      for (const r of (reviewRows || []) as unknown as ReviewRow[]) {
         if (!latest[r.foto_id]) latest[r.foto_id] = r;
       }
       setReviews(latest);
