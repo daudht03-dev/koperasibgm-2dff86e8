@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { LandMapTab } from "@/components/LandMapTab";
 import { LandPhotoGallery } from "@/components/LandPhotoGallery";
+import { DokumenPhotoGalleryDialog } from "@/components/DokumenPhotoGallery";
 import { Eye, Images, Loader2, LogOut, MapPin, Sprout, Users } from "lucide-react";
 
 /** Read-only dashboard for pengawas: petani, lahan, and map only. */
@@ -16,6 +17,7 @@ const SupervisorDashboard = () => {
   const [stats, setStats] = useState({ petani: 0, lahan: 0, organik: 0, foto: 0 });
   const [loading, setLoading] = useState(true);
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [documentGalleryOpen, setDocumentGalleryOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -87,9 +89,12 @@ const SupervisorDashboard = () => {
             <CardTitle>Dokumentasi Lapangan</CardTitle>
             <CardDescription>Tinjau foto lahan & alamat petani yang sudah diunggah petugas lapang.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setGalleryOpen(true)}>
               <Images className="h-4 w-4 mr-2" /> Buka Galeri Foto
+            </Button>
+            <Button variant="outline" onClick={() => setDocumentGalleryOpen(true)}>
+              <Images className="h-4 w-4 mr-2" /> Galeri Dokumen
             </Button>
           </CardContent>
         </Card>
@@ -98,6 +103,7 @@ const SupervisorDashboard = () => {
       </main>
 
       <LandPhotoGallery open={galleryOpen} onOpenChange={setGalleryOpen} />
+      <DokumenPhotoGalleryDialog open={documentGalleryOpen} onOpenChange={setDocumentGalleryOpen} />
     </div>
   );
 };

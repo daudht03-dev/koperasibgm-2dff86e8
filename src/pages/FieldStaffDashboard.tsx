@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { LocationConfirmationBadge } from "@/components/LocationConfirmationPanel";
 import { LandPhotoGallery } from "@/components/LandPhotoGallery";
+import { DokumenPhotoGalleryDialog } from "@/components/DokumenPhotoGallery";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useFarmers } from "@/hooks/use-farmers";
@@ -43,6 +44,7 @@ const FieldStaffDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [documentGalleryOpen, setDocumentGalleryOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("map");
   const [editingFarmer, setEditingFarmer] = useState<Tables<"petani"> | null>(null);
   const [editingLand, setEditingLand] = useState<Tables<"lahan"> | null>(null);
@@ -180,6 +182,9 @@ const FieldStaffDashboard = () => {
             <Button variant="outline" onClick={() => setGalleryOpen(true)}>
               <Images className="h-4 w-4 mr-2" /> Galeri Foto
             </Button>
+            <Button variant="outline" onClick={() => setDocumentGalleryOpen(true)}>
+              <Images className="h-4 w-4 mr-2" /> Galeri Dokumen
+            </Button>
             <Button variant="outline" onClick={openDirectory}>
               <Users className="h-4 w-4 mr-2" /> Daftar Petani & Lahan
             </Button>
@@ -283,6 +288,7 @@ const FieldStaffDashboard = () => {
         onSaved={() => { void loadStats(); void refetchFarmers(); void refetchLands(); }}
       />
       <LandPhotoGallery open={galleryOpen} onOpenChange={setGalleryOpen} />
+      <DokumenPhotoGalleryDialog open={documentGalleryOpen} onOpenChange={setDocumentGalleryOpen} />
     </div>
   );
 };

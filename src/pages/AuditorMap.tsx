@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, LogOut, MapPin, Navigation, Search, ShieldCheck, X, Home, Leaf, Factory, Route as RouteIcon, Layers, FileDown, History, Flame } from "lucide-react";
+import { Loader2, LogOut, MapPin, Navigation, Search, ShieldCheck, X, Home, Leaf, Factory, Route as RouteIcon, Layers, FileDown, History, Flame, Images } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { loadGoogleMaps } from "@/lib/google-maps-loader";
@@ -13,6 +13,7 @@ import { MarkerClusterer } from "@googlemaps/markerclusterer";
 import { getMapDetail, type MapDetail } from "@/lib/map-performance";
 
 import { toast } from "@/hooks/use-toast";
+import { DokumenPhotoGalleryDialog } from "@/components/DokumenPhotoGallery";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -109,6 +110,7 @@ const AuditorMap = () => {
   const [routing, setRouting] = useState(false);
   const [routeHistory, setRouteHistory] = useState<RouteHistoryEntry[]>([]);
   const [exporting, setExporting] = useState(false);
+  const [documentGalleryOpen, setDocumentGalleryOpen] = useState(false);
 
 
   const prefixMap = useMemo<Record<string, string>>(
@@ -587,9 +589,14 @@ const AuditorMap = () => {
               <p className="text-xs text-muted-foreground">{user?.email}</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={signOut}>
-            <LogOut className="h-4 w-4 mr-2" /> Keluar
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setDocumentGalleryOpen(true)}>
+              <Images className="h-4 w-4 mr-2" /> Galeri Dokumen
+            </Button>
+            <Button variant="outline" size="sm" onClick={signOut}>
+              <LogOut className="h-4 w-4 mr-2" /> Keluar
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -802,6 +809,7 @@ const AuditorMap = () => {
         </div>
 
       </div>
+      <DokumenPhotoGalleryDialog open={documentGalleryOpen} onOpenChange={setDocumentGalleryOpen} />
     </div>
   );
 };
