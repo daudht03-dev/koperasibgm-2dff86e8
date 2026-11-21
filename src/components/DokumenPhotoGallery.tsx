@@ -30,7 +30,7 @@ const typeLabel: Record<DocumentPhotoType, string> = {
   pelatihan: "Foto Pelatihan Petani",
 };
 
-export const DokumenPhotoGallery = ({ active = true }: { active?: boolean }) => {
+export const DokumenPhotoGallery = ({ active = true, embedded = false }: { active?: boolean; embedded?: boolean }) => {
   const [photos, setPhotos] = useState<DocumentPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -85,7 +85,7 @@ export const DokumenPhotoGallery = ({ active = true }: { active?: boolean }) => 
 
   return (
     <>
-      <Card>
+      <Card className={embedded ? "border-0 bg-transparent shadow-none" : undefined}>
         <CardHeader className="gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2"><Images className="h-5 w-5" /> Galeri Dokumen Petani</CardTitle>
@@ -175,7 +175,7 @@ export const DokumenPhotoGallery = ({ active = true }: { active?: boolean }) => 
 export const DokumenPhotoGalleryDialog = ({ open, onOpenChange }: DialogProps) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent className="max-h-[92vh] max-w-6xl overflow-y-auto">
-      <DokumenPhotoGallery active={open} />
+      <DokumenPhotoGallery active={open} embedded />
     </DialogContent>
   </Dialog>
 );

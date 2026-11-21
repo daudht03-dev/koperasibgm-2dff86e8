@@ -6,4 +6,4 @@
 - [x] Replace navigation to admin with opening the local directory tab.
 - [x] Verify field-staff tabs, both edits, draft restoration, camera preselection, absence of bulk controls, and mobile layout using mocked browser data; real-account access and live maps were not tested.
 - [x] Add a shared KTP/training photo gallery to admin, field-staff, supervisor, and auditor menus, relying on existing restrictive KTP access policies.
-- [ ] Verify the new gallery in a signed-in role session and inspect the preview build.
+- [x] Verify the field-staff gallery with an authorized test session: five KTP images loaded, filter selected, no page errors, and preview build OK.
