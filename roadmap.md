@@ -7,5 +7,5 @@
 - [x] Verify field-staff tabs, both edits, draft restoration, camera preselection, absence of bulk controls, and mobile layout using mocked browser data; real-account access and live maps were not tested.
 - [x] Add a shared KTP/training photo gallery to admin, field-staff, supervisor, and auditor menus, relying on existing restrictive KTP access policies.
 - [x] Verify the field-staff gallery with an authorized test session: five KTP images loaded, filter selected, no page errors, and preview build OK.
-- [ ] Fix only the seven selected security findings: enable leaked-password protection, secure six public-table read policies, and preserve limited public farmer/land information through safe existing public access.
-- [ ] Verify the policies and public-page flows, then close only the selected findings in the security tracker.
+- [x] Enable leaked-password checks and replace only the six selected public-read policies with role-scoped authenticated access.
+- [x] Verify the six policies and fresh scan, confirm the limited public farmer profile still loads without contact details, and close only the selected findings.
