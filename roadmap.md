@@ -9,5 +9,5 @@
 - [x] Verify the field-staff gallery with an authorized test session: five KTP images loaded, filter selected, no page errors, and preview build OK.
 - [x] Enable leaked-password checks and replace only the six selected public-read policies with role-scoped authenticated access.
 - [x] Verify the six policies and fresh scan, confirm the limited public farmer profile still loads without contact details, and close only the selected findings.
-- [ ] Resolve the public changelog access scope; waiting for confirmation about keeping older entries visible to visitors.
+- [x] Restrict public changelog to the latest release; verified live public/nonstaff access to only v1.3.0 and temporary field-staff access to all four releases, passed two policy tests, and closed only the selected changelog finding.
 - [x] Check whether the document gallery currently supports editing or deleting uploaded KTP/training photos; report existing behavior without making changes.

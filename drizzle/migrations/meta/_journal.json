@@ -22,6 +22,13 @@
       "when": 1795397037645,
       "tag": "0002_restrict_public_table_reads",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795833850473,
+      "tag": "0003_restrict_public_changelog_reads",
+      "breakpoints": true
     }
   ]
 }

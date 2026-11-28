@@ -1,0 +1,3 @@
+DROP POLICY IF EXISTS "Everyone can view changelog" ON public.changelog;
+CREATE POLICY "Public can view latest changelog" ON public.changelog AS PERMISSIVE FOR SELECT TO anon, authenticated USING (is_latest IS TRUE);
+CREATE POLICY "Authorized staff can view changelog history" ON public.changelog AS PERMISSIVE FOR SELECT TO authenticated USING (public.has_any_role(auth.uid(), ARRAY['admin','developer','staf_lapang','pengawas','auditor']::public.app_role[]));
