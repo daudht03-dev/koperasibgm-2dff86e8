@@ -1,3 +1,4 @@
 - Field staff renders its own farmer/land card lists and imports the named form dialog exports from AdminDashboard, so draft and update behavior remain shared without rendering admin bulk actions.
 - Photo writers share photo-path helpers for storage paths and persisted references so online uploads, new versions, and offline replay enforce identical sensitive-photo handling; offline replay passes its creation timestamp to preserve retry paths.
 - Role-scoped dashboards reuse one document-photo gallery so KTP access remains governed by the existing restrictive row and storage policies.
+- Document corrections use a dedicated strip editor and update the same photo row with optimistic file-path checks; keep old files for version history and remove all referenced versions on confirmed deletion, relying on existing writer RLS.

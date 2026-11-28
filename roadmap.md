@@ -11,3 +11,4 @@
 - [x] Verify the six policies and fresh scan, confirm the limited public farmer profile still loads without contact details, and close only the selected findings.
 - [x] Restrict public changelog to the latest release; verified live public/nonstaff access to only v1.3.0 and temporary field-staff access to all four releases, passed two policy tests, and closed only the selected changelog finding.
 - [x] Check whether the document gallery currently supports editing or deleting uploaded KTP/training photos; report existing behavior without making changes.
+- [x] Add document editing/replacement and confirmed deletion for existing writer roles; preserve audit records and KTP path-only storage. Passed 12 tests and live synthetic KTP/training edits, readback, single-strip rendering, cancel/delete, mobile editor, and storage verification (zero remaining documents/objects); tested with a temporary field-staff account, not the user's account.

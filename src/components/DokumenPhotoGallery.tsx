@@ -6,19 +6,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { FileImage, Images, Loader2, Search } from "lucide-react";
-
-type DocumentPhotoType = "ktp" | "pelatihan";
-
-interface DocumentPhoto {
-  id: string;
-  tipe: DocumentPhotoType;
-  kode: string | null;
-  nama_petani: string | null;
-  file_path: string;
-  taken_at: string;
-  url?: string;
-}
+import { FileImage, Images, Loader2, Search, Pencil, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter } from "@/components/ui/alert-dialog";
+import { useUserRoles } from "@/hooks/use-user-role";
+import { canManageDocuments, DocumentPhoto, DocumentPhotoType } from "@/lib/document-photo";
+import DokumenPhotoEditor from "@/components/DokumenPhotoEditor";
 
 interface DialogProps {
   open: boolean;
@@ -36,33 +28,36 @@ export const DokumenPhotoGallery = ({ active = true, embedded = false }: { activ
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"semua" | DocumentPhotoType>("semua");
   const [selected, setSelected] = useState<DocumentPhoto | null>(null);
+  const [editing, setEditing] = useState<DocumentPhoto | null>(null);
+  const [deleting, setDeleting] = useState<DocumentPhoto | null>(null);
+  const [busy, setBusy] = useState(false);
+  const { roles, loading: rolesLoading } = useUserRoles();
+  const canManage = !rolesLoading && canManageDocuments(roles);
 
   const loadPhotos = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("foto_lahan")
-      .select("id,tipe,kode,nama_petani,file_path,taken_at")
-      .in("tipe", ["ktp", "pelatihan"])
-      .order("taken_at", { ascending: false })
-      .limit(2000);
-
-    if (error) {
-      toast({ title: "Galeri dokumen tidak dapat dimuat", description: error.message, variant: "destructive" });
-      setPhotos([]);
-      setLoading(false);
-      return;
+    const rows: DocumentPhoto[] = [];
+    for (let offset = 0; ; offset += 500) {
+      const { data, error } = await supabase.from("foto_lahan")
+        .select("id,tipe,petani_id,kode,nama_petani,catatan,tampilkan_waktu,file_path,taken_at")
+        .in("tipe", ["ktp", "pelatihan"]).order("taken_at", { ascending: false }).order("id").range(offset, offset + 499);
+      if (error) {
+        toast({ title: "Galeri dokumen tidak dapat dimuat", description: error.message, variant: "destructive" });
+        setPhotos([]); setLoading(false); return;
+      }
+      rows.push(...((data || []) as DocumentPhoto[]));
+      if ((data || []).length < 500) break;
     }
-
-    const rows = (data || []) as DocumentPhoto[];
-    if (rows.length > 0) {
+    for (let offset = 0; offset < rows.length; offset += 100) {
+      const chunk = rows.slice(offset, offset + 100);
       const { data: signedUrls, error: urlError } = await supabase.storage
         .from("foto-lahan")
-        .createSignedUrls(rows.map((photo) => photo.file_path), 60 * 60);
+        .createSignedUrls(chunk.map((photo) => photo.file_path), 60 * 60);
       if (urlError) {
         toast({ title: "Foto tidak dapat dibuka", description: urlError.message, variant: "destructive" });
       }
       (signedUrls || []).forEach((item, index) => {
-        if (item.signedUrl) rows[index].url = item.signedUrl;
+        if (item.signedUrl && chunk[index]) chunk[index].url = item.signedUrl;
       });
     }
 
@@ -82,6 +77,39 @@ export const DokumenPhotoGallery = ({ active = true, embedded = false }: { activ
       return `${photo.kode || ""} ${photo.nama_petani || ""}`.toLocaleLowerCase("id-ID").includes(query);
     });
   }, [photos, search, typeFilter]);
+
+  const deleteDocument = async () => {
+    if (!deleting || !canManage || busy) return;
+    if (!navigator.onLine) { toast({ title: "Hapus dokumen memerlukan koneksi internet", variant: "destructive" }); return; }
+    setBusy(true);
+    try {
+      const paths = new Set([deleting.file_path]);
+      for (let offset = 0; ; offset += 500) {
+        const { data, error } = await supabase.from("foto_lahan_riwayat").select("snapshot")
+          .eq("foto_id", deleting.id).order("id").range(offset, offset + 499);
+        if (error) throw error;
+        for (const row of data || []) {
+          const snapshot = row.snapshot;
+          if (snapshot && typeof snapshot === "object" && !Array.isArray(snapshot) && typeof snapshot.file_path === "string") paths.add(snapshot.file_path);
+        }
+        if ((data || []).length < 500) break;
+      }
+      const { data, error } = await supabase.from("foto_lahan").delete()
+        .eq("id", deleting.id).eq("file_path", deleting.file_path).in("tipe", ["ktp", "pelatihan"]).select("id").single();
+      if (error || !data) throw error || new Error("Dokumen berubah atau akses ditolak. Muat ulang galeri.");
+      let cleanupError = false;
+      const allPaths = [...paths];
+      for (let offset = 0; offset < allPaths.length; offset += 100) {
+        const { error: storageError } = await supabase.storage.from("foto-lahan").remove(allPaths.slice(offset, offset + 100));
+        if (storageError) cleanupError = true;
+      }
+      setSelected(null); setDeleting(null);
+      await loadPhotos();
+      toast({ title: "Dokumen dihapus", ...(cleanupError ? { description: "Data dihapus, tetapi sebagian file belum dapat dibersihkan dari penyimpanan.", variant: "destructive" as const } : {}) });
+    } catch (error) {
+      toast({ title: "Gagal menghapus dokumen", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+    } finally { setBusy(false); }
+  };
 
   return (
     <>
@@ -159,6 +187,10 @@ export const DokumenPhotoGallery = ({ active = true, embedded = false }: { activ
               {selected ? `${selected.nama_petani || "Petani"} · ${selected.kode || "—"} · ${new Date(selected.taken_at).toLocaleString("id-ID")}` : ""}
             </DialogDescription>
           </DialogHeader>
+          {canManage && selected && <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="outline" onClick={() => { setEditing(selected); setSelected(null); }}><Pencil className="mr-2 h-4 w-4" />Edit Dokumen</Button>
+            <Button variant="destructive" onClick={() => setDeleting(selected)}><Trash2 className="mr-2 h-4 w-4" />Hapus Dokumen</Button>
+          </div>}
           {selected?.url ? (
             <img src={selected.url} alt={typeLabel[selected.tipe]} className="mx-auto max-h-[70vh] max-w-full rounded-md object-contain" />
           ) : (
@@ -168,6 +200,19 @@ export const DokumenPhotoGallery = ({ active = true, embedded = false }: { activ
           )}
         </DialogContent>
       </Dialog>
+      {editing && <DokumenPhotoEditor photo={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void loadPhotos(); }} />}
+      <AlertDialog open={deleting !== null} onOpenChange={(open) => { if (!open && !busy) setDeleting(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus dokumen ini?</AlertDialogTitle>
+            <AlertDialogDescription>{deleting ? `${typeLabel[deleting.tipe]} milik ${deleting.nama_petani || "Petani"} (${deleting.kode || "—"})` : "Dokumen"} akan dihapus beserta file dan hasil tinjauannya. Catatan audit tetap disimpan. Tindakan ini tidak dapat dibatalkan.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button variant="outline" onClick={() => setDeleting(null)} disabled={busy}>Batal</Button>
+            <Button variant="destructive" onClick={deleteDocument} disabled={busy}>{busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}Ya, Hapus Dokumen</Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
